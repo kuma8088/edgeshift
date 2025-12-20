@@ -25,3 +25,9 @@ pnpm-debug.log*
 
 # Workspace-level skills (managed separately)
 skills/
+
+# Private development files
+.claude/
+documents/
+screenshots/
+screenshot-analysis.cjs
