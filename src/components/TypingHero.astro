@@ -1,0 +1,112 @@
+---
+// Multiple phrases with "Edge" and "Shift"
+const phrases = [
+  "Transform Your Edge",
+  "Shift Your Edge",
+  "Sharpen Your Edge",
+  "EdgeShift Forward",
+  "Define Your Edge",
+  "Shift to the Edge",
+  "Lead the Edge",
+];
+---
+
+<div class="typing-hero">
+  <h1 class="text-4xl md:text-6xl font-bold text-[#1e1e1e] mb-6 leading-tight">
+    <span id="typing-text"></span>
+    <span id="cursor" class="text-[#7c3aed]">|</span>
+  </h1>
+</div>
+
+<script define:vars={{ phrases }}>
+  const typingText = document.getElementById('typing-text');
+  const cursor = document.getElementById('cursor');
+
+  let phraseIndex = 0;
+  let charIndex = 0;
+  let isDeleting = false;
+  let isPaused = false;
+
+  const TYPING_SPEED = 80;
+  const DELETING_SPEED = 50;
+  const PAUSE_AFTER_TYPING = 2000;
+  const PAUSE_AFTER_DELETING = 500;
+
+  function highlightEdge(text) {
+    // Highlight EdgeShift, Edge, and Shift with purple color
+    if (text.includes('EdgeShift')) {
+      return text.replace('EdgeShift', '<span class="text-[#7c3aed]">EdgeShift</span>');
+    }
+    // Handle "Shift" when not part of EdgeShift
+    let result = text;
+    if (text.includes('Shift') && !text.includes('EdgeShift')) {
+      result = result.replace('Shift', '<span class="text-[#7c3aed]">Shift</span>');
+    }
+    // Handle "Edge" when not part of EdgeShift
+    if (text.includes('Edge') && !text.includes('EdgeShift')) {
+      result = result.replace('Edge', '<span class="text-[#7c3aed]">Edge</span>');
+    }
+    return result;
+  }
+
+  function type() {
+    const currentPhrase = phrases[phraseIndex];
+
+    if (isPaused) {
+      return;
+    }
+
+    if (!isDeleting) {
+      // Typing
+      charIndex++;
+      const displayText = currentPhrase.substring(0, charIndex);
+      typingText.innerHTML = highlightEdge(displayText);
+
+      if (charIndex === currentPhrase.length) {
+        // Finished typing, pause then delete
+        isPaused = true;
+        setTimeout(() => {
+          isPaused = false;
+          isDeleting = true;
+          type();
+        }, PAUSE_AFTER_TYPING);
+        return;
+      }
+    } else {
+      // Deleting
+      charIndex--;
+      const displayText = currentPhrase.substring(0, charIndex);
+      typingText.innerHTML = highlightEdge(displayText);
+
+      if (charIndex === 0) {
+        // Finished deleting, move to next phrase
+        isDeleting = false;
+        phraseIndex = (phraseIndex + 1) % phrases.length;
+        isPaused = true;
+        setTimeout(() => {
+          isPaused = false;
+          type();
+        }, PAUSE_AFTER_DELETING);
+        return;
+      }
+    }
+
+    const speed = isDeleting ? DELETING_SPEED : TYPING_SPEED;
+    setTimeout(type, speed);
+  }
+
+  // Start typing animation
+  type();
+
+  // Cursor blink animation
+  setInterval(() => {
+    cursor.style.opacity = cursor.style.opacity === '0' ? '1' : '0';
+  }, 530);
+</script>
+
+<style>
+  #cursor {
+    animation: none;
+    transition: opacity 0.1s;
+  }
+</style>

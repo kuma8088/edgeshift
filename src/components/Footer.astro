@@ -1,20 +1,23 @@
 ---
 const socialLinks = [
-  { href: 'https://github.com/naoya', label: 'GitHub' },
-  { href: 'https://zenn.dev/naoya', label: 'Zenn' },
-  { href: 'https://twitter.com/naoya', label: 'X' },
-  { href: 'https://linkedin.com/in/naoya', label: 'LinkedIn' },
+  { href: 'https://github.com/edge-shift', label: 'GitHub' },
+  { href: 'https://zenn.dev/', label: 'Zenn' },
+  { href: 'https://twitter.com/', label: 'X' },
+  { href: 'https://linkedin.com/', label: 'LinkedIn' },
 ];
 
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="bg-gray-900 text-gray-300">
-  <div class="max-w-6xl mx-auto px-4 py-8">
-    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-      <p class="text-sm">
-        &copy; {currentYear} EdgeShift. All rights reserved.
-      </p>
+<footer class="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)]">
+  <div class="max-w-5xl mx-auto px-6 py-12">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+      <div>
+        <p class="text-lg font-bold text-[var(--color-text)] mb-1">EdgeShift</p>
+        <p class="text-sm text-[var(--color-text-muted)]">
+          Transform your business edge with DX
+        </p>
+      </div>
       <ul class="flex gap-6">
         {socialLinks.map((link) => (
           <li>
@@ -22,13 +25,18 @@ const currentYear = new Date().getFullYear();
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              class="text-sm hover:text-white transition-colors"
+              class="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors"
             >
               {link.label}
             </a>
           </li>
         ))}
       </ul>
+    </div>
+    <div class="mt-8 pt-6 border-t border-[var(--color-border)] text-center">
+      <p class="text-sm text-[var(--color-text-muted)]">
+        &copy; {currentYear} EdgeShift. All rights reserved.
+      </p>
     </div>
   </div>
 </footer>

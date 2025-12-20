@@ -8,7 +8,7 @@ interface Props {
   description?: string;
 }
 
-const { title, description = 'EdgeShift - Cloud & AI Solutions' } = Astro.props;
+const { title, description = 'EdgeShift - DXでビジネスのエッジを変化させる' } = Astro.props;
 ---
 
 <!doctype html>
@@ -21,9 +21,9 @@ const { title, description = 'EdgeShift - Cloud & AI Solutions' } = Astro.props;
     <meta name="generator" content={Astro.generator} />
     <title>{title} | EdgeShift</title>
   </head>
-  <body class="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+  <body class="min-h-screen flex flex-col">
     <Header />
-    <main class="flex-1">
+    <main class="flex-1 pt-16">
       <slot />
     </main>
     <Footer />

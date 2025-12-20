@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 8 360 142">
+  <!-- Background -->
+  <rect x="8" y="8" width="360" height="142" fill="#fafafa" rx="6"/>
+
+  <!-- Global Users -->
+  <circle cx="38" cy="62" r="22" fill="#e5e5e5" stroke="#737373" stroke-width="1.5"/>
+  <text x="38" y="59" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">Global</text>
+  <text x="38" y="69" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">Users</text>
+
+  <!-- Arrow -->
+  <defs>
+    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#525252"/>
+    </marker>
+  </defs>
+  <path d="M64 62 L86 62" stroke="#525252" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Cloudflare Edge -->
+  <rect x="91" y="30" width="175" height="72" fill="#f38020" fill-opacity="0.12" stroke="#f38020" stroke-width="1.5" rx="6"/>
+  <text x="178" y="44" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#f38020">Cloudflare Edge Network</text>
+
+  <!-- Pages -->
+  <rect x="101" y="52" width="75" height="42" fill="#f38020" fill-opacity="0.25" stroke="#f38020" stroke-width="1" rx="4"/>
+  <text x="138" y="70" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">Pages</text>
+  <text x="138" y="82" text-anchor="middle" font-family="system-ui" font-size="7" fill="#525252">(Static)</text>
+
+  <!-- Workers -->
+  <rect x="181" y="52" width="75" height="42" fill="#f38020" fill-opacity="0.25" stroke="#f38020" stroke-width="1" rx="4"/>
+  <text x="218" y="70" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">Workers</text>
+  <text x="218" y="82" text-anchor="middle" font-family="system-ui" font-size="7" fill="#525252">(Edge Compute)</text>
+
+  <!-- Arrow to Origin -->
+  <path d="M271 73 L291 73" stroke="#525252" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Origin/API -->
+  <rect x="296" y="43" width="65" height="55" fill="#e5e5e5" stroke="#737373" stroke-width="1.5" rx="6"/>
+  <text x="328" y="66" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">Origin</text>
+  <text x="328" y="78" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">API</text>
+
+  <!-- Tech Stack -->
+  <rect x="91" y="112" width="60" height="30" fill="#7c3aed" fill-opacity="0.2" stroke="#7c3aed" stroke-width="1" rx="4"/>
+  <text x="121" y="131" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">Astro</text>
+
+  <rect x="156" y="112" width="70" height="30" fill="#38bdf8" fill-opacity="0.2" stroke="#38bdf8" stroke-width="1" rx="4"/>
+  <text x="191" y="131" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">TypeScript</text>
+
+  <rect x="231" y="112" width="70" height="30" fill="#7b42bc" fill-opacity="0.2" stroke="#7b42bc" stroke-width="1" rx="4"/>
+  <text x="266" y="131" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">Terraform</text>
+
+  <!-- Performance badge -->
+  <rect x="306" y="112" width="55" height="30" fill="#22c55e" fill-opacity="0.2" stroke="#22c55e" stroke-width="1" rx="4"/>
+  <text x="333" y="126" text-anchor="middle" font-family="system-ui" font-size="8" font-weight="bold" fill="#1e1e1e">&lt;50ms</text>
+  <text x="333" y="137" text-anchor="middle" font-family="system-ui" font-size="7" fill="#525252">Latency</text>
+</svg>

@@ -1,79 +1,437 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import TypingHero from '../components/TypingHero.astro';
+
+const projects = [
+  {
+    title: 'ハイブリッドクラウド基盤',
+    subtitle: 'ブログ・メールサーバー統合システム',
+    description: 'オンプレミス（Dell WorkStation）と Cloudflare/AWS を組み合わせたハイブリッド構成。WordPress 17サイトとメールサーバーを Docker で運用。Cloudflare Tunnel でポート開放不要のセキュア公開、Tailscale VPN でゼロトラストアクセスを実現。月額約150円で運用。',
+    tags: ['Docker', 'Cloudflare', 'Tailscale', 'WordPress', 'Postfix', 'FastAPI', 'AWS S3'],
+    image: '/images/portfolio/dell-architecture.svg',
+    github: 'https://github.com/edge-shift/dell-services',
+  },
+  {
+    title: '食事管理アプリ',
+    subtitle: 'サーバーレス栄養管理システム',
+    description: 'LINE と Web の両方から利用できる食事記録・栄養管理アプリ。AWS サーバーレスアーキテクチャにより、月額数ドルでの運用を実現。Cognito による認証、Bedrock AI による栄養アドバイス機能を搭載。',
+    tags: ['AWS Lambda', 'DynamoDB', 'Cognito', 'Bedrock', 'React', 'Terraform'],
+    image: '/images/portfolio/meal-architecture-aws.svg',
+    github: 'https://github.com/edge-shift/mealmgtsystem',
+  },
+  {
+    title: '問い合わせ自動化システム',
+    subtitle: 'ワークフロー自動処理基盤',
+    description: 'Step Functions によるワークフロー自動化システム。問い合わせの受付から処理、通知までを完全自動化。状態管理とリトライ処理により、高い信頼性を確保。Terraform モジュール化により再利用性を向上。',
+    tags: ['Step Functions', 'Lambda', 'DynamoDB', 'SNS', 'Terraform'],
+    image: '/images/portfolio/inquiry-architecture-aws.svg',
+    github: 'https://github.com/edge-shift/inquirysystem',
+  },
+  {
+    title: 'エッジ配信プラットフォーム',
+    subtitle: 'グローバル高速コンテンツ配信',
+    description: 'Cloudflare Pages + Workers によるエッジファースト配信基盤。グローバル300+拠点からの配信で50ms以下のレイテンシを実現。Astro による静的サイト生成と、Workers によるエッジコンピューティングを組み合わせた次世代アーキテクチャ。',
+    tags: ['Cloudflare', 'Astro', 'TypeScript', 'Workers', 'Terraform'],
+    image: '/images/portfolio/edge-architecture.svg',
+    github: 'https://github.com/edge-shift/edgeshift',
+  },
+];
+
+// Skills organized by domain
+const skillCategories = [
+  {
+    title: 'インフラ・ネットワーク',
+    subtitle: 'Infrastructure',
+    icon: 'server',
+    items: [
+      { name: 'Webサーバ・メールサーバ', description: 'Nginx / Postfix / Dovecot の構築・運用' },
+      { name: 'ネットワーク設計', description: 'WAN/LAN/VPN/ファイアウォールの設計・導入' },
+      { name: 'セキュリティ', description: 'DMARC/DKIM/SPF・証明書管理・脆弱性対策' },
+      { name: 'コンテナ運用', description: 'Docker / ECS Fargate によるサービス運用' },
+    ],
+  },
+  {
+    title: 'クラウド・開発',
+    subtitle: 'Cloud & Development',
+    icon: 'cloud',
+    items: [
+      { name: 'AWS サーバーレス', description: 'Lambda / DynamoDB / Step Functions / Bedrock' },
+      { name: 'Infrastructure as Code', description: 'Terraform によるマルチクラウド構成管理' },
+      { name: 'AI 駆動開発', description: 'Claude Code / Bedrock RAG を活用した開発効率化' },
+      { name: 'ソリューション設計', description: 'コスト最適化を考慮したアーキテクチャ設計' },
+    ],
+  },
+  {
+    title: 'ビジネス',
+    subtitle: 'Business & Marketing',
+    icon: 'briefcase',
+    items: [
+      { name: '要件定義・設計', description: '顧客課題のヒアリングから技術要件への落とし込み' },
+      { name: '法人営業・プリセールス', description: '大手SIer・外資系ITベンダーでの提案活動経験' },
+      { name: 'Webマーケティング', description: 'WordPress・海外SaaSでMA自動化を実装・コンサル' },
+      { name: 'プロジェクト推進', description: 'Lean Six Sigma手法による業務改善・効率化' },
+    ],
+  },
+];
+
+const certifications = [
+  {
+    name: 'AWS Solutions Architect Associate',
+    shortName: 'AWS SAA',
+    image: '/images/certifications/aws-certified-solutions-architect-associate.png',
+  },
+  {
+    name: 'LPIC Level 1',
+    shortName: 'LPIC-1',
+    image: '/images/certifications/lpic-1-certification.png',
+  },
+  {
+    name: 'LPIC Level 2',
+    shortName: 'LPIC-2',
+    image: '/images/certifications/lpic-2-certification.png',
+  },
+  {
+    name: 'LPIC Level 3 (Security)',
+    shortName: 'LPIC-303',
+    image: '/images/certifications/LPIC303.png',
+  },
+  {
+    name: 'Cisco CCNA',
+    shortName: 'CCNA',
+    image: '/images/certifications/ccna_large.jpg',
+  },
+];
 ---
 
-<BaseLayout title="Home" description="EdgeShift - Cloud & AI Solutions for modern businesses">
-  <!-- Hero Section -->
-  <section class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white py-24">
-    <div class="max-w-6xl mx-auto px-4 text-center">
-      <h1 class="text-4xl md:text-5xl font-bold mb-6">
-        Cloud & AI Solutions
-      </h1>
-      <p class="text-xl md:text-2xl text-blue-100 mb-8 max-w-2xl mx-auto">
-        AWS, Terraform, AI を活用した効率的なシステム構築
+<BaseLayout title="Home">
+  <!-- Hero Section (Light with video bg) -->
+  <section class="relative h-screen flex items-center justify-center overflow-hidden">
+    <!-- Video Background -->
+    <div class="absolute inset-0 z-0">
+      <div class="hero-bg absolute inset-0"></div>
+      <div class="absolute inset-0 bg-white/80"></div>
+    </div>
+
+    <!-- Hero Content -->
+    <div class="relative z-10 max-w-4xl mx-auto px-6 text-center">
+      <TypingHero />
+      <p class="text-xl md:text-2xl text-[#525252] mb-10 max-w-2xl mx-auto">
+        クラウドとデータで、ビジネスの境界を再定義する
       </p>
       <a
-        href="/portfolio"
-        class="inline-block bg-white text-blue-600 font-semibold px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors"
+        href="#portfolio"
+        class="inline-block bg-[#1e1e1e] text-white px-8 py-4 rounded font-medium hover:bg-[#333] hover:scale-[1.02] transition-all"
       >
         View Portfolio
       </a>
     </div>
+
+    <!-- Scroll indicator -->
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
+      <div class="w-6 h-10 border-2 border-[#a3a3a3] rounded-full flex justify-center">
+        <div class="w-1 h-3 bg-[#a3a3a3] rounded-full mt-2 animate-bounce"></div>
+      </div>
+    </div>
   </section>
 
-  <!-- Featured Projects -->
-  <section class="py-16">
-    <div class="max-w-6xl mx-auto px-4">
-      <h2 class="text-2xl font-bold text-center mb-12">Featured Projects</h2>
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-lg font-semibold mb-2">Meal Management System</h3>
-          <p class="text-gray-600 text-sm mb-4">
-            AWS Lambda + DynamoDB を使用した食事記録アプリ
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">AWS Lambda</span>
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">DynamoDB</span>
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Python</span>
+  <!-- About Section (White - contrast with Hero) -->
+  <section id="about" class="py-24 bg-white border-t border-[#e5e5e5]">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="grid md:grid-cols-[240px_1fr] gap-12">
+        <!-- Left: Image -->
+        <div class="flex justify-center md:justify-start">
+          <div class="w-48 h-48 md:w-56 md:h-56 rounded-lg bg-[#f5f5f5] border border-[#e5e5e5] overflow-hidden">
+            <img
+              src="/images/profile-placeholder.jpg"
+              alt="Profile"
+              class="w-full h-full object-cover"
+              onerror="this.style.display='none'; this.parentElement.classList.add('flex', 'items-center', 'justify-center'); this.parentElement.innerHTML='<span class=\'text-[#a3a3a3] text-sm\'>Photo</span>';"
+            />
           </div>
         </div>
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-lg font-semibold mb-2">Inquiry System</h3>
-          <p class="text-gray-600 text-sm mb-4">
-            Step Functions による問い合わせ自動処理システム
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Step Functions</span>
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Terraform</span>
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">TypeScript</span>
+
+        <!-- Right: Content -->
+        <div>
+          <h2 class="text-2xl font-bold text-[#7c3aed] mb-4">ご挨拶</h2>
+          <div class="w-full h-px bg-[#e5e5e5] mb-8"></div>
+
+          <!-- 経歴概要 -->
+          <div class="mb-8">
+            <h3 class="text-base font-bold text-[#1e1e1e] mb-3">【経歴概要】</h3>
+            <p class="text-base text-[#525252] leading-relaxed mb-4">
+              大手SIerでの法人営業を皮切りに、外資系ITベンダーでのサプライチェーン改善、
+              EC物流拠点の立ち上げ、自社でのEC・Webマーケティング事業運営を経験。
+              現在はセールスエンジニアとしてネットワーク・セキュリティ製品の提案・設計・構築を担当しています。
+            </p>
+            <p class="text-base text-[#525252] leading-relaxed">
+              基本的に今まではIT企業で非エンジニア畑でしたが、15年前からビジネスとしてWordPressを使い続けており、ウェブデザインやマーケティングに自社だけでなくお客様の環境構築やコンサルティングも行ってきました。そして、5年前からエンジニア職となり、インフラから技術に携わっています。
+            </p>
           </div>
-        </div>
-        <div class="bg-white rounded-lg shadow-md p-6">
-          <h3 class="text-lg font-semibold mb-2">EdgeShift Platform</h3>
-          <p class="text-gray-600 text-sm mb-4">
-            Cloudflare Pages + Workers によるエッジ配信基盤
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Cloudflare</span>
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Astro</span>
-            <span class="text-xs bg-gray-100 px-2 py-1 rounded">TypeScript</span>
+
+          <!-- 資格取得をきっかけに個人開発へ傾注 -->
+          <div class="mb-8">
+            <h3 class="text-base font-bold text-[#1e1e1e] mb-3">【資格取得をきっかけに個人開発へ傾注】</h3>
+            <p class="text-base text-[#525252] leading-relaxed mb-4">
+              昨年、今更ながらCCNAを取得しテクノロジーの面白さにハマり、それ以降は各種インフラ資格を取りながら同時に自宅に環境を作って実践を積み重ねるようになりました。今では、寝るより食べるより開発業務に取り組んでいます。
+            </p>
+            <p class="text-base text-[#525252] leading-relaxed mb-4">
+              特にAWSを中心としたクラウドは進化を続けており、クラウドやサーバーレス技術を積み重ねることでいろんなお客様のシステム的な課題と同時にコスト的な課題も解決できるのでは？と感じています。
+            </p>
+            <p class="text-base text-[#525252] leading-relaxed">
+              さらに最近ではClaude Code、Codex、Gemini、CursorなどAIを使った開発支援ツールが急速に発達してきています。私はClaude Codeを中心に、開発言語のプロにならなくても動くコードが書けて、実装して、運用可能なシステムが構築できる時代になったと確信しているので、バイブコーディングではない、しっかりした開発ができるように日々少しずつ経験を積み重ねています。
+            </p>
+          </div>
+
+          <!-- 所持資格 -->
+          <div class="mb-8">
+            <h3 class="text-base font-bold text-[#1e1e1e] mb-3">【所持資格】</h3>
+            <div class="flex flex-wrap gap-2">
+              {certifications.map((cert) => (
+                <span class="text-sm bg-[#f5f5f5] text-[#525252] px-3 py-1.5 rounded border border-[#e5e5e5]">
+                  {cert.shortName}
+                </span>
+              ))}
+              <span class="text-sm bg-[#f5f5f5] text-[#525252] px-3 py-1.5 rounded border border-[#e5e5e5]">
+                Lean Six Sigma Green Belt
+              </span>
+            </div>
+          </div>
+
+          <!-- 本格的なDX時代に -->
+          <div class="mb-8">
+            <h3 class="text-base font-bold text-[#1e1e1e] mb-3">【本格的なDX時代に】</h3>
+            <p class="text-base text-[#525252] leading-relaxed mb-4">
+              数年前からずっとDXというワードだけ一人歩きしてましたよね。何でもかんでもDXの範疇に入ってしまうものですから、Google Workspaceを利用しただけでDXに取り組んでいる！なんて思っている人もいたとか。
+            </p>
+            <p class="text-base text-[#525252] leading-relaxed mb-4">
+              でも違いますよね。DXとは、デジタル技術やデータを活用してビジネスのプロセスを刷新し、自社だけでなく顧客も満足させて売上や利益を高めていくことです。ただ、実際にDXを導入するためには複雑な設計が必要だったりして、その開発に多くのエンジニアが関わるものだから多額の投資が必要となっていました。
+            </p>
+            <p class="text-base text-[#525252] leading-relaxed mb-4">
+              そんな時代ももう本格的に終わりです。クラウドを有効活用しながらAI開発を積極的に活用して、開発人件費を抑えながらDXを実現するためのシステム開発を行える時代になりました。
+            </p>
+            <p class="text-base text-[#525252] leading-relaxed">
+              私としては、このような時代にインフラから開発・実装・運用まで面倒を見ることができるエンジニアとして、多くの中小企業や個人事業の方と関わって付加価値を提供していきたいと考えています。
+            </p>
+          </div>
+
+          <!-- Social Links -->
+          <div class="flex items-center gap-6 flex-wrap">
+            <a href="https://github.com/kuma8088" target="_blank" rel="noopener noreferrer" class="text-[#1e1e1e] hover:text-[#7c3aed] transition-colors">
+              <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+            </a>
+            <a href="https://x.com/EdgeShift8088" target="_blank" rel="noopener noreferrer" class="text-[#1e1e1e] hover:text-[#7c3aed] transition-colors">
+              <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </a>
+            <a href="https://zenn.dev/kuma8088" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 hover:opacity-70 transition-opacity">
+              <img src="/images/zenn-logo.svg" alt="Zenn" class="h-6 w-auto" />
+              <span class="text-lg font-semibold text-[#1e1e1e]">Zenn</span>
+            </a>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Skills -->
-  <section class="bg-gray-100 py-16">
-    <div class="max-w-6xl mx-auto px-4">
-      <h2 class="text-2xl font-bold text-center mb-12">Tech Stack</h2>
-      <div class="flex flex-wrap justify-center gap-4">
-        {['AWS', 'Terraform', 'Python', 'TypeScript', 'React', 'Next.js', 'Cloudflare', 'Docker'].map((skill) => (
-          <span class="bg-white px-4 py-2 rounded-full shadow-sm text-gray-700 font-medium">
-            {skill}
-          </span>
+  <!-- Portfolio Section (Gray) -->
+  <section id="portfolio" class="py-24 bg-[#f5f5f5]">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-[#7c3aed] mb-2">Portfolio</h2>
+        <p class="text-xl text-[#1e1e1e] font-medium mb-6">制作事例</p>
+        <p class="text-base text-[#525252] leading-relaxed max-w-3xl mx-auto">
+          個人開発の手始めは、XserverやGoogleの容量不足課金が嫌だったので自宅にLinux環境を作ってWordPress環境とメールサーバ環境をマイグレ（移管）したことです。最初でしたがアプリケーション開発だけでなくネットワーク、セキュリティと色々と気を遣いながら構築して今も安定稼働しています。その後はサーバレスで構築できる限り業務で使えるものをバンバン作っていきます。
+        </p>
+      </div>
+      <div class="space-y-8">
+        {projects.map((project, index) => (
+          <article class="group bg-white rounded-lg overflow-hidden border border-[#e5e5e5] hover:border-[#7c3aed]/50 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+            <div class={`grid md:grid-cols-2 gap-0 ${index % 2 === 1 ? 'md:direction-rtl' : ''}`}>
+              <!-- Content -->
+              <div class={`p-6 flex flex-col ${index % 2 === 1 ? 'md:order-2' : 'md:order-1'}`}>
+                <div class="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 class="text-xl font-semibold text-[#1e1e1e] group-hover:text-[#7c3aed] transition-colors">
+                      {project.title}
+                    </h3>
+                    <p class="text-base text-[#737373]">{project.subtitle}</p>
+                  </div>
+                  <span class="text-sm text-[#a3a3a3] font-mono">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                </div>
+                <p class="text-base text-[#525252] mb-4 leading-relaxed flex-grow">
+                  {project.description}
+                </p>
+                <div class="flex flex-wrap gap-2 mb-4">
+                  {project.tags.map((tag) => (
+                    <span class="text-xs bg-[#f5f5f5] text-[#737373] px-3 py-1 rounded border border-[#e5e5e5]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <a
+                  href={project.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-2 text-base text-[#1e1e1e] hover:text-[#7c3aed] transition-colors w-fit"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                  View on GitHub
+                </a>
+              </div>
+              <!-- Architecture Diagram -->
+              <div class={`hidden md:flex bg-[#fafafa] p-4 items-center justify-center border-[#e5e5e5] ${index % 2 === 1 ? 'md:order-1 md:border-r' : 'md:order-2 md:border-l'}`}>
+                <img
+                  src={project.image}
+                  alt={`${project.title} Architecture`}
+                  class="w-full h-auto max-h-48 object-contain"
+                />
+              </div>
+            </div>
+          </article>
         ))}
       </div>
     </div>
   </section>
+
+  <!-- Skills Section (White) -->
+  <section id="skills" class="py-24 bg-white">
+    <div class="max-w-5xl mx-auto px-6">
+      <h2 class="text-3xl font-bold text-[#1e1e1e] mb-4">Skills & Experience</h2>
+      <p class="text-[#737373] mb-12">技術スタックとビジネス経験</p>
+
+      <div class="grid md:grid-cols-3 gap-8">
+        {skillCategories.map((category) => (
+          <div class="bg-white rounded-lg p-6 border border-[#e5e5e5] shadow-sm hover:shadow-md hover:border-[#7c3aed]/30 transition-all h-full">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center bg-[#7c3aed]/10 text-[#7c3aed]">
+                {category.icon === 'server' && (
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                  </svg>
+                )}
+                {category.icon === 'cloud' && (
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+                  </svg>
+                )}
+                {category.icon === 'briefcase' && (
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                )}
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold text-[#1e1e1e]">{category.title}</h3>
+                <p class="text-xs text-[#a3a3a3] uppercase tracking-wider">{category.subtitle}</p>
+              </div>
+            </div>
+
+            <!-- Items -->
+            <div class="space-y-4">
+              {category.items.map((item) => (
+                <div class="border-l-2 border-[#e5e5e5] pl-4 hover:border-[#7c3aed] transition-colors">
+                  <p class="text-base font-medium text-[#1e1e1e]">{item.name}</p>
+                  <p class="text-sm text-[#737373] mt-1">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Certifications -->
+      <div class="mt-16">
+        <h3 class="text-xl font-semibold text-[#1e1e1e] mb-8">Certifications</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {certifications.map((cert) => (
+            <div class="group bg-white rounded-lg p-6 border border-[#e5e5e5] shadow-sm hover:shadow-md hover:border-[#7c3aed]/30 transition-all flex items-center gap-4">
+              <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-[#f5f5f5] rounded-lg overflow-hidden">
+                <img
+                  src={cert.image}
+                  alt={cert.name}
+                  class="max-w-full max-h-full object-contain"
+                />
+              </div>
+              <div>
+                <p class="text-base font-medium text-[#1e1e1e]">{cert.shortName}</p>
+                <p class="text-sm text-[#737373] mt-1">{cert.name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section (Gray) -->
+  <section id="contact" class="py-24 bg-[#f5f5f5]">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      <h2 class="text-3xl font-bold text-[#1e1e1e] mb-6">Contact</h2>
+      <p class="text-[#525252] mb-10 max-w-lg mx-auto">
+        プロジェクトのご相談、お気軽にお問い合わせください。
+      </p>
+      <div class="flex justify-center gap-4">
+        <a
+          href="https://github.com/kuma8088"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="bg-[#1e1e1e] text-white px-6 py-3 rounded hover:bg-[#333] transition-colors"
+        >
+          GitHub
+        </a>
+        <a
+          href="https://x.com/EdgeShift8088"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="bg-[#1e1e1e] text-white px-6 py-3 rounded hover:bg-[#333] transition-colors"
+        >
+          X (Twitter)
+        </a>
+        <a
+          href="https://zenn.dev/kuma8088"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="bg-[#1e1e1e] text-white px-6 py-3 rounded hover:bg-[#333] transition-colors"
+        >
+          Zenn
+        </a>
+      </div>
+    </div>
+  </section>
 </BaseLayout>
+
+<style>
+  /* Animated gradient background as placeholder for video */
+  .hero-bg {
+    background: linear-gradient(
+      125deg,
+      #e5e5e5 0%,
+      #d4d4d8 25%,
+      #c4b5fd 50%,
+      #d4d4d8 75%,
+      #e5e5e5 100%
+    );
+    background-size: 400% 400%;
+    animation: gradient-shift 15s ease infinite;
+  }
+
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+</style>

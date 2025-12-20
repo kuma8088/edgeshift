@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <!-- Background -->
+  <rect width="400" height="200" fill="#fafafa" rx="8"/>
+
+  <!-- Client -->
+  <rect x="20" y="70" width="60" height="45" fill="#e5e5e5" stroke="#737373" stroke-width="1" rx="4"/>
+  <text x="50" y="90" text-anchor="middle" font-family="system-ui" font-size="9" fill="#525252">Client</text>
+  <text x="50" y="102" text-anchor="middle" font-family="system-ui" font-size="9" fill="#525252">Request</text>
+
+  <!-- Arrow -->
+  <path d="M85 92 L115 92" stroke="#a3a3a3" stroke-width="1.5" fill="none"/>
+
+  <!-- API Gateway -->
+  <rect x="120" y="65" width="55" height="55" fill="#ff9900" fill-opacity="0.15" stroke="#ff9900" stroke-width="1" rx="4"/>
+  <text x="147" y="90" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">API</text>
+  <text x="147" y="102" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">Gateway</text>
+
+  <!-- Arrow to Step Functions -->
+  <path d="M180 92 L210 92" stroke="#a3a3a3" stroke-width="1.5" fill="none"/>
+
+  <!-- Step Functions -->
+  <rect x="215" y="55" width="70" height="75" fill="#cd2264" fill-opacity="0.15" stroke="#cd2264" stroke-width="1" rx="4"/>
+  <text x="250" y="82" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">Step</text>
+  <text x="250" y="94" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">Functions</text>
+
+  <!-- Lambda boxes inside Step Functions area -->
+  <rect x="222" y="102" width="25" height="20" fill="#ff9900" fill-opacity="0.2" stroke="#ff9900" stroke-width="0.5" rx="2"/>
+  <text x="234" y="116" text-anchor="middle" font-family="system-ui" font-size="6" fill="#525252">λ</text>
+
+  <rect x="252" y="102" width="25" height="20" fill="#ff9900" fill-opacity="0.2" stroke="#ff9900" stroke-width="0.5" rx="2"/>
+  <text x="264" y="116" text-anchor="middle" font-family="system-ui" font-size="6" fill="#525252">λ</text>
+
+  <!-- Arrow to DynamoDB -->
+  <path d="M290 92 L320 92" stroke="#a3a3a3" stroke-width="1.5" fill="none"/>
+
+  <!-- DynamoDB -->
+  <rect x="325" y="65" width="55" height="55" fill="#4051b5" fill-opacity="0.15" stroke="#4051b5" stroke-width="1" rx="4"/>
+  <text x="352" y="90" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">Dynamo</text>
+  <text x="352" y="102" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">DB</text>
+
+  <!-- SNS Notification -->
+  <rect x="215" y="150" width="70" height="30" fill="#b0084d" fill-opacity="0.15" stroke="#b0084d" stroke-width="1" rx="4"/>
+  <text x="250" y="170" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">SNS Notify</text>
+
+  <!-- Vertical line from Step Functions -->
+  <path d="M250 135 L250 145" stroke="#a3a3a3" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- Title -->
+  <text x="200" y="18" text-anchor="middle" font-family="system-ui" font-size="11" font-weight="bold" fill="#1e1e1e">Workflow Automation</text>
+
+  <!-- Terraform badge -->
+  <rect x="20" y="160" width="70" height="22" fill="#7b42bc" fill-opacity="0.15" stroke="#7b42bc" stroke-width="1" rx="4"/>
+  <text x="55" y="175" text-anchor="middle" font-family="system-ui" font-size="8" fill="#525252">Terraform IaC</text>
+</svg>
