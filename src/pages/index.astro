@@ -134,8 +134,182 @@ const certifications = [
     </div>
   </section>
 
-  <!-- About Section (White - contrast with Hero) -->
-  <section id="about" class="py-24 bg-white border-t border-[#e5e5e5]">
+  <!-- Skills Section (White) -->
+  <section id="skills" class="py-24 bg-white border-t border-[#e5e5e5]">
+    <div class="max-w-5xl mx-auto px-6">
+      <h2 class="text-3xl font-bold text-[#7c3aed] mb-4">EdgeShiftの提供価値</h2>
+      <p class="text-[#737373] mb-8">技術スタックとビジネス経験</p>
+
+      <!-- Introduction -->
+      <div class="mb-12">
+        <p class="text-base text-[#525252] leading-relaxed mb-6">
+          新卒でSIer営業からスタートしてこれまでさまざまな経験を積み重ねてきました。個人的な強みとしては以下の3点に集約されます。
+        </p>
+
+        <div class="space-y-4 mb-6">
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-[#7c3aed]/10 text-[#7c3aed] flex items-center justify-center text-sm font-semibold">1</span>
+            <div>
+              <span class="font-semibold text-[#1e1e1e]">顧客視点の伴走力：</span>
+              <span class="text-[#525252]">営業やマーケティング経験を通して相手の立場に立って「何が課題か、どうするのが最善か」を徹底的に考えることでクライアントとのコミュニケーションが円滑になり良き相談者として寄り添えること</span>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-[#7c3aed]/10 text-[#7c3aed] flex items-center justify-center text-sm font-semibold">2</span>
+            <div>
+              <span class="font-semibold text-[#1e1e1e]">技術俯瞰力：</span>
+              <span class="text-[#525252]">技術的にも活動の中心はIT業界であったため、基礎的な技術的知識をバックグラウンドにしつつ、全体的な技術的な視座を持ちながら要件ヒアリング、設計、構築を行うことができること</span>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-[#7c3aed]/10 text-[#7c3aed] flex items-center justify-center text-sm font-semibold">3</span>
+            <div>
+              <span class="font-semibold text-[#1e1e1e]">最新技術への探究心：</span>
+              <span class="text-[#525252]">最新技術に興味関心が高いため、率先して海外から情報を取り込み、自らも手を動かして実装可能性を探る探究心があること</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-base text-[#525252] leading-relaxed mb-6">
+          つまり、営業・マーケティング経験で培ったクライアント視点のコミュニケーション力と、IT業界での活動を通じて得た技術的バックグラウンドを活かし、要件定義から設計・構築まで俯瞰的に対応しながら、最新技術を海外から積極的に取り込み自ら実装検証する探究心を持って課題解決に取り組むことができます。
+        </p>
+
+        <p class="text-base text-[#525252] leading-relaxed">
+          ビジネス領域や技術スタックに関しては以下の通り価値をご提供できるものと考えています。
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8">
+        {skillCategories.map((category) => (
+          <div class="bg-white rounded-lg p-6 border border-[#e5e5e5] shadow-sm hover:shadow-md hover:border-[#7c3aed]/30 transition-all h-full">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center bg-[#7c3aed]/10 text-[#7c3aed]">
+                {category.icon === 'server' && (
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                  </svg>
+                )}
+                {category.icon === 'cloud' && (
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+                  </svg>
+                )}
+                {category.icon === 'briefcase' && (
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                )}
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold text-[#1e1e1e]">{category.title}</h3>
+                <p class="text-xs text-[#a3a3a3] uppercase tracking-wider">{category.subtitle}</p>
+              </div>
+            </div>
+
+            <!-- Items -->
+            <div class="space-y-4">
+              {category.items.map((item) => (
+                <div class="border-l-2 border-[#e5e5e5] pl-4 hover:border-[#7c3aed] transition-colors">
+                  <p class="text-base font-medium text-[#1e1e1e]">{item.name}</p>
+                  <p class="text-sm text-[#737373] mt-1">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Certifications -->
+      <div class="mt-16">
+        <h3 class="text-xl font-semibold text-[#1e1e1e] mb-8">Certifications</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {certifications.map((cert) => (
+            <div class="group bg-white rounded-lg p-6 border border-[#e5e5e5] shadow-sm hover:shadow-md hover:border-[#7c3aed]/30 transition-all flex items-center gap-4">
+              <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-[#f5f5f5] rounded-lg overflow-hidden">
+                <img
+                  src={cert.image}
+                  alt={cert.name}
+                  class="max-w-full max-h-full object-contain"
+                />
+              </div>
+              <div>
+                <p class="text-base font-medium text-[#1e1e1e]">{cert.shortName}</p>
+                <p class="text-sm text-[#737373] mt-1">{cert.name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Portfolio Section (Gray) -->
+  <section id="portfolio" class="py-24 bg-[#f5f5f5]">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold text-[#7c3aed] mb-2">Portfolio</h2>
+        <p class="text-xl text-[#1e1e1e] font-medium mb-6">制作事例</p>
+        <p class="text-base text-[#525252] leading-relaxed max-w-3xl mx-auto">
+          個人開発の手始めは、XserverやGoogleの容量不足課金が嫌だったので自宅にLinux環境を作ってWordPress環境とメールサーバ環境をマイグレ（移管）したことです。最初でしたがアプリケーション開発だけでなくネットワーク、セキュリティと色々と気を遣いながら構築して今も安定稼働しています。その後はサーバレスで構築できる限り業務で使えるものをバンバン作っていきます。
+        </p>
+      </div>
+      <div class="space-y-8">
+        {projects.map((project, index) => (
+          <article class="group bg-white rounded-lg overflow-hidden border border-[#e5e5e5] hover:border-[#7c3aed]/50 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+            <div class={`grid md:grid-cols-2 gap-0 ${index % 2 === 1 ? 'md:direction-rtl' : ''}`}>
+              <!-- Content -->
+              <div class={`p-6 flex flex-col ${index % 2 === 1 ? 'md:order-2' : 'md:order-1'}`}>
+                <div class="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 class="text-xl font-semibold text-[#1e1e1e] group-hover:text-[#7c3aed] transition-colors">
+                      {project.title}
+                    </h3>
+                    <p class="text-base text-[#737373]">{project.subtitle}</p>
+                  </div>
+                  <span class="text-sm text-[#a3a3a3] font-mono">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                </div>
+                <p class="text-base text-[#525252] mb-4 leading-relaxed flex-grow">
+                  {project.description}
+                </p>
+                <div class="flex flex-wrap gap-2 mb-4">
+                  {project.tags.map((tag) => (
+                    <span class="text-xs bg-[#f5f5f5] text-[#737373] px-3 py-1 rounded border border-[#e5e5e5]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <a
+                  href={project.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-2 text-base text-[#1e1e1e] hover:text-[#7c3aed] transition-colors w-fit"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                  View on GitHub
+                </a>
+              </div>
+              <!-- Architecture Diagram -->
+              <div class={`hidden md:flex bg-[#fafafa] p-4 items-center justify-center border-[#e5e5e5] ${index % 2 === 1 ? 'md:order-1 md:border-r' : 'md:order-2 md:border-l'}`}>
+                <img
+                  src={project.image}
+                  alt={`${project.title} Architecture`}
+                  class="w-full h-auto max-h-48 object-contain"
+                />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section (White) -->
+  <section id="about" class="py-24 bg-white">
     <div class="max-w-5xl mx-auto px-6">
       <div class="grid md:grid-cols-[240px_1fr] gap-12">
         <!-- Left: Image -->
@@ -231,141 +405,6 @@ const certifications = [
               <span class="text-lg font-semibold text-[#1e1e1e]">Zenn</span>
             </a>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Portfolio Section (Gray) -->
-  <section id="portfolio" class="py-24 bg-[#f5f5f5]">
-    <div class="max-w-5xl mx-auto px-6">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl font-bold text-[#7c3aed] mb-2">Portfolio</h2>
-        <p class="text-xl text-[#1e1e1e] font-medium mb-6">制作事例</p>
-        <p class="text-base text-[#525252] leading-relaxed max-w-3xl mx-auto">
-          個人開発の手始めは、XserverやGoogleの容量不足課金が嫌だったので自宅にLinux環境を作ってWordPress環境とメールサーバ環境をマイグレ（移管）したことです。最初でしたがアプリケーション開発だけでなくネットワーク、セキュリティと色々と気を遣いながら構築して今も安定稼働しています。その後はサーバレスで構築できる限り業務で使えるものをバンバン作っていきます。
-        </p>
-      </div>
-      <div class="space-y-8">
-        {projects.map((project, index) => (
-          <article class="group bg-white rounded-lg overflow-hidden border border-[#e5e5e5] hover:border-[#7c3aed]/50 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-            <div class={`grid md:grid-cols-2 gap-0 ${index % 2 === 1 ? 'md:direction-rtl' : ''}`}>
-              <!-- Content -->
-              <div class={`p-6 flex flex-col ${index % 2 === 1 ? 'md:order-2' : 'md:order-1'}`}>
-                <div class="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 class="text-xl font-semibold text-[#1e1e1e] group-hover:text-[#7c3aed] transition-colors">
-                      {project.title}
-                    </h3>
-                    <p class="text-base text-[#737373]">{project.subtitle}</p>
-                  </div>
-                  <span class="text-sm text-[#a3a3a3] font-mono">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                </div>
-                <p class="text-base text-[#525252] mb-4 leading-relaxed flex-grow">
-                  {project.description}
-                </p>
-                <div class="flex flex-wrap gap-2 mb-4">
-                  {project.tags.map((tag) => (
-                    <span class="text-xs bg-[#f5f5f5] text-[#737373] px-3 py-1 rounded border border-[#e5e5e5]">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <a
-                  href={project.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center gap-2 text-base text-[#1e1e1e] hover:text-[#7c3aed] transition-colors w-fit"
-                >
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                  </svg>
-                  View on GitHub
-                </a>
-              </div>
-              <!-- Architecture Diagram -->
-              <div class={`hidden md:flex bg-[#fafafa] p-4 items-center justify-center border-[#e5e5e5] ${index % 2 === 1 ? 'md:order-1 md:border-r' : 'md:order-2 md:border-l'}`}>
-                <img
-                  src={project.image}
-                  alt={`${project.title} Architecture`}
-                  class="w-full h-auto max-h-48 object-contain"
-                />
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- Skills Section (White) -->
-  <section id="skills" class="py-24 bg-white">
-    <div class="max-w-5xl mx-auto px-6">
-      <h2 class="text-3xl font-bold text-[#1e1e1e] mb-4">Skills & Experience</h2>
-      <p class="text-[#737373] mb-12">技術スタックとビジネス経験</p>
-
-      <div class="grid md:grid-cols-3 gap-8">
-        {skillCategories.map((category) => (
-          <div class="bg-white rounded-lg p-6 border border-[#e5e5e5] shadow-sm hover:shadow-md hover:border-[#7c3aed]/30 transition-all h-full">
-            <!-- Header -->
-            <div class="flex items-center gap-3 mb-6">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center bg-[#7c3aed]/10 text-[#7c3aed]">
-                {category.icon === 'server' && (
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
-                  </svg>
-                )}
-                {category.icon === 'cloud' && (
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
-                  </svg>
-                )}
-                {category.icon === 'briefcase' && (
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                  </svg>
-                )}
-              </div>
-              <div>
-                <h3 class="text-lg font-semibold text-[#1e1e1e]">{category.title}</h3>
-                <p class="text-xs text-[#a3a3a3] uppercase tracking-wider">{category.subtitle}</p>
-              </div>
-            </div>
-
-            <!-- Items -->
-            <div class="space-y-4">
-              {category.items.map((item) => (
-                <div class="border-l-2 border-[#e5e5e5] pl-4 hover:border-[#7c3aed] transition-colors">
-                  <p class="text-base font-medium text-[#1e1e1e]">{item.name}</p>
-                  <p class="text-sm text-[#737373] mt-1">{item.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <!-- Certifications -->
-      <div class="mt-16">
-        <h3 class="text-xl font-semibold text-[#1e1e1e] mb-8">Certifications</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {certifications.map((cert) => (
-            <div class="group bg-white rounded-lg p-6 border border-[#e5e5e5] shadow-sm hover:shadow-md hover:border-[#7c3aed]/30 transition-all flex items-center gap-4">
-              <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-[#f5f5f5] rounded-lg overflow-hidden">
-                <img
-                  src={cert.image}
-                  alt={cert.name}
-                  class="max-w-full max-h-full object-contain"
-                />
-              </div>
-              <div>
-                <p class="text-base font-medium text-[#1e1e1e]">{cert.shortName}</p>
-                <p class="text-sm text-[#737373] mt-1">{cert.name}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
