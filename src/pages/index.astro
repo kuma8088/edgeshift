@@ -1,0 +1,79 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Home" description="EdgeShift - Cloud & AI Solutions for modern businesses">
+  <!-- Hero Section -->
+  <section class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white py-24">
+    <div class="max-w-6xl mx-auto px-4 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold mb-6">
+        Cloud & AI Solutions
+      </h1>
+      <p class="text-xl md:text-2xl text-blue-100 mb-8 max-w-2xl mx-auto">
+        AWS, Terraform, AI を活用した効率的なシステム構築
+      </p>
+      <a
+        href="/portfolio"
+        class="inline-block bg-white text-blue-600 font-semibold px-8 py-3 rounded-lg hover:bg-blue-50 transition-colors"
+      >
+        View Portfolio
+      </a>
+    </div>
+  </section>
+
+  <!-- Featured Projects -->
+  <section class="py-16">
+    <div class="max-w-6xl mx-auto px-4">
+      <h2 class="text-2xl font-bold text-center mb-12">Featured Projects</h2>
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold mb-2">Meal Management System</h3>
+          <p class="text-gray-600 text-sm mb-4">
+            AWS Lambda + DynamoDB を使用した食事記録アプリ
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">AWS Lambda</span>
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">DynamoDB</span>
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Python</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold mb-2">Inquiry System</h3>
+          <p class="text-gray-600 text-sm mb-4">
+            Step Functions による問い合わせ自動処理システム
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Step Functions</span>
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Terraform</span>
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">TypeScript</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold mb-2">EdgeShift Platform</h3>
+          <p class="text-gray-600 text-sm mb-4">
+            Cloudflare Pages + Workers によるエッジ配信基盤
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Cloudflare</span>
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">Astro</span>
+            <span class="text-xs bg-gray-100 px-2 py-1 rounded">TypeScript</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Skills -->
+  <section class="bg-gray-100 py-16">
+    <div class="max-w-6xl mx-auto px-4">
+      <h2 class="text-2xl font-bold text-center mb-12">Tech Stack</h2>
+      <div class="flex flex-wrap justify-center gap-4">
+        {['AWS', 'Terraform', 'Python', 'TypeScript', 'React', 'Next.js', 'Cloudflare', 'Docker'].map((skill) => (
+          <span class="bg-white px-4 py-2 rounded-full shadow-sm text-gray-700 font-medium">
+            {skill}
+          </span>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

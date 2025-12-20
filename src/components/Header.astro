@@ -1,0 +1,37 @@
+---
+const navItems = [
+  { href: '/', label: 'Home' },
+  { href: '/about', label: 'About' },
+  { href: '/portfolio', label: 'Portfolio' },
+  { href: '/blog', label: 'Blog' },
+];
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="bg-white shadow-sm">
+  <nav class="max-w-6xl mx-auto px-4 py-4">
+    <div class="flex items-center justify-between">
+      <a href="/" class="text-xl font-bold text-gray-900">
+        EdgeShift
+      </a>
+      <ul class="flex gap-6">
+        {navItems.map((item) => (
+          <li>
+            <a
+              href={item.href}
+              class:list={[
+                'text-sm font-medium transition-colors',
+                currentPath === item.href
+                  ? 'text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900',
+              ]}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </nav>
+</header>

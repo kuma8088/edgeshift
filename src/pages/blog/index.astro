@@ -1,0 +1,42 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const blogPlatforms = [
+  {
+    name: 'Zenn',
+    url: 'https://zenn.dev/naoya',
+    description: '技術記事・スクラップを投稿しています',
+  },
+  {
+    name: 'Note',
+    url: 'https://note.com/naoya',
+    description: 'ビジネス・キャリアに関する記事を投稿しています',
+  },
+];
+---
+
+<BaseLayout title="Blog" description="EdgeShift Blog - Technical articles and insights">
+  <section class="py-16">
+    <div class="max-w-3xl mx-auto px-4">
+      <h1 class="text-3xl font-bold mb-8">Blog</h1>
+
+      <p class="text-gray-600 mb-8">
+        技術記事は以下のプラットフォームで公開しています。
+      </p>
+
+      <div class="space-y-6">
+        {blogPlatforms.map((platform) => (
+          <a
+            href={platform.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+          >
+            <h2 class="text-xl font-semibold mb-2">{platform.name}</h2>
+            <p class="text-gray-600">{platform.description}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
