@@ -31,3 +31,12 @@ skills/
 documents/
 screenshots/
 screenshot-analysis.cjs
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+tfplan
