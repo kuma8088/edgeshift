@@ -122,7 +122,7 @@ terraform apply
 
 ## License
 
-Private repository - All rights reserved.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contact
 
