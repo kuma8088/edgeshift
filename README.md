@@ -1,43 +1,130 @@
-# Astro Starter Kit: Minimal
+# EdgeShift Portfolio
 
-```sh
-npm create astro@latest -- --template minimal
+> DX でビジネスのエッジを変化させる - Personal portfolio and services website
+
+[![Deploy to Cloudflare Pages](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020?logo=cloudflare)](https://edgeshift.tech)
+
+## Overview
+
+EdgeShift は、クラウドネイティブ開発とサーバーレスアーキテクチャを専門とするフリーランスエンジニアのポートフォリオサイトです。
+
+**Live Site:** [edgeshift.tech](https://edgeshift.tech)
+
+## Tech Stack
+
+| Layer | Technology |
+|:--|:--|
+| Framework | [Astro](https://astro.build/) (SSG) |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) v4 |
+| Language | TypeScript |
+| Hosting | Cloudflare Pages |
+| Contact Form | Cloudflare Workers + [Resend](https://resend.com/) |
+| IaC | Terraform (Cloudflare Provider) |
+
+## Project Structure
+
 ```
-
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
+edgeshift/
 ├── src/
-│   └── pages/
-│       └── index.astro
+│   ├── pages/
+│   │   └── index.astro        # Landing page
+│   ├── components/
+│   │   ├── Header.astro
+│   │   ├── Footer.astro
+│   │   └── ContactForm.astro
+│   ├── layouts/
+│   │   └── BaseLayout.astro   # SEO, OGP meta tags
+│   └── styles/
+│       └── global.css
+├── public/
+│   ├── favicon.svg
+│   ├── og-image.png           # OGP image
+│   └── robots.txt
+├── workers/
+│   └── contact-form/          # Contact form Worker
+├── terraform/
+│   ├── environments/prod/
+│   └── modules/cloudflare-pages/
+├── documents/                  # Internal docs (gitignored)
+├── astro.config.mjs
+├── tailwind.config.js
 └── package.json
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Features
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- **Portfolio Showcase** - Projects, skills, and achievements
+- **Contact Form** - Serverless form handling with email notifications
+- **SEO Optimized** - OGP, Twitter Card, sitemap, robots.txt
+- **Analytics** - Cloudflare Web Analytics
+- **Responsive Design** - Mobile-first approach
 
-Any static assets, like images, can be placed in the `public/` directory.
+## Development
 
-## 🧞 Commands
+```bash
+# Install dependencies
+npm install
 
-All commands are run from the root of the project, from a terminal:
+# Start development server
+npm run dev
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+# Build for production
+npm run build
 
-## 👀 Want to learn more?
+# Preview production build
+npm run preview
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+# Type check
+npm run check
+```
+
+## Deployment
+
+Deployment is automated via Cloudflare Pages:
+
+- **Preview:** Push to any branch → `<branch>.edgeshift.pages.dev`
+- **Production:** Push to `main` → `edgeshift.tech`
+
+### Manual Deployment
+
+```bash
+# Build
+npm run build
+
+# Deploy via Wrangler (optional)
+npx wrangler pages deploy dist
+```
+
+## Environment Variables
+
+### Cloudflare Pages
+
+| Variable | Description |
+|:--|:--|
+| `NODE_VERSION` | Node.js version (20) |
+
+### Contact Form Worker
+
+| Secret | Description |
+|:--|:--|
+| `RESEND_API_KEY` | Resend API key for email sending |
+
+## Infrastructure
+
+Terraform manages the Cloudflare Pages configuration:
+
+```bash
+cd terraform/environments/prod
+terraform init
+terraform plan
+terraform apply
+```
+
+## License
+
+Private repository - All rights reserved.
+
+## Contact
+
+- Website: [edgeshift.tech](https://edgeshift.tech)
+- Email: contact@edgeshift.tech
