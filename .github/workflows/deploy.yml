@@ -5,7 +5,8 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  deploy-pages:
+    name: Deploy Pages
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,3 +32,32 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: pages deploy dist --project-name=edgeshift --branch=${{ github.head_ref || github.ref_name }}
+
+  deploy-worker:
+    name: Deploy Contact Form Worker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/contact-form
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: workers/contact-form
+          command: deploy
+          secrets: |
+            RESEND_API_KEY
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
