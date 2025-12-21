@@ -29,6 +29,6 @@ module "pages" {
     NODE_VERSION = "20"
   }
 
-  # Phase 2: Uncomment when domain is purchased
-  # custom_domain = "edgeshift.dev"
+  # Custom domain
+  custom_domain = "edgeshift.tech"
 }
