@@ -21,7 +21,13 @@ CREATE TABLE IF NOT EXISTS campaigns (
   id TEXT PRIMARY KEY,
   subject TEXT NOT NULL,
   content TEXT NOT NULL,
-  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent')),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sent', 'failed')),
+  -- Schedule fields (Phase 2)
+  scheduled_at INTEGER,
+  schedule_type TEXT CHECK (schedule_type IN ('none', 'daily', 'weekly', 'monthly')),
+  schedule_config TEXT,
+  last_sent_at INTEGER,
+  -- Delivery results
   sent_at INTEGER,
   recipient_count INTEGER,
   created_at INTEGER DEFAULT (unixepoch())
