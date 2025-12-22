@@ -9,13 +9,53 @@ interface ResendResponse {
   error?: { message: string };
 }
 
+interface ResendBatchResponse {
+  data?: { id: string }[];
+  error?: { message: string };
+}
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = MAX_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      // Don't retry on client errors (4xx), only on server errors (5xx)
+      if (response.ok || response.status < 500) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+
+    // Exponential backoff
+    if (attempt < maxRetries - 1) {
+      await sleep(RETRY_DELAY_MS * Math.pow(2, attempt));
+    }
+  }
+
+  throw lastError || new Error('Max retries exceeded');
+}
+
 export async function sendEmail(
   apiKey: string,
   from: string,
   options: SendEmailOptions
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetchWithRetry('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -32,17 +72,27 @@ export async function sendEmail(
     const result: ResendResponse = await response.json();
 
     if (!response.ok || result.error) {
+      console.error('Resend API error:', {
+        status: response.status,
+        error: result.error,
+        to: options.to,
+      });
       return {
         success: false,
-        error: result.error?.message || 'Failed to send email',
+        error: result.error?.message || `Failed to send email (HTTP ${response.status})`,
       };
     }
 
     return { success: true };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Email sending error:', {
+      error: errorMessage,
+      to: options.to,
+    });
     return {
       success: false,
-      error: 'Email sending error',
+      error: `Email sending error: ${errorMessage}`,
     };
   }
 }
@@ -66,7 +116,7 @@ export async function sendBatchEmails(
     for (let i = 0; i < emails.length; i += MAX_BATCH_SIZE) {
       const batch = emails.slice(i, i + MAX_BATCH_SIZE);
 
-      const response = await fetch('https://api.resend.com/emails/batch', {
+      const response = await fetchWithRetry('https://api.resend.com/emails/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -83,11 +133,17 @@ export async function sendBatchEmails(
       });
 
       if (!response.ok) {
-        const result: ResendResponse = await response.json();
+        const result: ResendBatchResponse = await response.json();
+        console.error('Resend batch API error:', {
+          status: response.status,
+          error: result.error,
+          batchIndex: i,
+          batchSize: batch.length,
+        });
         return {
           success: false,
           sent: totalSent,
-          error: result.error?.message || 'Batch send failed',
+          error: result.error?.message || `Batch send failed (HTTP ${response.status})`,
         };
       }
 
@@ -96,10 +152,16 @@ export async function sendBatchEmails(
 
     return { success: true, sent: totalSent };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Batch email sending error:', {
+      error: errorMessage,
+      totalSent,
+      totalEmails: emails.length,
+    });
     return {
       success: false,
       sent: totalSent,
-      error: 'Batch email sending error',
+      error: `Batch email sending error: ${errorMessage}`,
     };
   }
 }

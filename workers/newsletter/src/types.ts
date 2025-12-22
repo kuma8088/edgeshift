@@ -21,11 +21,25 @@ export interface Subscriber {
   created_at: number;
 }
 
+export type CampaignStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
+export type ScheduleType = 'none' | 'daily' | 'weekly' | 'monthly';
+
+export interface ScheduleConfig {
+  hour?: number;
+  minute?: number;
+  dayOfWeek?: number;  // 0-6 (Sunday-Saturday)
+  dayOfMonth?: number; // 1-31
+}
+
 export interface Campaign {
   id: string;
   subject: string;
   content: string;
-  status: 'draft' | 'sent';
+  status: CampaignStatus;
+  scheduled_at: number | null;
+  schedule_type: ScheduleType | null;
+  schedule_config: string | null;  // JSON string of ScheduleConfig
+  last_sent_at: number | null;
   sent_at: number | null;
   recipient_count: number | null;
   created_at: number;
