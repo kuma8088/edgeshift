@@ -1,0 +1,160 @@
+---
+interface Props {
+  endpoint?: string;
+  turnstileSiteKey: string;
+}
+
+const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props;
+---
+
+<div class="max-w-md mx-auto">
+  <form id="newsletter-form" class="text-left">
+    <div class="space-y-4">
+      <!-- Email -->
+      <div>
+        <label for="newsletter-email" class="block text-sm font-medium text-[#1e1e1e] mb-1.5">
+          メールアドレス <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="email"
+          id="newsletter-email"
+          name="email"
+          required
+          class="w-full px-4 py-3 rounded border border-[#e5e5e5] bg-white text-[#1e1e1e] placeholder-[#a3a3a3] focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+          placeholder="example@email.com"
+        />
+      </div>
+
+      <!-- Name (optional) -->
+      <div>
+        <label for="newsletter-name" class="block text-sm font-medium text-[#1e1e1e] mb-1.5">
+          お名前 <span class="text-[#a3a3a3] text-xs">(任意)</span>
+        </label>
+        <input
+          type="text"
+          id="newsletter-name"
+          name="name"
+          class="w-full px-4 py-3 rounded border border-[#e5e5e5] bg-white text-[#1e1e1e] placeholder-[#a3a3a3] focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+          placeholder="山田 太郎"
+        />
+      </div>
+
+      <!-- Turnstile Widget -->
+      <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="light"></div>
+
+      <!-- Submit Button -->
+      <div>
+        <button
+          type="submit"
+          id="newsletter-submit-btn"
+          class="w-full bg-[#7c3aed] text-white px-6 py-3 rounded font-medium hover:bg-[#6d28d9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <span id="newsletter-btn-text">登録する</span>
+          <svg id="newsletter-btn-spinner" class="hidden animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </button>
+      </div>
+
+      <p class="text-xs text-[#a3a3a3] text-center">
+        登録後、確認メールが届きます。メール内のリンクをクリックして登録を完了してください。
+      </p>
+    </div>
+
+    <!-- Status Messages -->
+    <div id="newsletter-status" class="mt-4 hidden">
+      <div id="newsletter-success" class="hidden p-4 rounded bg-green-50 border border-green-200 text-green-800 text-center text-sm">
+        確認メールを送信しました。<br />メール内のリンクをクリックして登録を完了してください。
+      </div>
+      <div id="newsletter-error" class="hidden p-4 rounded bg-red-50 border border-red-200 text-red-800 text-center text-sm">
+        登録に失敗しました。しばらく経ってからお試しください。
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Turnstile Script -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+<script define:vars={{ endpoint }}>
+  const form = document.getElementById('newsletter-form');
+  const submitBtn = document.getElementById('newsletter-submit-btn');
+  const btnText = document.getElementById('newsletter-btn-text');
+  const btnSpinner = document.getElementById('newsletter-btn-spinner');
+  const formStatus = document.getElementById('newsletter-status');
+  const successMessage = document.getElementById('newsletter-success');
+  const errorMessage = document.getElementById('newsletter-error');
+
+  function setLoading(loading) {
+    submitBtn.disabled = loading;
+    btnText.textContent = loading ? '登録中...' : '登録する';
+    btnSpinner.classList.toggle('hidden', !loading);
+  }
+
+  function showStatus(type, message) {
+    formStatus.classList.remove('hidden');
+    successMessage.classList.toggle('hidden', type !== 'success');
+    errorMessage.classList.toggle('hidden', type !== 'error');
+    if (message && type === 'error') {
+      errorMessage.textContent = message;
+    }
+  }
+
+  function hideStatus() {
+    formStatus.classList.add('hidden');
+    successMessage.classList.add('hidden');
+    errorMessage.classList.add('hidden');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideStatus();
+
+    // Get Turnstile token
+    const turnstileInput = form.querySelector('input[name="cf-turnstile-response"]');
+    const turnstileToken = turnstileInput?.value;
+
+    if (!turnstileToken) {
+      showStatus('error', 'セキュリティ検証を完了してください');
+      return;
+    }
+
+    setLoading(true);
+
+    const formData = new FormData(form);
+    const data = {
+      email: formData.get('email'),
+      name: formData.get('name') || undefined,
+      turnstileToken,
+    };
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showStatus('success');
+        form.reset();
+        // Reset Turnstile widget
+        if (window.turnstile) {
+          window.turnstile.reset();
+        }
+      } else {
+        showStatus('error', result.error || '登録に失敗しました');
+      }
+    } catch (error) {
+      console.error('Newsletter form submission error:', error);
+      showStatus('error', '通信エラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  });
+</script>

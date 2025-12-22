@@ -2,7 +2,10 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import TypingHero from '../components/TypingHero.astro';
 import ContactForm from '../components/ContactForm.astro';
+import NewsletterForm from '../components/NewsletterForm.astro';
 import { ZennArticles } from '../components/zenn';
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 
 const projects = [
   {
@@ -414,6 +417,23 @@ const certifications = [
 
   <!-- Blog Section (Gray) - Zenn Articles -->
   <ZennArticles client:load />
+
+  <!-- Newsletter Section (Gray) -->
+  {turnstileSiteKey && (
+    <section id="newsletter" class="py-24 bg-[#fafafa]">
+      <div class="max-w-4xl mx-auto px-6">
+        <div class="text-center mb-10">
+          <h2 class="text-3xl font-bold text-[#1e1e1e] mb-6">Newsletter</h2>
+          <p class="text-[#525252] max-w-lg mx-auto">
+            最新の技術情報やプロジェクトのアップデートをお届けします。<br />
+            月1〜2回程度の配信です。
+          </p>
+        </div>
+
+        <NewsletterForm turnstileSiteKey={turnstileSiteKey} />
+      </div>
+    </section>
+  )}
 
   <!-- Contact Section (White) -->
   <section id="contact" class="py-24 bg-white">
