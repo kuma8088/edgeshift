@@ -1,0 +1,17 @@
+{
+  "name": "edgeshift-newsletter",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "db:migrate": "wrangler d1 execute edgeshift-newsletter --local --file=./schema.sql",
+    "db:migrate:prod": "wrangler d1 execute edgeshift-newsletter --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241205.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^3.99.0"
+  }
+}

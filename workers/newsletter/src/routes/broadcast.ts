@@ -1,0 +1,180 @@
+import type { Env, BroadcastRequest, ApiResponse, Subscriber } from '../types';
+import { isAuthorized } from '../lib/auth';
+import { sendBatchEmails } from '../lib/email';
+
+function buildNewsletterEmail(
+  content: string,
+  unsubscribeUrl: string,
+  siteUrl: string
+): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 32px;">
+    <h1 style="color: #1e1e1e; font-size: 24px; margin: 0;">EdgeShift Newsletter</h1>
+  </div>
+
+  <div style="margin-bottom: 32px;">
+    ${content}
+  </div>
+
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+
+  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+    <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a><br>
+    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
+  </p>
+</body>
+</html>
+  `.trim();
+}
+
+export async function handleBroadcast(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  // Check authorization
+  if (!isAuthorized(request, env)) {
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Unauthorized' },
+      401
+    );
+  }
+
+  try {
+    const body = await request.json<BroadcastRequest>();
+    const { subject, content } = body;
+
+    // Validate required fields
+    if (!subject || !content) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'Subject and content are required' },
+        400
+      );
+    }
+
+    // Get active subscribers
+    const result = await env.DB.prepare(
+      "SELECT * FROM subscribers WHERE status = 'active'"
+    ).all<Subscriber>();
+
+    const subscribers = result.results || [];
+
+    if (subscribers.length === 0) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'No active subscribers' },
+        400
+      );
+    }
+
+    // Create campaign record
+    const campaignId = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO campaigns (id, subject, content, status)
+      VALUES (?, ?, ?, 'draft')
+    `).bind(campaignId, subject, content).run();
+
+    // Prepare emails with unsubscribe links
+    const emails = subscribers.map((sub) => ({
+      to: sub.email,
+      subject,
+      html: buildNewsletterEmail(
+        content,
+        `${env.SITE_URL}/api/newsletter/unsubscribe/${sub.unsubscribe_token}`,
+        env.SITE_URL
+      ),
+    }));
+
+    // Send batch emails
+    const sendResult = await sendBatchEmails(
+      env.RESEND_API_KEY,
+      `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
+      emails
+    );
+
+    // Update campaign status
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare(`
+      UPDATE campaigns
+      SET status = 'sent',
+          sent_at = ?,
+          recipient_count = ?
+      WHERE id = ?
+    `).bind(now, sendResult.sent, campaignId).run();
+
+    if (!sendResult.success) {
+      return jsonResponse<ApiResponse>({
+        success: false,
+        error: sendResult.error,
+        data: { sent: sendResult.sent, total: subscribers.length },
+      });
+    }
+
+    return jsonResponse<ApiResponse>({
+      success: true,
+      data: {
+        campaignId,
+        sent: sendResult.sent,
+        total: subscribers.length,
+      },
+    });
+  } catch (error) {
+    console.error('Broadcast error:', error);
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Internal server error' },
+      500
+    );
+  }
+}
+
+export async function handleGetSubscribers(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  // Check authorization
+  if (!isAuthorized(request, env)) {
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Unauthorized' },
+      401
+    );
+  }
+
+  try {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status') || 'active';
+
+    const result = await env.DB.prepare(
+      'SELECT id, email, name, status, subscribed_at, created_at FROM subscribers WHERE status = ?'
+    ).bind(status).all();
+
+    const total = await env.DB.prepare(
+      'SELECT COUNT(*) as count FROM subscribers WHERE status = ?'
+    ).bind(status).first<{ count: number }>();
+
+    return jsonResponse<ApiResponse>({
+      success: true,
+      data: {
+        subscribers: result.results || [],
+        total: total?.count || 0,
+      },
+    });
+  } catch (error) {
+    console.error('Get subscribers error:', error);
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Internal server error' },
+      500
+    );
+  }
+}
+
+function jsonResponse<T>(data: T, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}

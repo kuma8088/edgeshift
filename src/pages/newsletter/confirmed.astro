@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="登録完了"
+  description="ニュースレターへの登録が完了しました"
+>
+  <section class="py-24 px-4 bg-[#fafafa]">
+    <div class="max-w-lg mx-auto text-center">
+      <!-- Success Icon -->
+      <div class="mb-8">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100">
+          <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="text-3xl font-bold text-[#1e1e1e] mb-4">
+        登録が完了しました
+      </h1>
+
+      <!-- Message -->
+      <p class="text-[#525252] mb-8 leading-relaxed">
+        ニュースレターへのご登録ありがとうございます。<br />
+        今後、最新の技術情報やプロジェクトのアップデートをお届けします。
+      </p>
+
+      <!-- Back to Home -->
+      <a
+        href="/"
+        class="inline-block bg-[#7c3aed] text-white px-6 py-3 rounded font-medium hover:bg-[#6d28d9] transition-colors"
+      >
+        トップページへ戻る
+      </a>
+    </div>
+  </section>
+</BaseLayout>
