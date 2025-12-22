@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import TypingHero from '../components/TypingHero.astro';
 import ContactForm from '../components/ContactForm.astro';
+import { ZennArticles } from '../components/zenn';
 
 const projects = [
   {
@@ -411,8 +412,11 @@ const certifications = [
     </div>
   </section>
 
-  <!-- Contact Section (Gray) -->
-  <section id="contact" class="py-24 bg-[#f5f5f5]">
+  <!-- Blog Section (Gray) - Zenn Articles -->
+  <ZennArticles client:load />
+
+  <!-- Contact Section (White) -->
+  <section id="contact" class="py-24 bg-white">
     <div class="max-w-4xl mx-auto px-6">
       <div class="text-center mb-10">
         <h2 class="text-3xl font-bold text-[#1e1e1e] mb-6">Contact</h2>
