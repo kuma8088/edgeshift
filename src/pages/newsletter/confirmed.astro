@@ -1,31 +1,64 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// Handle query parameters for status messages
+const url = new URL(Astro.request.url);
+const status = url.searchParams.get('status') || 'success';
+const message = url.searchParams.get('message');
+
+const isSuccess = status === 'success';
+const isInfo = status === 'info';
+const isError = status === 'error';
 ---
 
 <BaseLayout
-  title="登録完了"
-  description="ニュースレターへの登録が完了しました"
+  title={isSuccess ? "登録完了" : isError ? "エラー" : "お知らせ"}
+  description="ニュースレター登録確認"
 >
   <section class="py-24 px-4 bg-[#fafafa]">
     <div class="max-w-lg mx-auto text-center">
-      <!-- Success Icon -->
+      <!-- Icon -->
       <div class="mb-8">
-        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100">
-          <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-        </div>
+        {isSuccess && (
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100">
+            <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+        )}
+        {isInfo && (
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100">
+            <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        )}
+        {isError && (
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100">
+            <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </div>
+        )}
       </div>
 
       <!-- Title -->
       <h1 class="text-3xl font-bold text-[#1e1e1e] mb-4">
-        登録が完了しました
+        {isSuccess && '登録が完了しました'}
+        {isInfo && 'お知らせ'}
+        {isError && 'エラーが発生しました'}
       </h1>
 
       <!-- Message -->
       <p class="text-[#525252] mb-8 leading-relaxed">
-        ニュースレターへのご登録ありがとうございます。<br />
-        今後、最新の技術情報やプロジェクトのアップデートをお届けします。
+        {isSuccess && (
+          <>
+            ニュースレターへのご登録ありがとうございます。<br />
+            今後、最新の技術情報やプロジェクトのアップデートをお届けします。
+          </>
+        )}
+        {isInfo && (message || 'すでに登録確認済みです。')}
+        {isError && (message || 'リンクが無効であるか、期限切れの可能性があります。')}
       </p>
 
       <!-- Back to Home -->
@@ -35,6 +68,12 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
       >
         トップページへ戻る
       </a>
+
+      {isError && (
+        <p class="mt-8 text-sm text-[#a3a3a3]">
+          問題が解決しない場合は、再度ご登録をお試しください。
+        </p>
+      )}
     </div>
   </section>
 </BaseLayout>

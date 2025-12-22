@@ -97,21 +97,22 @@ export async function handleBroadcast(
       emails
     );
 
-    // Update campaign status
+    // Update campaign status based on result
     const now = Math.floor(Date.now() / 1000);
+    const campaignStatus = sendResult.success ? 'sent' : 'failed';
     await env.DB.prepare(`
       UPDATE campaigns
-      SET status = 'sent',
+      SET status = ?,
           sent_at = ?,
           recipient_count = ?
       WHERE id = ?
-    `).bind(now, sendResult.sent, campaignId).run();
+    `).bind(campaignStatus, now, sendResult.sent, campaignId).run();
 
     if (!sendResult.success) {
       return jsonResponse<ApiResponse>({
         success: false,
         error: sendResult.error,
-        data: { sent: sendResult.sent, total: subscribers.length },
+        data: { campaignId, sent: sendResult.sent, total: subscribers.length },
       });
     }
 
