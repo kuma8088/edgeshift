@@ -99,9 +99,9 @@ export async function getDeliveryLogs(
 
   query += ' ORDER BY created_at DESC';
 
-  const result = await env.DB.prepare(query).bind(...params).all();
+  const result = await env.DB.prepare(query).bind(...params).all<DeliveryLog>();
 
-  return (result.results as DeliveryLog[]) || [];
+  return result.results || [];
 }
 
 /**
@@ -162,15 +162,23 @@ export async function getDeliveryStats(
       SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
     FROM delivery_logs
     WHERE campaign_id = ?
-  `).bind(campaignId).first();
+  `).bind(campaignId).first<{
+    total: number;
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+    failed: number;
+  }>();
 
   return {
-    total: result?.total || 0,
-    sent: result?.sent || 0,
-    delivered: result?.delivered || 0,
-    opened: result?.opened || 0,
-    clicked: result?.clicked || 0,
-    bounced: result?.bounced || 0,
-    failed: result?.failed || 0,
+    total: result?.total ?? 0,
+    sent: result?.sent ?? 0,
+    delivered: result?.delivered ?? 0,
+    opened: result?.opened ?? 0,
+    clicked: result?.clicked ?? 0,
+    bounced: result?.bounced ?? 0,
+    failed: result?.failed ?? 0,
   };
 }
