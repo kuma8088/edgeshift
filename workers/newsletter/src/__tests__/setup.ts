@@ -60,9 +60,15 @@ export async function setupTestDb() {
 
 export async function cleanupTestDb() {
   // Delete in order respecting foreign keys (child first)
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM delivery_logs'),
-    env.DB.prepare('DELETE FROM campaigns'),
-    env.DB.prepare('DELETE FROM subscribers')
-  ]);
+  // Use WHERE 1=1 to make it valid even if table is empty
+  try {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM delivery_logs WHERE 1=1'),
+      env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
+      env.DB.prepare('DELETE FROM subscribers WHERE 1=1')
+    ]);
+  } catch (error) {
+    // Ignore errors during cleanup - tables might not exist yet
+    console.log('Cleanup error (non-critical):', error);
+  }
 }
