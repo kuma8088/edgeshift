@@ -23,6 +23,7 @@ import {
 } from './routes/sequences';
 import { processScheduledCampaigns } from './scheduled';
 import { handleResendWebhook } from './routes/webhook';
+import { getDashboardStats } from './routes/dashboard';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -105,6 +106,8 @@ export default {
         response = await handleGetSubscribers(request, env);
       } else if (path === '/api/webhooks/resend' && request.method === 'POST') {
         response = await handleResendWebhook(request, env);
+      } else if (path === '/api/dashboard/stats' && request.method === 'GET') {
+        response = await getDashboardStats(request, env);
       } else {
         response = new Response(
           JSON.stringify({ success: false, error: 'Not found' }),
