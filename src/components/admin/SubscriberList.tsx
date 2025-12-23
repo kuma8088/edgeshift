@@ -36,7 +36,8 @@ export function SubscriberList() {
     const params = status && status !== 'all' ? { status } : undefined;
     const result = await listSubscribers(params);
     if (result.success && result.data) {
-      setSubscribers(result.data as Subscriber[]);
+      const data = result.data as { subscribers: Subscriber[]; total: number };
+      setSubscribers(data.subscribers || []);
       setError(null);
     } else {
       setError(result.error || 'Failed to load subscribers');

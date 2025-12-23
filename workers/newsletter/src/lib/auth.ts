@@ -45,5 +45,11 @@ export function isAuthorized(request: Request, env: Env): boolean {
     return false;
   }
 
-  return timingSafeEqual(token, env.ADMIN_API_KEY);
+  const expectedKey = env.ADMIN_API_KEY;
+
+  if (!expectedKey) {
+    return false;
+  }
+
+  return timingSafeEqual(token, expectedKey);
 }

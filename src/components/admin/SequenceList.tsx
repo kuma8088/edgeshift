@@ -38,7 +38,8 @@ export function SequenceList() {
     setLoading(true);
     const result = await listSequences();
     if (result.success && result.data) {
-      setSequences(result.data as Sequence[]);
+      const data = result.data as { sequences: Sequence[]; total: number };
+      setSequences(data.sequences || []);
       setError(null);
     } else {
       setError(result.error || 'Failed to load sequences');

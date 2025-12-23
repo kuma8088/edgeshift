@@ -49,7 +49,8 @@ export function CampaignList() {
     setLoading(true);
     const result = await listCampaigns();
     if (result.success && result.data) {
-      setCampaigns(result.data as Campaign[]);
+      const data = result.data as { campaigns: Campaign[]; total: number };
+      setCampaigns(data.campaigns || []);
       setError(null);
     } else {
       setError(result.error || 'Failed to load campaigns');
