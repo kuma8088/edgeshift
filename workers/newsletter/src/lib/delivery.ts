@@ -182,3 +182,17 @@ export async function getDeliveryStats(
     failed: result?.failed ?? 0,
   };
 }
+
+/**
+ * Find a delivery log by Resend email ID
+ */
+export async function findDeliveryLogByResendId(
+  env: Env,
+  resendId: string
+): Promise<DeliveryLog | null> {
+  const result = await env.DB.prepare(
+    'SELECT * FROM delivery_logs WHERE resend_id = ?'
+  ).bind(resendId).first<DeliveryLog>();
+
+  return result || null;
+}

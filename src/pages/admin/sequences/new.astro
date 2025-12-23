@@ -1,0 +1,56 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
+---
+
+<AdminLayout title="新規シーケンス作成">
+  <AuthProvider client:load>
+    <div class="space-y-6">
+      <div>
+        <a
+          href="/admin/sequences"
+          class="text-sm text-[#7c3aed] hover:underline"
+        >
+          ← シーケンス一覧に戻る
+        </a>
+        <h1 class="text-2xl font-bold text-[#1e1e1e] mt-2">新規シーケンス作成</h1>
+      </div>
+
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-[#e5e5e5]">
+        <div id="sequence-form-container"></div>
+      </div>
+    </div>
+  </AuthProvider>
+</AdminLayout>
+
+<script>
+  import { createSequence } from '../../../utils/admin-api';
+  import { SequenceForm } from '../../../components/admin/SequenceForm';
+  import { createElement } from 'react';
+  import { createRoot } from 'react-dom/client';
+
+  const container = document.getElementById('sequence-form-container');
+  if (container) {
+    const root = createRoot(container);
+
+    const handleSubmit = async (data: any) => {
+      const result = await createSequence(data);
+      if (result.success) {
+        window.location.href = '/admin/sequences';
+      } else {
+        alert(result.error || 'シーケンスの作成に失敗しました');
+      }
+    };
+
+    const handleCancel = () => {
+      window.location.href = '/admin/sequences';
+    };
+
+    root.render(
+      createElement(SequenceForm, {
+        onSubmit: handleSubmit,
+        onCancel: handleCancel,
+      })
+    );
+  }
+</script>

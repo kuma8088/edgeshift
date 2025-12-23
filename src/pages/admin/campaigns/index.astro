@@ -1,0 +1,22 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { CampaignList } from '../../../components/admin/CampaignList';
+---
+
+<AdminLayout title="キャンペーン管理">
+  <AuthProvider client:load>
+    <div class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-[#1e1e1e]">キャンペーン管理</h1>
+        <a
+          href="/admin/campaigns/new"
+          class="px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+        >
+          新規作成
+        </a>
+      </div>
+      <CampaignList client:load />
+    </div>
+  </AuthProvider>
+</AdminLayout>

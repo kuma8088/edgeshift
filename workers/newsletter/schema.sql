@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS delivery_logs (
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_campaign ON delivery_logs(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_subscriber ON delivery_logs(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_status ON delivery_logs(status);
+CREATE INDEX IF NOT EXISTS idx_delivery_logs_resend_id ON delivery_logs(resend_id);
 
 -- Sequences table (for step emails)
 CREATE TABLE IF NOT EXISTS sequences (

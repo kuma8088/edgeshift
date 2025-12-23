@@ -1,0 +1,230 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { listCampaigns, deleteCampaign, sendCampaign } from '../../utils/admin-api';
+import { ConfirmModal } from './ConfirmModal';
+
+interface Campaign {
+  id: string;
+  subject: string;
+  content: string;
+  status: string;
+  scheduled_at?: number;
+  sent_at?: number;
+  created_at: number;
+}
+
+const statusColors = {
+  draft: 'bg-[#a3a3a3] text-white',
+  scheduled: 'bg-yellow-500 text-white',
+  sent: 'bg-green-500 text-white',
+  failed: 'bg-red-500 text-white',
+};
+
+const statusLabels = {
+  draft: '下書き',
+  scheduled: '予約済み',
+  sent: '送信済み',
+  failed: '失敗',
+};
+
+export function CampaignList() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'delete' | 'send';
+    campaignId: string;
+    campaignSubject: string;
+  }>({
+    isOpen: false,
+    type: 'delete',
+    campaignId: '',
+    campaignSubject: '',
+  });
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const fetchCampaigns = async () => {
+    setLoading(true);
+    const result = await listCampaigns();
+    if (result.success && result.data) {
+      setCampaigns(result.data as Campaign[]);
+      setError(null);
+    } else {
+      setError(result.error || 'Failed to load campaigns');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, []);
+
+  const handleDelete = (campaign: Campaign) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'delete',
+      campaignId: campaign.id,
+      campaignSubject: campaign.subject,
+    });
+  };
+
+  const handleSend = (campaign: Campaign) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'send',
+      campaignId: campaign.id,
+      campaignSubject: campaign.subject,
+    });
+  };
+
+  const confirmAction = async () => {
+    setActionLoading(true);
+    const { type, campaignId } = confirmModal;
+
+    try {
+      let result;
+      if (type === 'delete') {
+        result = await deleteCampaign(campaignId);
+      } else {
+        result = await sendCampaign(campaignId);
+      }
+
+      if (result.success) {
+        setConfirmModal({ isOpen: false, type: 'delete', campaignId: '', campaignSubject: '' });
+        await fetchCampaigns(); // Refresh list
+      } else {
+        setError(result.error || 'Action failed');
+      }
+    } catch (err) {
+      setError('Unexpected error occurred');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const cancelAction = () => {
+    setConfirmModal({ isOpen: false, type: 'delete', campaignId: '', campaignSubject: '' });
+  };
+
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-lg p-6 h-24" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={fetchCampaigns}
+          className="px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+        >
+          再読み込み
+        </button>
+      </div>
+    );
+  }
+
+  if (campaigns.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-[#525252] mb-4">キャンペーンがまだありません</p>
+        <a
+          href="/admin/campaigns/new"
+          className="inline-block px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+        >
+          新規作成
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        {campaigns.map((campaign) => (
+          <div
+            key={campaign.id}
+            className="bg-white rounded-lg p-6 shadow-sm border border-[#e5e5e5] hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-lg font-medium text-[#1e1e1e]">
+                    {campaign.subject}
+                  </h3>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      statusColors[campaign.status as keyof typeof statusColors]
+                    }`}
+                  >
+                    {statusLabels[campaign.status as keyof typeof statusLabels]}
+                  </span>
+                </div>
+                <p className="text-sm text-[#525252] line-clamp-2 mb-2">
+                  {campaign.content}
+                </p>
+                <div className="flex gap-4 text-xs text-[#a3a3a3]">
+                  <span>作成: {new Date(campaign.created_at * 1000).toLocaleString('ja-JP')}</span>
+                  {campaign.scheduled_at && (
+                    <span>予約: {new Date(campaign.scheduled_at * 1000).toLocaleString('ja-JP')}</span>
+                  )}
+                  {campaign.sent_at && (
+                    <span>送信: {new Date(campaign.sent_at * 1000).toLocaleString('ja-JP')}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2 ml-4">
+                <a
+                  href={`/admin/campaigns/edit?id=${campaign.id}`}
+                  className="px-3 py-1 text-sm border border-[#e5e5e5] text-[#525252] rounded-lg hover:bg-[#f5f5f5] transition-colors"
+                >
+                  編集
+                </a>
+                {campaign.status === 'draft' && (
+                  <button
+                    onClick={() => handleSend(campaign)}
+                    className="px-3 py-1 text-sm bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+                  >
+                    送信
+                  </button>
+                )}
+                {campaign.status !== 'sent' && (
+                  <button
+                    onClick={() => handleDelete(campaign)}
+                    className="px-3 py-1 text-sm border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    削除
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.type === 'delete' ? 'キャンペーンを削除' : 'キャンペーンを送信'}
+        message={
+          confirmModal.type === 'delete'
+            ? `「${confirmModal.campaignSubject}」を削除してもよろしいですか？この操作は取り消せません。`
+            : `「${confirmModal.campaignSubject}」を全購読者に送信してもよろしいですか？`
+        }
+        confirmText={confirmModal.type === 'delete' ? '削除' : '送信'}
+        cancelText="キャンセル"
+        onConfirm={confirmAction}
+        onCancel={cancelAction}
+        loading={actionLoading}
+      />
+    </>
+  );
+}

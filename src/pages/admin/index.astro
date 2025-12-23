@@ -1,0 +1,11 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../components/admin/AuthProvider';
+import { Dashboard } from '../../components/admin/Dashboard';
+---
+
+<AdminLayout title="ダッシュボード">
+  <AuthProvider client:load>
+    <Dashboard client:load />
+  </AuthProvider>
+</AdminLayout>

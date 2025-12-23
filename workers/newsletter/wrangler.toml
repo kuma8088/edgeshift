@@ -23,3 +23,9 @@ database_id = "4ca2faf7-7486-4a66-b153-278acfa10d17"
 # Cron trigger for scheduled campaigns (every 15 minutes)
 [triggers]
 crons = ["*/15 * * * *"]
+
+# Secrets (set via `wrangler secret put <NAME>`):
+# - RESEND_API_KEY
+# - TURNSTILE_SECRET_KEY
+# - ADMIN_API_KEY
+# - RESEND_WEBHOOK_SECRET (for webhook signature verification)

@@ -41,3 +41,6 @@ screenshot-analysis.cjs
 terraform.tfvars
 *.tfplan
 tfplan
+
+# Cloudflare Workers secrets
+.dev.vars
