@@ -334,3 +334,120 @@ describe('Campaign CRUD', () => {
     });
   });
 });
+
+describe('Campaign Routes Integration', () => {
+  beforeEach(async () => {
+    await setupTestDb();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDb();
+  });
+
+  it('should route POST /api/campaigns to createCampaign', async () => {
+    const worker = (await import('../index')).default;
+    const env = getTestEnv();
+    const request = new Request('http://localhost/api/campaigns', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({ subject: 'Test', content: '<p>Test</p>' }),
+    });
+
+    const response = await worker.fetch(request, env);
+    expect(response.status).toBe(201);
+  });
+
+  it('should route GET /api/campaigns to listCampaigns', async () => {
+    const worker = (await import('../index')).default;
+    const env = getTestEnv();
+    const request = new Request('http://localhost/api/campaigns', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+
+    const response = await worker.fetch(request, env);
+    expect(response.status).toBe(200);
+  });
+
+  it('should route GET /api/campaigns/:id to getCampaign', async () => {
+    const worker = (await import('../index')).default;
+    const env = getTestEnv();
+
+    // Create a campaign first
+    const createReq = new Request('http://localhost/api/campaigns', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({ subject: 'Test', content: '<p>Test</p>' }),
+    });
+    const createRes = await worker.fetch(createReq, env);
+    const created = await createRes.json();
+
+    // Get the campaign
+    const request = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+    const response = await worker.fetch(request, env);
+    expect(response.status).toBe(200);
+  });
+
+  it('should route PUT /api/campaigns/:id to updateCampaign', async () => {
+    const worker = (await import('../index')).default;
+    const env = getTestEnv();
+
+    // Create a campaign first
+    const createReq = new Request('http://localhost/api/campaigns', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({ subject: 'Original', content: '<p>Original</p>' }),
+    });
+    const createRes = await worker.fetch(createReq, env);
+    const created = await createRes.json();
+
+    // Update the campaign
+    const request = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({ subject: 'Updated' }),
+    });
+    const response = await worker.fetch(request, env);
+    expect(response.status).toBe(200);
+  });
+
+  it('should route DELETE /api/campaigns/:id to deleteCampaign', async () => {
+    const worker = (await import('../index')).default;
+    const env = getTestEnv();
+
+    // Create a campaign first
+    const createReq = new Request('http://localhost/api/campaigns', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({ subject: 'To Delete', content: '<p>Delete</p>' }),
+    });
+    const createRes = await worker.fetch(createReq, env);
+    const created = await createRes.json();
+
+    // Delete the campaign
+    const request = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+    const response = await worker.fetch(request, env);
+    expect(response.status).toBe(200);
+  });
+});

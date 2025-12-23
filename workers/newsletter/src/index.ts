@@ -3,6 +3,13 @@ import { handleSubscribe } from './routes/subscribe';
 import { handleConfirm } from './routes/confirm';
 import { handleUnsubscribe } from './routes/unsubscribe';
 import { handleBroadcast, handleGetSubscribers } from './routes/broadcast';
+import {
+  createCampaign,
+  getCampaign,
+  listCampaigns,
+  updateCampaign,
+  deleteCampaign,
+} from './routes/campaigns';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -12,7 +19,7 @@ export default {
     // CORS headers
     const corsHeaders = {
       'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN,
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
@@ -25,7 +32,23 @@ export default {
       let response: Response;
 
       // Route matching
-      if (path === '/api/newsletter/subscribe' && request.method === 'POST') {
+      // Campaign routes
+      if (path === '/api/campaigns' && request.method === 'POST') {
+        response = await createCampaign(request, env);
+      } else if (path === '/api/campaigns' && request.method === 'GET') {
+        response = await listCampaigns(request, env);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+$/) && request.method === 'GET') {
+        const id = path.replace('/api/campaigns/', '');
+        response = await getCampaign(request, env, id);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+$/) && request.method === 'PUT') {
+        const id = path.replace('/api/campaigns/', '');
+        response = await updateCampaign(request, env, id);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+$/) && request.method === 'DELETE') {
+        const id = path.replace('/api/campaigns/', '');
+        response = await deleteCampaign(request, env, id);
+      }
+      // Newsletter routes
+      else if (path === '/api/newsletter/subscribe' && request.method === 'POST') {
         response = await handleSubscribe(request, env);
       } else if (path.startsWith('/api/newsletter/confirm/') && request.method === 'GET') {
         const token = path.replace('/api/newsletter/confirm/', '');
