@@ -5,21 +5,21 @@ import { AuthProvider } from '../../../components/admin/AuthProvider';
 
 <AdminLayout title="シーケンス編集">
   <AuthProvider client:load>
-    <div className="space-y-6">
+    <div class="space-y-6">
       <div>
         <a
           href="/admin/sequences"
-          className="text-sm text-[#7c3aed] hover:underline"
+          class="text-sm text-[#7c3aed] hover:underline"
         >
           ← シーケンス一覧に戻る
         </a>
-        <h1 className="text-2xl font-bold text-[#1e1e1e] mt-2">シーケンス編集</h1>
+        <h1 class="text-2xl font-bold text-[#1e1e1e] mt-2">シーケンス編集</h1>
       </div>
 
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-[#e5e5e5]">
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-[#e5e5e5]">
         <div id="sequence-form-container">
-          <div className="text-center py-8">
-            <div className="animate-pulse text-[#525252]">読み込み中...</div>
+          <div class="text-center py-8">
+            <div class="animate-pulse text-[#525252]">読み込み中...</div>
           </div>
         </div>
       </div>
