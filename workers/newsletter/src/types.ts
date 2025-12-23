@@ -144,10 +144,12 @@ export interface ApiResponse<T = unknown> {
 export type ResendEventType =
   | 'email.sent'
   | 'email.delivered'
+  | 'email.delivery_delayed'
   | 'email.opened'
   | 'email.clicked'
   | 'email.bounced'
-  | 'email.complained';
+  | 'email.complained'
+  | 'email.failed';
 
 export interface ResendWebhookEvent {
   type: ResendEventType;
@@ -164,8 +166,11 @@ export interface ResendWebhookEvent {
       timestamp: string;
     };
     bounce?: {
-      type: 'hard' | 'soft';
       message: string;
     };
+    // Additional optional fields
+    broadcast_id?: string;
+    template_id?: string;
+    tags?: Record<string, string>;
   };
 }
