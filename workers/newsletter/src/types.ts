@@ -38,10 +38,6 @@ export interface Campaign {
   subject: string;
   content: string;
   status: CampaignStatus;
-  scheduled_at: number | null;
-  schedule_type: ScheduleType | null;
-  schedule_config: string | null;  // JSON string of ScheduleConfig
-  last_sent_at: number | null;
   sent_at: number | null;
   recipient_count: number | null;
   created_at: number;
@@ -76,18 +72,12 @@ export interface BroadcastRequest {
 export interface CreateCampaignRequest {
   subject: string;
   content: string;
-  scheduled_at?: number;
-  schedule_type?: ScheduleType;
-  schedule_config?: ScheduleConfig;
 }
 
 export interface UpdateCampaignRequest {
   subject?: string;
   content?: string;
   status?: CampaignStatus;
-  scheduled_at?: number;
-  schedule_type?: ScheduleType;
-  schedule_config?: ScheduleConfig;
 }
 
 export interface Sequence {

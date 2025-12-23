@@ -12,29 +12,24 @@ export async function createCampaign(
 
   try {
     const body = await request.json<CreateCampaignRequest>();
-    const { subject, content, scheduled_at, schedule_type, schedule_config } = body;
+    const { subject, content } = body;
 
     if (!subject || !content) {
       return errorResponse('Subject and content are required', 400);
     }
 
     const id = crypto.randomUUID();
-    const status = scheduled_at ? 'scheduled' : 'draft';
+    const status = 'draft';
 
+    // Insert with only the columns that exist in the actual schema
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status)
+      VALUES (?, ?, ?, ?)
     `).bind(
       id,
       subject,
       content,
-      status,
-      scheduled_at || null,
-      schedule_type || null,
-      schedule_config ? JSON.stringify(schedule_config) : null,
-      null,  // last_sent_at
-      null,  // sent_at
-      null   // recipient_count
+      status
     ).run();
 
     const campaign = await env.DB.prepare(
@@ -160,21 +155,6 @@ export async function updateCampaign(
     if (body.status !== undefined && body.status !== 'sent') {
       updates.push('status = ?');
       bindings.push(body.status);
-    }
-    if (body.scheduled_at !== undefined) {
-      updates.push('scheduled_at = ?');
-      bindings.push(body.scheduled_at);
-      if (body.scheduled_at && existing.status === 'draft') {
-        updates.push("status = 'scheduled'");
-      }
-    }
-    if (body.schedule_type !== undefined) {
-      updates.push('schedule_type = ?');
-      bindings.push(body.schedule_type);
-    }
-    if (body.schedule_config !== undefined) {
-      updates.push('schedule_config = ?');
-      bindings.push(JSON.stringify(body.schedule_config));
     }
 
     if (updates.length === 0) {
