@@ -152,9 +152,102 @@ export async function processScheduledCampaigns(env: Env): Promise<ScheduledProc
     console.log('Processing sequence emails...');
     await processSequenceEmails(env);
 
-    // TODO: Phase 2 - Implement scheduled campaigns
-    // For now, no campaigns are scheduled as the schema doesn't support scheduled_at
-    console.log('Scheduled campaigns feature not yet implemented');
+    // Get campaigns that are scheduled for now or earlier
+    const campaignsResult = await env.DB.prepare(`
+      SELECT * FROM campaigns
+      WHERE status = 'scheduled' AND scheduled_at <= ?
+      ORDER BY scheduled_at ASC
+    `).bind(now).all<Campaign>();
+
+    const campaigns = campaignsResult.results || [];
+
+    if (campaigns.length === 0) {
+      console.log('No campaigns to process');
+      return result;
+    }
+
+    console.log(`Processing ${campaigns.length} scheduled campaign(s)`);
+
+    // Get active subscribers once (reused for all campaigns)
+    const subscribersResult = await env.DB.prepare(
+      "SELECT * FROM subscribers WHERE status = 'active'"
+    ).all<Subscriber>();
+    const subscribers = subscribersResult.results || [];
+
+    // Process each campaign
+    for (const campaign of campaigns) {
+      result.processed++;
+
+      try {
+        // Send campaign
+        const sendResult = await sendSingleCampaign(env, campaign, subscribers);
+
+        const updateNow = Math.floor(Date.now() / 1000);
+
+        if (sendResult.success) {
+          result.sent++;
+
+          // Update campaign based on schedule type
+          if (campaign.schedule_type && campaign.schedule_type !== 'none') {
+            // Recurring campaign: update last_sent_at and calculate next scheduled_at
+            const config: ScheduleConfig = campaign.schedule_config
+              ? JSON.parse(campaign.schedule_config)
+              : {};
+            const nextScheduledAt = calculateNextScheduledTime(
+              campaign.schedule_type,
+              config,
+              updateNow
+            );
+
+            await env.DB.prepare(`
+              UPDATE campaigns
+              SET last_sent_at = ?, scheduled_at = ?, recipient_count = ?
+              WHERE id = ?
+            `).bind(updateNow, nextScheduledAt, sendResult.sent, campaign.id).run();
+
+            console.log(
+              `Recurring campaign ${campaign.id} sent. Next scheduled: ${new Date(nextScheduledAt * 1000).toISOString()}`
+            );
+          } else {
+            // One-time campaign: mark as sent
+            await env.DB.prepare(`
+              UPDATE campaigns
+              SET status = 'sent', sent_at = ?, recipient_count = ?
+              WHERE id = ?
+            `).bind(updateNow, sendResult.sent, campaign.id).run();
+
+            console.log(`One-time campaign ${campaign.id} sent successfully`);
+          }
+        } else {
+          result.failed++;
+
+          // Mark campaign as failed
+          await env.DB.prepare(`
+            UPDATE campaigns
+            SET status = 'failed'
+            WHERE id = ?
+          `).bind(campaign.id).run();
+
+          console.error(`Campaign ${campaign.id} failed: ${sendResult.error}`);
+        }
+      } catch (error) {
+        result.failed++;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Error processing campaign ${campaign.id}:`, errorMessage);
+
+        // Mark as failed but continue processing other campaigns
+        await env.DB.prepare(`
+          UPDATE campaigns
+          SET status = 'failed'
+          WHERE id = ?
+        `).bind(campaign.id).run();
+      }
+    }
+
+    console.log(
+      `Processed ${result.processed} campaigns: ${result.sent} sent, ${result.failed} failed`
+    );
+
     return result;
   } catch (error) {
     console.error('Error in processScheduledCampaigns:', error);

@@ -12,24 +12,29 @@ export async function createCampaign(
 
   try {
     const body = await request.json<CreateCampaignRequest>();
-    const { subject, content } = body;
+    const { subject, content, scheduled_at, schedule_type, schedule_config } = body;
 
     if (!subject || !content) {
       return errorResponse('Subject and content are required', 400);
     }
 
     const id = crypto.randomUUID();
-    const status = 'draft';
+    const status = scheduled_at ? 'scheduled' : 'draft';
 
-    // Insert with only the columns that exist in the actual schema
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
       content,
-      status
+      status,
+      scheduled_at || null,
+      schedule_type || null,
+      schedule_config ? JSON.stringify(schedule_config) : null,
+      null,  // last_sent_at
+      null,  // sent_at
+      null   // recipient_count
     ).run();
 
     const campaign = await env.DB.prepare(
