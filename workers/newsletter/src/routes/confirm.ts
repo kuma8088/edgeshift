@@ -1,4 +1,5 @@
 import type { Env, Subscriber } from '../types';
+import { enrollSubscriberInSequences } from '../lib/sequence-processor';
 
 export async function handleConfirm(
   request: Request,
@@ -32,6 +33,9 @@ export async function handleConfirm(
           subscribed_at = ?
       WHERE id = ?
     `).bind(now, subscriber.id).run();
+
+    // Enroll in all active sequences
+    await enrollSubscriberInSequences(env, subscriber.id);
 
     // Redirect to confirmation page
     return Response.redirect(`${env.SITE_URL}/newsletter/confirmed`, 302);

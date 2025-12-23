@@ -23,6 +23,7 @@ export interface Subscriber {
 
 export type CampaignStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
 export type ScheduleType = 'none' | 'daily' | 'weekly' | 'monthly';
+export type DeliveryStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed';
 
 export interface ScheduleConfig {
   hour?: number;
@@ -45,6 +46,21 @@ export interface Campaign {
   created_at: number;
 }
 
+export interface DeliveryLog {
+  id: string;
+  campaign_id: string;
+  subscriber_id: string;
+  email: string;
+  status: DeliveryStatus;
+  resend_id: string | null;
+  sent_at: number | null;
+  delivered_at: number | null;
+  opened_at: number | null;
+  clicked_at: number | null;
+  error_message: string | null;
+  created_at: number;
+}
+
 export interface SubscribeRequest {
   email: string;
   name?: string;
@@ -54,6 +70,67 @@ export interface SubscribeRequest {
 export interface BroadcastRequest {
   subject: string;
   content: string;
+}
+
+export interface CreateCampaignRequest {
+  subject: string;
+  content: string;
+  scheduled_at?: number;
+  schedule_type?: ScheduleType;
+  schedule_config?: ScheduleConfig;
+}
+
+export interface UpdateCampaignRequest {
+  subject?: string;
+  content?: string;
+  status?: CampaignStatus;
+  scheduled_at?: number;
+  schedule_type?: ScheduleType;
+  schedule_config?: ScheduleConfig;
+}
+
+export interface Sequence {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: number;
+  created_at: number;
+}
+
+export interface SequenceStep {
+  id: string;
+  sequence_id: string;
+  step_number: number;
+  delay_days: number;
+  subject: string;
+  content: string;
+  created_at: number;
+}
+
+export interface SubscriberSequence {
+  id: string;
+  subscriber_id: string;
+  sequence_id: string;
+  current_step: number;
+  started_at: number | null;
+  completed_at: number | null;
+  created_at: number;
+}
+
+export interface CreateSequenceRequest {
+  name: string;
+  description?: string;
+  steps: {
+    delay_days: number;
+    subject: string;
+    content: string;
+  }[];
+}
+
+export interface UpdateSequenceRequest {
+  name?: string;
+  description?: string;
+  is_active?: number;
 }
 
 export interface ApiResponse<T = unknown> {
