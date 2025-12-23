@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
-import { createCampaign, getCampaign, listCampaigns } from '../routes/campaigns';
+import { createCampaign, getCampaign, listCampaigns, updateCampaign, deleteCampaign } from '../routes/campaigns';
 
 describe('Campaign CRUD', () => {
   beforeEach(async () => {
@@ -156,6 +156,181 @@ describe('Campaign CRUD', () => {
       const result = await response.json();
 
       expect(result.data.campaigns).toHaveLength(0);
+    });
+  });
+
+  describe('updateCampaign', () => {
+    it('should update campaign subject and content', async () => {
+      const env = getTestEnv();
+
+      // Create a campaign
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Original', content: '<p>Original</p>' }),
+      }), env);
+      const created = await createRes.json();
+      const campaignId = created.data.id;
+
+      // Update the campaign
+      const updateReq = new Request(`http://localhost/api/campaigns/${campaignId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Updated', content: '<p>Updated</p>' }),
+      });
+      const response = await updateCampaign(updateReq, env, campaignId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.subject).toBe('Updated');
+      expect(result.data.content).toBe('<p>Updated</p>');
+    });
+
+    it('should return 404 for non-existent campaign', async () => {
+      const env = getTestEnv();
+
+      const updateReq = new Request('http://localhost/api/campaigns/non-existent', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Updated' }),
+      });
+      const response = await updateCampaign(updateReq, env, 'non-existent');
+
+      expect(response.status).toBe(404);
+    });
+
+    it('should not update sent campaign', async () => {
+      const env = getTestEnv();
+
+      // Create and manually set as sent
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Sent', content: '<p>Sent</p>' }),
+      }), env);
+      const created = await createRes.json();
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent' WHERE id = ?")
+        .bind(created.data.id).run();
+
+      // Try to update
+      const updateReq = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Modified' }),
+      });
+      const response = await updateCampaign(updateReq, env, created.data.id);
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 400 if no updates provided', async () => {
+      const env = getTestEnv();
+
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Test', content: '<p>Test</p>' }),
+      }), env);
+      const created = await createRes.json();
+
+      const updateReq = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({}),
+      });
+      const response = await updateCampaign(updateReq, env, created.data.id);
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('deleteCampaign', () => {
+    it('should delete a draft campaign', async () => {
+      const env = getTestEnv();
+
+      // Create a campaign
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'To Delete', content: '<p>Delete me</p>' }),
+      }), env);
+      const created = await createRes.json();
+      const campaignId = created.data.id;
+
+      // Delete the campaign
+      const deleteReq = new Request(`http://localhost/api/campaigns/${campaignId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+      const response = await deleteCampaign(deleteReq, env, campaignId);
+
+      expect(response.status).toBe(200);
+
+      // Verify it's deleted
+      const getRes = await getCampaign(new Request(`http://localhost/api/campaigns/${campaignId}`, {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      }), env, campaignId);
+      expect(getRes.status).toBe(404);
+    });
+
+    it('should return 404 for non-existent campaign', async () => {
+      const env = getTestEnv();
+
+      const deleteReq = new Request('http://localhost/api/campaigns/non-existent', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+      const response = await deleteCampaign(deleteReq, env, 'non-existent');
+
+      expect(response.status).toBe(404);
+    });
+
+    it('should not delete sent campaign', async () => {
+      const env = getTestEnv();
+
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Sent', content: '<p>Sent</p>' }),
+      }), env);
+      const created = await createRes.json();
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent' WHERE id = ?")
+        .bind(created.data.id).run();
+
+      const deleteReq = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+      const response = await deleteCampaign(deleteReq, env, created.data.id);
+
+      expect(response.status).toBe(400);
     });
   });
 });

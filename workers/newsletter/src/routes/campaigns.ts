@@ -118,3 +118,112 @@ export async function listCampaigns(
     return errorResponse('Internal server error', 500);
   }
 }
+
+export async function updateCampaign(
+  request: Request,
+  env: Env,
+  id: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    // Check if campaign exists and is not sent
+    const existing = await env.DB.prepare(
+      'SELECT * FROM campaigns WHERE id = ?'
+    ).bind(id).first<Campaign>();
+
+    if (!existing) {
+      return errorResponse('Campaign not found', 404);
+    }
+
+    if (existing.status === 'sent') {
+      return errorResponse('Cannot update sent campaign', 400);
+    }
+
+    const body = await request.json<UpdateCampaignRequest>();
+    const updates: string[] = [];
+    const bindings: (string | number | null)[] = [];
+
+    if (body.subject !== undefined) {
+      updates.push('subject = ?');
+      bindings.push(body.subject);
+    }
+    if (body.content !== undefined) {
+      updates.push('content = ?');
+      bindings.push(body.content);
+    }
+    if (body.status !== undefined && body.status !== 'sent') {
+      updates.push('status = ?');
+      bindings.push(body.status);
+    }
+    if (body.scheduled_at !== undefined) {
+      updates.push('scheduled_at = ?');
+      bindings.push(body.scheduled_at);
+      if (body.scheduled_at && existing.status === 'draft') {
+        updates.push("status = 'scheduled'");
+      }
+    }
+    if (body.schedule_type !== undefined) {
+      updates.push('schedule_type = ?');
+      bindings.push(body.schedule_type);
+    }
+    if (body.schedule_config !== undefined) {
+      updates.push('schedule_config = ?');
+      bindings.push(JSON.stringify(body.schedule_config));
+    }
+
+    if (updates.length === 0) {
+      return errorResponse('No updates provided', 400);
+    }
+
+    bindings.push(id);
+    await env.DB.prepare(
+      `UPDATE campaigns SET ${updates.join(', ')} WHERE id = ?`
+    ).bind(...bindings).run();
+
+    const updated = await env.DB.prepare(
+      'SELECT * FROM campaigns WHERE id = ?'
+    ).bind(id).first<Campaign>();
+
+    return successResponse(updated);
+  } catch (error) {
+    console.error('Update campaign error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+export async function deleteCampaign(
+  request: Request,
+  env: Env,
+  id: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    // Check if campaign exists
+    const existing = await env.DB.prepare(
+      'SELECT * FROM campaigns WHERE id = ?'
+    ).bind(id).first<Campaign>();
+
+    if (!existing) {
+      return errorResponse('Campaign not found', 404);
+    }
+
+    if (existing.status === 'sent') {
+      return errorResponse('Cannot delete sent campaign', 400);
+    }
+
+    await env.DB.prepare(
+      'DELETE FROM campaigns WHERE id = ?'
+    ).bind(id).run();
+
+    return successResponse({ message: 'Campaign deleted successfully' });
+  } catch (error) {
+    console.error('Delete campaign error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
