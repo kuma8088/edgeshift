@@ -19,3 +19,7 @@ SITE_URL = "https://edgeshift.tech"
 binding = "DB"
 database_name = "edgeshift-newsletter"
 database_id = "4ca2faf7-7486-4a66-b153-278acfa10d17"
+
+# Cron trigger for scheduled campaigns (every 15 minutes)
+[triggers]
+crons = ["*/15 * * * *"]

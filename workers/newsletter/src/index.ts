@@ -11,6 +11,7 @@ import {
   deleteCampaign,
 } from './routes/campaigns';
 import { sendCampaign, getCampaignStats } from './routes/campaign-send';
+import { processScheduledCampaigns } from './scheduled';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -100,6 +101,18 @@ export default {
           },
         }
       );
+    }
+  },
+
+  async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+    console.log(`Cron trigger fired at ${new Date(event.scheduledTime).toISOString()}`);
+    try {
+      const result = await processScheduledCampaigns(env);
+      console.log(
+        `Scheduled campaign processing completed: ${result.processed} processed, ${result.sent} sent, ${result.failed} failed`
+      );
+    } catch (error) {
+      console.error('Error in scheduled handler:', error);
     }
   },
 };
