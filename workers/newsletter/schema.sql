@@ -54,3 +54,43 @@ CREATE TABLE IF NOT EXISTS delivery_logs (
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_campaign ON delivery_logs(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_subscriber ON delivery_logs(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_status ON delivery_logs(status);
+
+-- Sequences table (for step emails)
+CREATE TABLE IF NOT EXISTS sequences (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  is_active INTEGER DEFAULT 1,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+
+-- Sequence steps table
+CREATE TABLE IF NOT EXISTS sequence_steps (
+  id TEXT PRIMARY KEY,
+  sequence_id TEXT NOT NULL,
+  step_number INTEGER NOT NULL,
+  delay_days INTEGER NOT NULL,
+  subject TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sequence_steps_sequence ON sequence_steps(sequence_id);
+
+-- Subscriber sequences (progress tracking)
+CREATE TABLE IF NOT EXISTS subscriber_sequences (
+  id TEXT PRIMARY KEY,
+  subscriber_id TEXT NOT NULL,
+  sequence_id TEXT NOT NULL,
+  current_step INTEGER DEFAULT 0,
+  started_at INTEGER,
+  completed_at INTEGER,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+  FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE,
+  UNIQUE(subscriber_id, sequence_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriber_sequences_subscriber ON subscriber_sequences(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_subscriber_sequences_sequence ON subscriber_sequences(sequence_id);

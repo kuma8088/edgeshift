@@ -54,6 +54,35 @@ export async function setupTestDb() {
       created_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
       FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS sequences (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at INTEGER DEFAULT (unixepoch())
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS sequence_steps (
+      id TEXT PRIMARY KEY,
+      sequence_id TEXT NOT NULL,
+      step_number INTEGER NOT NULL,
+      delay_days INTEGER NOT NULL,
+      subject TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS subscriber_sequences (
+      id TEXT PRIMARY KEY,
+      subscriber_id TEXT NOT NULL,
+      sequence_id TEXT NOT NULL,
+      current_step INTEGER DEFAULT 0,
+      started_at INTEGER,
+      completed_at INTEGER,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+      FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE,
+      UNIQUE(subscriber_id, sequence_id)
     )`)
   ]);
 }
@@ -64,6 +93,9 @@ export async function cleanupTestDb() {
   try {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM delivery_logs WHERE 1=1'),
+      env.DB.prepare('DELETE FROM subscriber_sequences WHERE 1=1'),
+      env.DB.prepare('DELETE FROM sequence_steps WHERE 1=1'),
+      env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
       env.DB.prepare('DELETE FROM subscribers WHERE 1=1')
     ]);

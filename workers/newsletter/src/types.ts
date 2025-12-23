@@ -89,6 +89,44 @@ export interface UpdateCampaignRequest {
   schedule_config?: ScheduleConfig;
 }
 
+export interface Sequence {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: number;
+  created_at: number;
+}
+
+export interface SequenceStep {
+  id: string;
+  sequence_id: string;
+  step_number: number;
+  delay_days: number;
+  subject: string;
+  content: string;
+  created_at: number;
+}
+
+export interface SubscriberSequence {
+  id: string;
+  subscriber_id: string;
+  sequence_id: string;
+  current_step: number;
+  started_at: number | null;
+  completed_at: number | null;
+  created_at: number;
+}
+
+export interface CreateSequenceRequest {
+  name: string;
+  description?: string;
+  steps: {
+    delay_days: number;
+    subject: string;
+    content: string;
+  }[];
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
