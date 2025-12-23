@@ -103,3 +103,74 @@ export async function getDeliveryLogs(
 
   return (result.results as DeliveryLog[]) || [];
 }
+
+/**
+ * Record delivery logs for a batch of subscribers
+ */
+export async function recordDeliveryLogs(
+  env: Env,
+  campaignId: string,
+  subscribers: Array<{ id: string; email: string }>,
+  results: Array<{ email: string; success: boolean; resendId?: string; error?: string }>
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+  const resultMap = new Map(results.map(r => [r.email, r]));
+
+  for (const subscriber of subscribers) {
+    const result = resultMap.get(subscriber.email);
+    const id = crypto.randomUUID();
+
+    await env.DB.prepare(`
+      INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, resend_id, sent_at, error_message)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      campaignId,
+      subscriber.id,
+      subscriber.email,
+      result?.success ? 'sent' : 'failed',
+      result?.resendId || null,
+      result?.success ? now : null,
+      result?.error || null
+    ).run();
+  }
+}
+
+/**
+ * Get delivery statistics for a campaign
+ */
+export async function getDeliveryStats(
+  env: Env,
+  campaignId: string
+): Promise<{
+  total: number;
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  failed: number;
+}> {
+  const result = await env.DB.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+      SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
+      SUM(CASE WHEN status = 'opened' THEN 1 ELSE 0 END) as opened,
+      SUM(CASE WHEN status = 'clicked' THEN 1 ELSE 0 END) as clicked,
+      SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
+      SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+    FROM delivery_logs
+    WHERE campaign_id = ?
+  `).bind(campaignId).first();
+
+  return {
+    total: result?.total || 0,
+    sent: result?.sent || 0,
+    delivered: result?.delivered || 0,
+    opened: result?.opened || 0,
+    clicked: result?.clicked || 0,
+    bounced: result?.bounced || 0,
+    failed: result?.failed || 0,
+  };
+}

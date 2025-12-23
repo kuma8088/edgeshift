@@ -10,6 +10,7 @@ import {
   updateCampaign,
   deleteCampaign,
 } from './routes/campaigns';
+import { sendCampaign, getCampaignStats } from './routes/campaign-send';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -37,6 +38,12 @@ export default {
         response = await createCampaign(request, env);
       } else if (path === '/api/campaigns' && request.method === 'GET') {
         response = await listCampaigns(request, env);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+\/send$/) && request.method === 'POST') {
+        const id = path.replace('/api/campaigns/', '').replace('/send', '');
+        response = await sendCampaign(request, env, id);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+\/stats$/) && request.method === 'GET') {
+        const id = path.replace('/api/campaigns/', '').replace('/stats', '');
+        response = await getCampaignStats(request, env, id);
       } else if (path.match(/^\/api\/campaigns\/[^\/]+$/) && request.method === 'GET') {
         const id = path.replace('/api/campaigns/', '');
         response = await getCampaign(request, env, id);
