@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
-import { recordDeliveryLog, updateDeliveryStatus, getDeliveryLogs } from '../lib/delivery';
+import { recordDeliveryLog, updateDeliveryStatus, getDeliveryLogs, findDeliveryLogByResendId } from '../lib/delivery';
 
 describe('delivery logging', () => {
   beforeEach(async () => {
@@ -183,6 +183,44 @@ describe('delivery logging', () => {
       const logs = await getDeliveryLogs(env, 'non-existent');
 
       expect(logs).toHaveLength(0);
+    });
+  });
+
+  describe('findDeliveryLogByResendId', () => {
+    it('should find delivery log by resend_id', async () => {
+      const env = getTestEnv();
+
+      // Setup: create a delivery log with resend_id
+      const campaignId = crypto.randomUUID();
+      const subscriberId = crypto.randomUUID();
+      const resendId = 're_' + crypto.randomUUID();
+      const testEmail = `test-${crypto.randomUUID()}@example.com`;
+
+      await env.DB.prepare(`
+        INSERT INTO campaigns (id, subject, content, status) VALUES (?, ?, ?, ?)
+      `).bind(campaignId, 'Test', 'Content', 'sent').run();
+
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status) VALUES (?, ?, ?)
+      `).bind(subscriberId, testEmail, 'active').run();
+
+      await env.DB.prepare(`
+        INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, resend_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), campaignId, subscriberId, testEmail, 'sent', resendId).run();
+
+      const result = await findDeliveryLogByResendId(env, resendId);
+
+      expect(result).not.toBeNull();
+      expect(result?.resend_id).toBe(resendId);
+    });
+
+    it('should return null for non-existent resend_id', async () => {
+      const env = getTestEnv();
+
+      const result = await findDeliveryLogByResendId(env, 'non_existent');
+
+      expect(result).toBeNull();
     });
   });
 });
