@@ -22,8 +22,8 @@ export async function createCampaign(
     const status = scheduled_at ? 'scheduled' : 'draft';
 
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -31,7 +31,10 @@ export async function createCampaign(
       status,
       scheduled_at || null,
       schedule_type || null,
-      schedule_config ? JSON.stringify(schedule_config) : null
+      schedule_config ? JSON.stringify(schedule_config) : null,
+      null,  // last_sent_at
+      null,  // sent_at
+      null   // recipient_count
     ).run();
 
     const campaign = await env.DB.prepare(
