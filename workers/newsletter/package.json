@@ -7,11 +7,15 @@
     "deploy": "wrangler deploy",
     "types": "wrangler types",
     "db:migrate": "wrangler d1 execute edgeshift-newsletter --local --file=./schema.sql",
-    "db:migrate:prod": "wrangler d1 execute edgeshift-newsletter --file=./schema.sql"
+    "db:migrate:prod": "wrangler d1 execute edgeshift-newsletter --file=./schema.sql",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.11.1",
     "@cloudflare/workers-types": "^4.20241205.0",
     "typescript": "^5.7.2",
+    "vitest": "^3.2.4",
     "wrangler": "^3.99.0"
   }
 }
