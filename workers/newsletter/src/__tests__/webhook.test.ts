@@ -31,7 +31,9 @@ describe('verifyWebhookSignature', () => {
     // Create valid signature using HMAC-SHA256 with base64 encoding
     const encoder = new TextEncoder();
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const signedPayload = `${timestamp}.${payload}`;
+    const msgId = 'msg_test123';
+    // Svix format: ${svix_id}.${svix_timestamp}.${payload}
+    const signedPayload = `${msgId}.${timestamp}.${payload}`;
 
     // Decode the secret key (strip whsec_ prefix and decode base64)
     const keyBytes = base64ToBytes(secret.slice(6));
@@ -54,7 +56,7 @@ describe('verifyWebhookSignature', () => {
     const signature = bytesToBase64(new Uint8Array(signatureBytes));
 
     const svixHeaders = {
-      'svix-id': 'msg_test123',
+      'svix-id': msgId,
       'svix-timestamp': timestamp,
       'svix-signature': `v1,${signature}`,
     };

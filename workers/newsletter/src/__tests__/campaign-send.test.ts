@@ -4,7 +4,11 @@ import { sendCampaign, getCampaignStats } from '../routes/campaign-send';
 
 // Mock email sending
 vi.mock('../lib/email', () => ({
-  sendBatchEmails: vi.fn().mockResolvedValue({ success: true, sent: 1 }),
+  sendBatchEmails: vi.fn().mockResolvedValue({
+    success: true,
+    sent: 1,
+    results: [{ email: 'test@example.com', resendId: 're_mock_123' }],
+  }),
 }));
 
 describe('sendCampaign', () => {

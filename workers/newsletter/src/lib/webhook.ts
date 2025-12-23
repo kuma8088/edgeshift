@@ -4,6 +4,9 @@ interface SvixHeaders {
   'svix-signature': string;
 }
 
+// Svix webhook signature format reference:
+// https://docs.svix.com/receiving/verifying-payloads/how-manual
+
 const TOLERANCE_IN_SECONDS = 300; // 5 minutes
 
 /**
@@ -60,7 +63,9 @@ export async function verifyWebhookSignature(
   }
 
   // Compute expected signature
-  const signedPayload = `${timestamp}.${payload}`;
+  // Svix format: ${svix_id}.${svix_timestamp}.${payload}
+  const msgId = headers['svix-id'];
+  const signedPayload = `${msgId}.${timestamp}.${payload}`;
   const encoder = new TextEncoder();
 
   try {
