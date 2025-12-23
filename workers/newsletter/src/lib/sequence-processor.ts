@@ -21,7 +21,6 @@ interface PendingSequenceEmail {
  */
 export async function processSequenceEmails(env: Env): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
-  const today = Math.floor(now / 86400) * 86400; // Start of day
 
   try {
     // Find subscribers who need to receive sequence emails
@@ -52,7 +51,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
       AND seq.is_active = 1
       AND step.step_number = ss.current_step + 1
       AND (ss.started_at + step.delay_days * 86400) <= ?
-    `).bind(today).all<PendingSequenceEmail>();
+    `).bind(now).all<PendingSequenceEmail>();
 
     const pending = pendingEmails.results || [];
     console.log(`Found ${pending.length} sequence email(s) to send`);
