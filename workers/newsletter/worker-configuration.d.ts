@@ -5,5 +5,9 @@ interface Env {
 	SENDER_EMAIL: "newsletter@mail.edgeshift.tech";
 	SENDER_NAME: "EdgeShift Newsletter";
 	SITE_URL: "https://edgeshift.tech";
+	RESEND_API_KEY: string;
+	TURNSTILE_SECRET_KEY: string;
+	ADMIN_API_KEY: string;
+	RESEND_WEBHOOK_SECRET: string;
 	DB: D1Database;
 }

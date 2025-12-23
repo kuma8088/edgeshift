@@ -1,0 +1,24 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
+import CampaignNewForm from '../../../components/admin/CampaignNewForm';
+---
+
+<AdminLayout title="新規キャンペーン">
+  <AuthProvider client:load>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <a
+          href="/admin/campaigns"
+          className="text-[#525252] hover:text-[#1e1e1e] transition-colors"
+        >
+          ← キャンペーン一覧
+        </a>
+      </div>
+      <h1 className="text-2xl font-bold text-[#1e1e1e]">新規キャンペーン作成</h1>
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-[#e5e5e5]">
+        <CampaignNewForm client:load />
+      </div>
+    </div>
+  </AuthProvider>
+</AdminLayout>
