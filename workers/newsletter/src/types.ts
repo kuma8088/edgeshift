@@ -7,6 +7,7 @@ export interface Env {
   SENDER_EMAIL: string;
   SENDER_NAME: string;
   SITE_URL: string;
+  RESEND_WEBHOOK_SECRET: string;
 }
 
 export interface Subscriber {
@@ -137,4 +138,34 @@ export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+// Resend Webhook Event Types
+export type ResendEventType =
+  | 'email.sent'
+  | 'email.delivered'
+  | 'email.opened'
+  | 'email.clicked'
+  | 'email.bounced'
+  | 'email.complained';
+
+export interface ResendWebhookEvent {
+  type: ResendEventType;
+  created_at: string;
+  data: {
+    email_id: string;
+    from: string;
+    to: string[];
+    subject: string;
+    created_at: string;
+    // Optional fields based on event type
+    click?: {
+      link: string;
+      timestamp: string;
+    };
+    bounce?: {
+      type: 'hard' | 'soft';
+      message: string;
+    };
+  };
 }

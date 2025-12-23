@@ -10,6 +10,7 @@ export function getTestEnv() {
     SENDER_EMAIL: 'test@example.com',
     SENDER_NAME: 'Test Newsletter',
     SITE_URL: 'http://localhost:4321',
+    RESEND_WEBHOOK_SECRET: 'whsec_test_secret',
   };
 }
 
