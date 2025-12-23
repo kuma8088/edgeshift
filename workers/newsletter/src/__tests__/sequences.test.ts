@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
 import type { Sequence, SequenceStep, SubscriberSequence, CreateSequenceRequest } from '../types';
-import { createSequence, getSequence, listSequences, updateSequence, deleteSequence } from '../routes/sequences';
+import {
+  createSequence,
+  getSequence,
+  listSequences,
+  updateSequence,
+  deleteSequence,
+  getSubscriberProgress,
+  getSequenceSubscribers,
+} from '../routes/sequences';
 
 describe('Sequence CRUD APIs', () => {
   beforeEach(async () => {
@@ -610,5 +618,249 @@ describe('Sequence Types and Schema', () => {
     expect(request.name).toBe('Welcome Series');
     expect(request.description).toBeUndefined();
     expect(request.steps).toHaveLength(1);
+  });
+});
+
+describe('Sequence Progress Tracking APIs', () => {
+  beforeEach(async () => {
+    await setupTestDb();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDb();
+  });
+
+  describe('getSubscriberProgress', () => {
+    it('should return all sequences for a subscriber', async () => {
+      const env = getTestEnv();
+      const subscriberId = crypto.randomUUID();
+      const sequenceId1 = crypto.randomUUID();
+      const sequenceId2 = crypto.randomUUID();
+      const now = Math.floor(Date.now() / 1000);
+
+      // Create subscriber
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status)
+        VALUES (?, ?, ?)
+      `).bind(subscriberId, 'test@example.com', 'active').run();
+
+      // Create two sequences
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name)
+        VALUES (?, ?)
+      `).bind(sequenceId1, 'Welcome Series').run();
+
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name)
+        VALUES (?, ?)
+      `).bind(sequenceId2, 'Tips Series').run();
+
+      // Add steps to sequences
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), sequenceId1, 1, 0, 'Welcome', '<p>Welcome</p>').run();
+
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), sequenceId1, 2, 3, 'Step 2', '<p>Step 2</p>').run();
+
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), sequenceId2, 1, 0, 'Tip 1', '<p>Tip 1</p>').run();
+
+      // Enroll subscriber in both sequences
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), subscriberId, sequenceId1, 1, now).run();
+
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), subscriberId, sequenceId2, 1, now, now + 86400).run();
+
+      const request = new Request(`http://localhost/api/subscribers/${subscriberId}/sequences`, {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getSubscriberProgress(request, env, subscriberId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.subscriber_id).toBe(subscriberId);
+      expect(result.data.sequences).toHaveLength(2);
+
+      // Check first sequence (in progress)
+      const seq1 = result.data.sequences.find((s: any) => s.sequence_id === sequenceId1);
+      expect(seq1).toBeDefined();
+      expect(seq1.sequence_name).toBe('Welcome Series');
+      expect(seq1.current_step).toBe(1);
+      expect(seq1.total_steps).toBe(2);
+      expect(seq1.started_at).toBe(now);
+      expect(seq1.completed_at).toBeNull();
+
+      // Check second sequence (completed)
+      const seq2 = result.data.sequences.find((s: any) => s.sequence_id === sequenceId2);
+      expect(seq2).toBeDefined();
+      expect(seq2.sequence_name).toBe('Tips Series');
+      expect(seq2.current_step).toBe(1);
+      expect(seq2.total_steps).toBe(1);
+      expect(seq2.completed_at).toBe(now + 86400);
+    });
+
+    it('should return empty array if subscriber has no sequences', async () => {
+      const env = getTestEnv();
+      const subscriberId = crypto.randomUUID();
+
+      // Create subscriber
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status)
+        VALUES (?, ?, ?)
+      `).bind(subscriberId, 'test@example.com', 'active').run();
+
+      const request = new Request(`http://localhost/api/subscribers/${subscriberId}/sequences`, {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getSubscriberProgress(request, env, subscriberId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.subscriber_id).toBe(subscriberId);
+      expect(result.data.sequences).toHaveLength(0);
+    });
+
+    it('should return 401 if not authorized', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/subscribers/test-id/sequences', {
+        headers: {},
+      });
+
+      const response = await getSubscriberProgress(request, env, 'test-id');
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('getSequenceSubscribers', () => {
+    it('should return all subscribers for a sequence with stats', async () => {
+      const env = getTestEnv();
+      const sequenceId = crypto.randomUUID();
+      const subscriber1Id = crypto.randomUUID();
+      const subscriber2Id = crypto.randomUUID();
+      const subscriber3Id = crypto.randomUUID();
+      const now = Math.floor(Date.now() / 1000);
+
+      // Create sequence
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name)
+        VALUES (?, ?)
+      `).bind(sequenceId, 'Welcome Series').run();
+
+      // Create subscribers
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, name, status)
+        VALUES (?, ?, ?, ?)
+      `).bind(subscriber1Id, 'user1@example.com', 'User 1', 'active').run();
+
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, name, status)
+        VALUES (?, ?, ?, ?)
+      `).bind(subscriber2Id, 'user2@example.com', 'User 2', 'active').run();
+
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, name, status)
+        VALUES (?, ?, ?, ?)
+      `).bind(subscriber3Id, 'user3@example.com', null, 'active').run();
+
+      // Enroll subscribers (1 completed, 2 in progress)
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), subscriber1Id, sequenceId, 3, now - 86400 * 7, now - 86400).run();
+
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), subscriber2Id, sequenceId, 1, now - 86400 * 2).run();
+
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(crypto.randomUUID(), subscriber3Id, sequenceId, 2, now - 86400).run();
+
+      const request = new Request(`http://localhost/api/sequences/${sequenceId}/subscribers`, {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getSequenceSubscribers(request, env, sequenceId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.sequence_id).toBe(sequenceId);
+      expect(result.data.subscribers).toHaveLength(3);
+
+      // Check stats
+      expect(result.data.stats.total).toBe(3);
+      expect(result.data.stats.completed).toBe(1);
+      expect(result.data.stats.in_progress).toBe(2);
+
+      // Check subscriber data
+      const sub1 = result.data.subscribers.find((s: any) => s.subscriber_id === subscriber1Id);
+      expect(sub1).toBeDefined();
+      expect(sub1.email).toBe('user1@example.com');
+      expect(sub1.name).toBe('User 1');
+      expect(sub1.current_step).toBe(3);
+      expect(sub1.completed_at).toBe(now - 86400);
+
+      const sub2 = result.data.subscribers.find((s: any) => s.subscriber_id === subscriber2Id);
+      expect(sub2).toBeDefined();
+      expect(sub2.email).toBe('user2@example.com');
+      expect(sub2.current_step).toBe(1);
+      expect(sub2.completed_at).toBeNull();
+
+      const sub3 = result.data.subscribers.find((s: any) => s.subscriber_id === subscriber3Id);
+      expect(sub3).toBeDefined();
+      expect(sub3.email).toBe('user3@example.com');
+      expect(sub3.name).toBeNull();
+      expect(sub3.current_step).toBe(2);
+    });
+
+    it('should return empty array and zero stats if no subscribers enrolled', async () => {
+      const env = getTestEnv();
+      const sequenceId = crypto.randomUUID();
+
+      // Create sequence
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name)
+        VALUES (?, ?)
+      `).bind(sequenceId, 'Empty Series').run();
+
+      const request = new Request(`http://localhost/api/sequences/${sequenceId}/subscribers`, {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getSequenceSubscribers(request, env, sequenceId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.sequence_id).toBe(sequenceId);
+      expect(result.data.subscribers).toHaveLength(0);
+      expect(result.data.stats.total).toBe(0);
+      expect(result.data.stats.completed).toBe(0);
+      expect(result.data.stats.in_progress).toBe(0);
+    });
+
+    it('should return 401 if not authorized', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences/test-id/subscribers', {
+        headers: {},
+      });
+
+      const response = await getSequenceSubscribers(request, env, 'test-id');
+      expect(response.status).toBe(401);
+    });
   });
 });

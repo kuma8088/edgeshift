@@ -18,6 +18,8 @@ import {
   updateSequence,
   deleteSequence,
   enrollSubscriber,
+  getSubscriberProgress,
+  getSequenceSubscribers,
 } from './routes/sequences';
 import { processScheduledCampaigns } from './scheduled';
 
@@ -80,6 +82,12 @@ export default {
       } else if (path.match(/^\/api\/sequences\/[^\/]+\/enroll$/) && request.method === 'POST') {
         const id = path.replace('/api/sequences/', '').replace('/enroll', '');
         response = await enrollSubscriber(request, env, id);
+      } else if (path.match(/^\/api\/sequences\/[^\/]+\/subscribers$/) && request.method === 'GET') {
+        const id = path.replace('/api/sequences/', '').replace('/subscribers', '');
+        response = await getSequenceSubscribers(request, env, id);
+      } else if (path.match(/^\/api\/subscribers\/[^\/]+\/sequences$/) && request.method === 'GET') {
+        const id = path.replace('/api/subscribers/', '').replace('/sequences', '');
+        response = await getSubscriberProgress(request, env, id);
       }
       // Newsletter routes
       else if (path === '/api/newsletter/subscribe' && request.method === 'POST') {

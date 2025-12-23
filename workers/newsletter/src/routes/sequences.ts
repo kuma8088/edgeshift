@@ -216,6 +216,89 @@ export async function enrollSubscriber(
   }
 }
 
+export async function getSubscriberProgress(
+  request: Request,
+  env: Env,
+  subscriberId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    const progress = await env.DB.prepare(`
+      SELECT
+        ss.id,
+        ss.sequence_id,
+        ss.current_step,
+        ss.started_at,
+        ss.completed_at,
+        seq.name as sequence_name,
+        (SELECT COUNT(*) FROM sequence_steps WHERE sequence_id = ss.sequence_id) as total_steps
+      FROM subscriber_sequences ss
+      JOIN sequences seq ON seq.id = ss.sequence_id
+      WHERE ss.subscriber_id = ?
+    `).bind(subscriberId).all();
+
+    return successResponse({
+      subscriber_id: subscriberId,
+      sequences: progress.results || [],
+    });
+  } catch (error) {
+    console.error('Get subscriber progress error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+export async function getSequenceSubscribers(
+  request: Request,
+  env: Env,
+  sequenceId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    const subscribers = await env.DB.prepare(`
+      SELECT
+        ss.id,
+        ss.subscriber_id,
+        ss.current_step,
+        ss.started_at,
+        ss.completed_at,
+        s.email,
+        s.name
+      FROM subscriber_sequences ss
+      JOIN subscribers s ON s.id = ss.subscriber_id
+      WHERE ss.sequence_id = ?
+      ORDER BY ss.started_at DESC
+    `).bind(sequenceId).all();
+
+    const stats = await env.DB.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN completed_at IS NULL THEN 1 ELSE 0 END) as in_progress
+      FROM subscriber_sequences
+      WHERE sequence_id = ?
+    `).bind(sequenceId).first();
+
+    return successResponse({
+      sequence_id: sequenceId,
+      subscribers: subscribers.results || [],
+      stats: {
+        total: stats?.total || 0,
+        completed: stats?.completed || 0,
+        in_progress: stats?.in_progress || 0,
+      },
+    });
+  } catch (error) {
+    console.error('Get sequence subscribers error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
 async function getSequenceWithSteps(env: Env, id: string) {
   const sequence = await env.DB.prepare(
     'SELECT * FROM sequences WHERE id = ?'
