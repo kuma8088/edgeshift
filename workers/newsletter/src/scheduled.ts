@@ -1,6 +1,7 @@
 import type { Env, Campaign, Subscriber, ScheduleConfig, ScheduleType } from './types';
 import { sendBatchEmails } from './lib/email';
 import { recordDeliveryLogs } from './lib/delivery';
+import { processSequenceEmails } from './lib/sequence-processor';
 
 function buildNewsletterEmail(
   content: string,
@@ -147,6 +148,10 @@ export async function processScheduledCampaigns(env: Env): Promise<ScheduledProc
   };
 
   try {
+    // Process sequence emails first
+    console.log('Processing sequence emails...');
+    await processSequenceEmails(env);
+
     // Find campaigns that are scheduled and due
     const campaignsResult = await env.DB.prepare(`
       SELECT * FROM campaigns

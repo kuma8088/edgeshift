@@ -1,6 +1,7 @@
 import type { Env, Sequence, SequenceStep, CreateSequenceRequest, UpdateSequenceRequest, ApiResponse } from '../types';
 import { isAuthorized } from '../lib/auth';
 import { errorResponse, successResponse, jsonResponse } from '../lib/response';
+import { enrollSubscriberInSequence } from '../lib/sequence-processor';
 
 export async function createSequence(
   request: Request,
@@ -174,6 +175,43 @@ export async function deleteSequence(
     return successResponse({ message: 'Sequence deleted' });
   } catch (error) {
     console.error('Delete sequence error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+export async function enrollSubscriber(
+  request: Request,
+  env: Env,
+  sequenceId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    const body = await request.json<{ subscriber_id: string }>();
+    const { subscriber_id } = body;
+
+    if (!subscriber_id) {
+      return errorResponse('subscriber_id is required', 400);
+    }
+
+    await enrollSubscriberInSequence(env, subscriber_id, sequenceId);
+
+    return successResponse({
+      message: 'Subscriber enrolled in sequence',
+      subscriber_id,
+      sequence_id: sequenceId,
+    });
+  } catch (error) {
+    console.error('Enroll subscriber error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+
+    // Return specific error messages for known errors
+    if (errorMessage.includes('not found') || errorMessage.includes('not active') || errorMessage.includes('already enrolled')) {
+      return errorResponse(errorMessage, 400);
+    }
+
     return errorResponse('Internal server error', 500);
   }
 }

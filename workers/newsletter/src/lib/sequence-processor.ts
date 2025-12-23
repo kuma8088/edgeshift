@@ -1,0 +1,240 @@
+import type { Env } from '../types';
+import { sendEmail } from './email';
+
+interface PendingSequenceEmail {
+  subscriber_sequence_id: string;
+  subscriber_id: string;
+  email: string;
+  name: string | null;
+  unsubscribe_token: string;
+  subject: string;
+  content: string;
+  step_number: number;
+  sequence_id: string;
+  current_step: number;
+  started_at: number;
+}
+
+/**
+ * Process all due sequence emails
+ * This function is called by the scheduled handler
+ */
+export async function processSequenceEmails(env: Env): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+  const today = Math.floor(now / 86400) * 86400; // Start of day
+
+  try {
+    // Find subscribers who need to receive sequence emails
+    // They should be:
+    // 1. Not completed (completed_at IS NULL)
+    // 2. Active subscribers
+    // 3. In active sequences
+    // 4. Due for next step (based on started_at + delay_days)
+    const pendingEmails = await env.DB.prepare(`
+      SELECT
+        ss.id as subscriber_sequence_id,
+        ss.subscriber_id,
+        ss.current_step,
+        ss.started_at,
+        s.email,
+        s.name,
+        s.unsubscribe_token,
+        step.subject,
+        step.content,
+        step.step_number,
+        step.sequence_id
+      FROM subscriber_sequences ss
+      JOIN subscribers s ON s.id = ss.subscriber_id
+      JOIN sequences seq ON seq.id = ss.sequence_id
+      JOIN sequence_steps step ON step.sequence_id = ss.sequence_id
+      WHERE ss.completed_at IS NULL
+      AND s.status = 'active'
+      AND seq.is_active = 1
+      AND step.step_number = ss.current_step + 1
+      AND (ss.started_at + step.delay_days * 86400) <= ?
+    `).bind(today).all<PendingSequenceEmail>();
+
+    const pending = pendingEmails.results || [];
+    console.log(`Found ${pending.length} sequence email(s) to send`);
+
+    for (const email of pending) {
+      console.log(`Sending sequence email to ${email.email}, step ${email.step_number}`);
+
+      const result = await sendEmail(
+        env.RESEND_API_KEY,
+        `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
+        {
+          to: email.email,
+          subject: email.subject,
+          html: buildSequenceEmail(
+            email.content,
+            email.name,
+            `${env.SITE_URL}/api/newsletter/unsubscribe/${email.unsubscribe_token}`,
+            env.SITE_URL
+          ),
+        }
+      );
+
+      if (result.success) {
+        // Check if this is the last step
+        const totalSteps = await env.DB.prepare(
+          'SELECT COUNT(*) as count FROM sequence_steps WHERE sequence_id = ?'
+        ).bind(email.sequence_id).first<{ count: number }>();
+
+        const isComplete = email.step_number >= (totalSteps?.count || 0);
+
+        // Update progress
+        await env.DB.prepare(`
+          UPDATE subscriber_sequences
+          SET current_step = ?,
+              completed_at = ?
+          WHERE id = ?
+        `).bind(
+          email.step_number,
+          isComplete ? now : null,
+          email.subscriber_sequence_id
+        ).run();
+
+        console.log(`Sequence step ${email.step_number} sent to ${email.email}${isComplete ? ' (completed)' : ''}`);
+      } else {
+        console.error(`Failed to send sequence email to ${email.email}:`, result.error);
+      }
+    }
+  } catch (error) {
+    console.error('Error processing sequence emails:', error);
+    throw error;
+  }
+}
+
+/**
+ * Enroll a subscriber in all active sequences
+ * This is called when a subscriber confirms their subscription
+ */
+export async function enrollSubscriberInSequences(env: Env, subscriberId: string): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+
+  try {
+    // Get all active sequences
+    const sequences = await env.DB.prepare(
+      'SELECT id FROM sequences WHERE is_active = 1'
+    ).all<{ id: string }>();
+
+    const activeSequences = sequences.results || [];
+    console.log(`Enrolling subscriber ${subscriberId} in ${activeSequences.length} active sequence(s)`);
+
+    for (const seq of activeSequences) {
+      const id = crypto.randomUUID();
+      try {
+        await env.DB.prepare(`
+          INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+          VALUES (?, ?, ?, ?, ?)
+        `).bind(id, subscriberId, seq.id, 0, now).run();
+
+        console.log(`Enrolled subscriber ${subscriberId} in sequence ${seq.id}`);
+      } catch (error) {
+        // Ignore duplicate key errors (already enrolled)
+        console.log(`Subscriber ${subscriberId} already enrolled in sequence ${seq.id}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error enrolling subscriber in sequences:', error);
+    throw error;
+  }
+}
+
+/**
+ * Enroll a specific subscriber in a specific sequence
+ * This is used by the API endpoint
+ */
+export async function enrollSubscriberInSequence(
+  env: Env,
+  subscriberId: string,
+  sequenceId: string
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+
+  try {
+    // Check if subscriber exists and is active
+    const subscriber = await env.DB.prepare(
+      'SELECT id, status FROM subscribers WHERE id = ?'
+    ).bind(subscriberId).first<{ id: string; status: string }>();
+
+    if (!subscriber) {
+      throw new Error('Subscriber not found');
+    }
+
+    if (subscriber.status !== 'active') {
+      throw new Error('Subscriber is not active');
+    }
+
+    // Check if sequence exists and is active
+    const sequence = await env.DB.prepare(
+      'SELECT id, is_active FROM sequences WHERE id = ?'
+    ).bind(sequenceId).first<{ id: string; is_active: number }>();
+
+    if (!sequence) {
+      throw new Error('Sequence not found');
+    }
+
+    if (sequence.is_active !== 1) {
+      throw new Error('Sequence is not active');
+    }
+
+    // Check if already enrolled
+    const existing = await env.DB.prepare(
+      'SELECT id FROM subscriber_sequences WHERE subscriber_id = ? AND sequence_id = ?'
+    ).bind(subscriberId, sequenceId).first<{ id: string }>();
+
+    if (existing) {
+      throw new Error('Subscriber is already enrolled in this sequence');
+    }
+
+    // Enroll subscriber
+    const id = crypto.randomUUID();
+    await env.DB.prepare(`
+      INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(id, subscriberId, sequenceId, 0, now).run();
+
+    console.log(`Enrolled subscriber ${subscriberId} in sequence ${sequenceId}`);
+  } catch (error) {
+    console.error('Error enrolling subscriber in sequence:', error);
+    throw error;
+  }
+}
+
+/**
+ * Build sequence email HTML
+ * Simpler than newsletter email, focuses on personal communication
+ */
+function buildSequenceEmail(
+  content: string,
+  name: string | null,
+  unsubscribeUrl: string,
+  siteUrl: string
+): string {
+  const greeting = name ? `${name}さん、` : '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="margin-bottom: 16px;">
+    ${greeting}
+  </div>
+  <div style="margin-bottom: 32px;">
+    ${content}
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+    <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a><br>
+    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
+  </p>
+</body>
+</html>
+  `.trim();
+}

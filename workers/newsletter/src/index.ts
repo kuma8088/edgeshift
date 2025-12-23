@@ -17,6 +17,7 @@ import {
   listSequences,
   updateSequence,
   deleteSequence,
+  enrollSubscriber,
 } from './routes/sequences';
 import { processScheduledCampaigns } from './scheduled';
 
@@ -76,6 +77,9 @@ export default {
       } else if (path.match(/^\/api\/sequences\/[^\/]+$/) && request.method === 'DELETE') {
         const id = path.replace('/api/sequences/', '');
         response = await deleteSequence(request, env, id);
+      } else if (path.match(/^\/api\/sequences\/[^\/]+\/enroll$/) && request.method === 'POST') {
+        const id = path.replace('/api/sequences/', '').replace('/enroll', '');
+        response = await enrollSubscriber(request, env, id);
       }
       // Newsletter routes
       else if (path === '/api/newsletter/subscribe' && request.method === 'POST') {
