@@ -1,6 +1,411 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
 import type { Sequence, SequenceStep, SubscriberSequence, CreateSequenceRequest } from '../types';
+import { createSequence, getSequence, listSequences, updateSequence, deleteSequence } from '../routes/sequences';
+
+describe('Sequence CRUD APIs', () => {
+  beforeEach(async () => {
+    await setupTestDb();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDb();
+  });
+
+  describe('createSequence', () => {
+    it('should create a sequence with steps', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          name: 'Welcome Series',
+          description: 'Onboarding sequence',
+          steps: [
+            {
+              delay_days: 0,
+              subject: 'Welcome!',
+              content: '<p>Welcome to our newsletter</p>',
+            },
+            {
+              delay_days: 3,
+              subject: 'Getting Started',
+              content: '<p>Here is how to get started</p>',
+            },
+          ],
+        }),
+      });
+
+      const response = await createSequence(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(result.success).toBe(true);
+      expect(result.data.id).toBeDefined();
+      expect(result.data.name).toBe('Welcome Series');
+      expect(result.data.steps).toHaveLength(2);
+      expect(result.data.steps[0].step_number).toBe(1);
+      expect(result.data.steps[1].step_number).toBe(2);
+    });
+
+    it('should return 400 if name is missing', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
+        }),
+      });
+
+      const response = await createSequence(request, env);
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 400 if steps are missing', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ name: 'Test Sequence' }),
+      });
+
+      const response = await createSequence(request, env);
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 401 if not authorized', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Test',
+          steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
+        }),
+      });
+
+      const response = await createSequence(request, env);
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('getSequence', () => {
+    it('should return a sequence with steps by id', async () => {
+      const env = getTestEnv();
+
+      // Create a sequence first
+      const createReq = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          name: 'Test Sequence',
+          steps: [
+            { delay_days: 0, subject: 'Step 1', content: '<p>Content 1</p>' },
+            { delay_days: 7, subject: 'Step 2', content: '<p>Content 2</p>' },
+          ],
+        }),
+      });
+      const createRes = await createSequence(createReq, env);
+      const created = await createRes.json();
+      const sequenceId = created.data.id;
+
+      // Get the sequence
+      const getReq = new Request(`http://localhost/api/sequences/${sequenceId}`, {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+      const response = await getSequence(getReq, env, sequenceId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.id).toBe(sequenceId);
+      expect(result.data.name).toBe('Test Sequence');
+      expect(result.data.steps).toHaveLength(2);
+      expect(result.data.steps[0].delay_days).toBe(0);
+      expect(result.data.steps[1].delay_days).toBe(7);
+    });
+
+    it('should return 404 if sequence not found', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences/non-existent', {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getSequence(request, env, 'non-existent');
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 401 if not authorized', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences/test-id', {
+        headers: {},
+      });
+
+      const response = await getSequence(request, env, 'test-id');
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('listSequences', () => {
+    it('should return all sequences', async () => {
+      const env = getTestEnv();
+
+      // Create two sequences
+      await createSequence(
+        new Request('http://localhost/api/sequences', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+          },
+          body: JSON.stringify({
+            name: 'Sequence 1',
+            steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
+          }),
+        }),
+        env
+      );
+
+      await createSequence(
+        new Request('http://localhost/api/sequences', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+          },
+          body: JSON.stringify({
+            name: 'Sequence 2',
+            steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
+          }),
+        }),
+        env
+      );
+
+      const request = new Request('http://localhost/api/sequences', {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await listSequences(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.sequences).toHaveLength(2);
+      expect(result.data.total).toBe(2);
+    });
+
+    it('should return empty array if no sequences', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences', {
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await listSequences(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.sequences).toHaveLength(0);
+      expect(result.data.total).toBe(0);
+    });
+
+    it('should return 401 if not authorized', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences', {
+        headers: {},
+      });
+
+      const response = await listSequences(request, env);
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('updateSequence', () => {
+    it('should update sequence name and description', async () => {
+      const env = getTestEnv();
+
+      // Create a sequence
+      const createReq = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          name: 'Original Name',
+          description: 'Original Description',
+          steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
+        }),
+      });
+      const createRes = await createSequence(createReq, env);
+      const created = await createRes.json();
+      const sequenceId = created.data.id;
+
+      // Update the sequence
+      const updateReq = new Request(`http://localhost/api/sequences/${sequenceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          name: 'Updated Name',
+          description: 'Updated Description',
+        }),
+      });
+
+      const response = await updateSequence(updateReq, env, sequenceId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.name).toBe('Updated Name');
+      expect(result.data.description).toBe('Updated Description');
+    });
+
+    it('should update is_active status', async () => {
+      const env = getTestEnv();
+
+      // Create a sequence
+      const createReq = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          name: 'Test Sequence',
+          steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
+        }),
+      });
+      const createRes = await createSequence(createReq, env);
+      const created = await createRes.json();
+      const sequenceId = created.data.id;
+
+      // Deactivate the sequence
+      const updateReq = new Request(`http://localhost/api/sequences/${sequenceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ is_active: 0 }),
+      });
+
+      const response = await updateSequence(updateReq, env, sequenceId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.is_active).toBe(0);
+    });
+
+    it('should return 404 if sequence not found', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences/non-existent', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ name: 'Updated' }),
+      });
+
+      const response = await updateSequence(request, env, 'non-existent');
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 401 if not authorized', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences/test-id', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Updated' }),
+      });
+
+      const response = await updateSequence(request, env, 'test-id');
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('deleteSequence', () => {
+    it('should delete a sequence and its steps', async () => {
+      const env = getTestEnv();
+
+      // Create a sequence
+      const createReq = new Request('http://localhost/api/sequences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          name: 'Test Sequence',
+          steps: [
+            { delay_days: 0, subject: 'Step 1', content: '<p>Content 1</p>' },
+            { delay_days: 7, subject: 'Step 2', content: '<p>Content 2</p>' },
+          ],
+        }),
+      });
+      const createRes = await createSequence(createReq, env);
+      const created = await createRes.json();
+      const sequenceId = created.data.id;
+
+      // Delete the sequence
+      const deleteReq = new Request(`http://localhost/api/sequences/${sequenceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await deleteSequence(deleteReq, env, sequenceId);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.message).toBe('Sequence deleted');
+
+      // Verify it's deleted
+      const steps = await env.DB.prepare(
+        'SELECT * FROM sequence_steps WHERE sequence_id = ?'
+      ).bind(sequenceId).all();
+      expect(steps.results).toHaveLength(0);
+
+      const sequence = await env.DB.prepare(
+        'SELECT * FROM sequences WHERE id = ?'
+      ).bind(sequenceId).first();
+      expect(sequence).toBeNull();
+    });
+
+    it('should return 404 if sequence not found', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences/non-existent', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await deleteSequence(request, env, 'non-existent');
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 401 if not authorized', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/sequences/test-id', {
+        method: 'DELETE',
+        headers: {},
+      });
+
+      const response = await deleteSequence(request, env, 'test-id');
+      expect(response.status).toBe(401);
+    });
+  });
+});
 
 describe('Sequence Types and Schema', () => {
   beforeEach(async () => {

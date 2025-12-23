@@ -127,6 +127,12 @@ export interface CreateSequenceRequest {
   }[];
 }
 
+export interface UpdateSequenceRequest {
+  name?: string;
+  description?: string;
+  is_active?: number;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;

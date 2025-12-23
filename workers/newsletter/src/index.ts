@@ -11,6 +11,13 @@ import {
   deleteCampaign,
 } from './routes/campaigns';
 import { sendCampaign, getCampaignStats } from './routes/campaign-send';
+import {
+  createSequence,
+  getSequence,
+  listSequences,
+  updateSequence,
+  deleteSequence,
+} from './routes/sequences';
 import { processScheduledCampaigns } from './scheduled';
 
 export default {
@@ -54,6 +61,21 @@ export default {
       } else if (path.match(/^\/api\/campaigns\/[^\/]+$/) && request.method === 'DELETE') {
         const id = path.replace('/api/campaigns/', '');
         response = await deleteCampaign(request, env, id);
+      }
+      // Sequence routes
+      else if (path === '/api/sequences' && request.method === 'POST') {
+        response = await createSequence(request, env);
+      } else if (path === '/api/sequences' && request.method === 'GET') {
+        response = await listSequences(request, env);
+      } else if (path.match(/^\/api\/sequences\/[^\/]+$/) && request.method === 'GET') {
+        const id = path.replace('/api/sequences/', '');
+        response = await getSequence(request, env, id);
+      } else if (path.match(/^\/api\/sequences\/[^\/]+$/) && request.method === 'PUT') {
+        const id = path.replace('/api/sequences/', '');
+        response = await updateSequence(request, env, id);
+      } else if (path.match(/^\/api\/sequences\/[^\/]+$/) && request.method === 'DELETE') {
+        const id = path.replace('/api/sequences/', '');
+        response = await deleteSequence(request, env, id);
       }
       // Newsletter routes
       else if (path === '/api/newsletter/subscribe' && request.method === 'POST') {
