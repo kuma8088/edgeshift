@@ -44,3 +44,6 @@ tfplan
 
 # Cloudflare Workers secrets
 .dev.vars
+
+# Wrangler local state (D1 database, etc.)
+.wrangler/
