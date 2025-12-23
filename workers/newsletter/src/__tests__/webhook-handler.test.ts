@@ -3,6 +3,29 @@ import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:
 import { setupTestDb, cleanupTestDb, getTestEnv } from './setup';
 import worker from '../index';
 
+// Helper to convert base64 to Uint8Array
+function base64ToBytes(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Helper to convert Uint8Array to base64
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Test secret in proper whsec_ format (whsec_ + base64 encoded key)
+const TEST_RAW_KEY = 'test_webhook_secret_key_bytes!';
+const TEST_SECRET = 'whsec_' + btoa(TEST_RAW_KEY);
+
 describe('Webhook Handler', () => {
   beforeEach(async () => {
     await setupTestDb();
@@ -13,13 +36,15 @@ describe('Webhook Handler', () => {
   });
 
   async function createTestSignature(payload: string, timestamp: string) {
-    const secret = 'whsec_test_secret';
     const signedPayload = `${timestamp}.${payload}`;
     const encoder = new TextEncoder();
 
+    // Decode the secret key (strip whsec_ prefix and decode base64)
+    const keyBytes = base64ToBytes(TEST_SECRET.slice(6));
+
     const key = await crypto.subtle.importKey(
       'raw',
-      encoder.encode(secret),
+      keyBytes,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
@@ -31,9 +56,8 @@ describe('Webhook Handler', () => {
       encoder.encode(signedPayload)
     );
 
-    return Array.from(new Uint8Array(signatureBytes))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    // Svix uses base64 encoding for signatures
+    return bytesToBase64(new Uint8Array(signatureBytes));
   }
 
   it('should return 401 for invalid signature', async () => {
@@ -50,7 +74,7 @@ describe('Webhook Handler', () => {
       body: payload,
     });
 
-    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: 'whsec_test_secret' };
+    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: TEST_SECRET };
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, testEnv, ctx);
     await waitOnExecutionContext(ctx);
@@ -69,7 +93,7 @@ describe('Webhook Handler', () => {
       body: payload,
     });
 
-    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: 'whsec_test_secret' };
+    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: TEST_SECRET };
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, testEnv, ctx);
     await waitOnExecutionContext(ctx);
@@ -120,7 +144,7 @@ describe('Webhook Handler', () => {
     });
 
     // Mock env with test secret
-    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: 'whsec_test_secret' };
+    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: TEST_SECRET };
 
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, testEnv, ctx);
@@ -176,7 +200,7 @@ describe('Webhook Handler', () => {
       body: payload,
     });
 
-    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: 'whsec_test_secret' };
+    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: TEST_SECRET };
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, testEnv, ctx);
     await waitOnExecutionContext(ctx);
@@ -234,7 +258,7 @@ describe('Webhook Handler', () => {
       body: payload,
     });
 
-    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: 'whsec_test_secret' };
+    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: TEST_SECRET };
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, testEnv, ctx);
     await waitOnExecutionContext(ctx);
@@ -291,7 +315,7 @@ describe('Webhook Handler', () => {
       body: payload,
     });
 
-    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: 'whsec_test_secret' };
+    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: TEST_SECRET };
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, testEnv, ctx);
     await waitOnExecutionContext(ctx);
@@ -331,7 +355,7 @@ describe('Webhook Handler', () => {
       body: payload,
     });
 
-    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: 'whsec_test_secret' };
+    const testEnv = { ...env, RESEND_WEBHOOK_SECRET: TEST_SECRET };
     const ctx = createExecutionContext();
     const response = await worker.fetch(request, testEnv, ctx);
     await waitOnExecutionContext(ctx);
