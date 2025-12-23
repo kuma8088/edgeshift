@@ -23,6 +23,7 @@ export interface Subscriber {
 
 export type CampaignStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
 export type ScheduleType = 'none' | 'daily' | 'weekly' | 'monthly';
+export type DeliveryStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed';
 
 export interface ScheduleConfig {
   hour?: number;
@@ -42,6 +43,21 @@ export interface Campaign {
   last_sent_at: number | null;
   sent_at: number | null;
   recipient_count: number | null;
+  created_at: number;
+}
+
+export interface DeliveryLog {
+  id: string;
+  campaign_id: string;
+  subscriber_id: string;
+  email: string;
+  status: DeliveryStatus;
+  resend_id: string | null;
+  sent_at: number | null;
+  delivered_at: number | null;
+  opened_at: number | null;
+  clicked_at: number | null;
+  error_message: string | null;
   created_at: number;
 }
 

@@ -32,3 +32,25 @@ CREATE TABLE IF NOT EXISTS campaigns (
   recipient_count INTEGER,
   created_at INTEGER DEFAULT (unixepoch())
 );
+
+-- Delivery logs table (Phase 2)
+CREATE TABLE IF NOT EXISTS delivery_logs (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT NOT NULL,
+  subscriber_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  status TEXT DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed')),
+  resend_id TEXT,
+  sent_at INTEGER,
+  delivered_at INTEGER,
+  opened_at INTEGER,
+  clicked_at INTEGER,
+  error_message TEXT,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
+  FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_delivery_logs_campaign ON delivery_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_logs_subscriber ON delivery_logs(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_logs_status ON delivery_logs(status);
