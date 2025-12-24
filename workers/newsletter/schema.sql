@@ -95,3 +95,19 @@ CREATE TABLE IF NOT EXISTS subscriber_sequences (
 
 CREATE INDEX IF NOT EXISTS idx_subscriber_sequences_subscriber ON subscriber_sequences(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_subscriber_sequences_sequence ON subscriber_sequences(sequence_id);
+
+-- Click events table (全クリック記録)
+CREATE TABLE IF NOT EXISTS click_events (
+  id TEXT PRIMARY KEY,
+  delivery_log_id TEXT NOT NULL,
+  subscriber_id TEXT NOT NULL,
+  clicked_url TEXT NOT NULL,
+  clicked_at INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (delivery_log_id) REFERENCES delivery_logs(id),
+  FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_click_events_delivery_log ON click_events(delivery_log_id);
+CREATE INDEX IF NOT EXISTS idx_click_events_subscriber ON click_events(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_click_events_clicked_at ON click_events(clicked_at);
