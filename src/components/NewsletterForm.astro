@@ -12,7 +12,7 @@ const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props
     <div class="space-y-4">
       <!-- Email -->
       <div>
-        <label for="newsletter-email" class="block text-sm font-medium text-[#1e1e1e] mb-1.5">
+        <label for="newsletter-email" class="block text-sm font-medium text-[var(--color-text)] mb-1.5">
           メールアドレス <span class="text-red-500">*</span>
         </label>
         <input
@@ -20,21 +20,21 @@ const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props
           id="newsletter-email"
           name="email"
           required
-          class="w-full px-4 py-3 rounded border border-[#e5e5e5] bg-white text-[#1e1e1e] placeholder-[#a3a3a3] focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+          class="w-full px-4 py-3 rounded border border-[var(--color-border)] bg-white text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
           placeholder="example@email.com"
         />
       </div>
 
       <!-- Name (optional) -->
       <div>
-        <label for="newsletter-name" class="block text-sm font-medium text-[#1e1e1e] mb-1.5">
-          お名前 <span class="text-[#a3a3a3] text-xs">(任意)</span>
+        <label for="newsletter-name" class="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+          お名前 <span class="text-[var(--color-text-muted)] text-xs">(任意)</span>
         </label>
         <input
           type="text"
           id="newsletter-name"
           name="name"
-          class="w-full px-4 py-3 rounded border border-[#e5e5e5] bg-white text-[#1e1e1e] placeholder-[#a3a3a3] focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+          class="w-full px-4 py-3 rounded border border-[var(--color-border)] bg-white text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] transition-colors"
           placeholder="山田 太郎"
         />
       </div>
@@ -47,7 +47,7 @@ const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props
         <button
           type="submit"
           id="newsletter-submit-btn"
-          class="w-full bg-[#7c3aed] text-white px-6 py-3 rounded font-medium hover:bg-[#6d28d9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          class="w-full bg-[var(--color-accent)] text-white px-6 py-3 rounded font-medium hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <span id="newsletter-btn-text">登録する</span>
           <svg id="newsletter-btn-spinner" class="hidden animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -57,7 +57,7 @@ const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props
         </button>
       </div>
 
-      <p class="text-xs text-[#a3a3a3] text-center">
+      <p class="text-xs text-[var(--color-text-muted)] text-center">
         登録後、確認メールが届きます。メール内のリンクをクリックして登録を完了してください。
       </p>
     </div>
