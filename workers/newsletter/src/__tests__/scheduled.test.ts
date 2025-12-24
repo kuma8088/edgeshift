@@ -4,7 +4,11 @@ import { processScheduledCampaigns } from '../scheduled';
 
 // Mock email sending
 vi.mock('../lib/email', () => ({
-  sendBatchEmails: vi.fn().mockResolvedValue({ success: true, sent: 1 }),
+  sendBatchEmails: vi.fn().mockResolvedValue({
+    success: true,
+    sent: 1,
+    results: [{ email: 'test@example.com', resendId: 're_mock_123' }],
+  }),
 }));
 
 describe('processScheduledCampaigns', () => {
@@ -167,8 +171,8 @@ describe('processScheduledCampaigns', () => {
     // Mock email to fail for first campaign, succeed for second
     const { sendBatchEmails } = await import('../lib/email');
     vi.mocked(sendBatchEmails)
-      .mockResolvedValueOnce({ success: false, sent: 0, error: 'Failed to send' })
-      .mockResolvedValueOnce({ success: true, sent: 1 });
+      .mockResolvedValueOnce({ success: false, sent: 0, error: 'Failed to send', results: [] })
+      .mockResolvedValueOnce({ success: true, sent: 1, results: [{ email: 'test@example.com', resendId: 're_mock_456' }] });
 
     const result = await processScheduledCampaigns(env);
 

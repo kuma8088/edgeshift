@@ -35,8 +35,9 @@ describe('Webhook Handler', () => {
     await cleanupTestDb();
   });
 
-  async function createTestSignature(payload: string, timestamp: string) {
-    const signedPayload = `${timestamp}.${payload}`;
+  async function createTestSignature(payload: string, timestamp: string, msgId: string = 'msg_test') {
+    // Svix format: ${svix_id}.${svix_timestamp}.${payload}
+    const signedPayload = `${msgId}.${timestamp}.${payload}`;
     const encoder = new TextEncoder();
 
     // Decode the secret key (strip whsec_ prefix and decode base64)

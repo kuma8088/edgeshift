@@ -3,6 +3,18 @@ import { sendBatchEmails } from './lib/email';
 import { recordDeliveryLogs } from './lib/delivery';
 import { processSequenceEmails } from './lib/sequence-processor';
 
+/**
+ * Convert plain text URLs to clickable links
+ * Matches URLs starting with http:// or https://
+ * Uses negative lookbehind to avoid matching URLs already inside HTML attributes
+ */
+function linkifyUrls(text: string): string {
+  // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
+  // Also skip URLs that are already inside <a> tags
+  const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"]+)(?![^<]*<\/a>)/g;
+  return text.replace(urlRegex, '<a href="$1" style="color: #7c3aed;">$1</a>');
+}
+
 function buildNewsletterEmail(
   content: string,
   unsubscribeUrl: string,
@@ -20,7 +32,7 @@ function buildNewsletterEmail(
     <h1 style="color: #1e1e1e; font-size: 24px; margin: 0;">EdgeShift Newsletter</h1>
   </div>
   <div style="margin-bottom: 32px;">
-    ${content}
+    ${linkifyUrls(content)}
   </div>
   <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
   <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
@@ -117,12 +129,17 @@ async function sendSingleCampaign(
       emails
     );
 
-    // Record delivery logs
-    const deliveryResults = subscribers.map((sub) => ({
-      email: sub.email,
-      success: sendResult.success,
-      error: sendResult.error,
-    }));
+    // Record delivery logs with resend IDs from batch send results
+    const resultMap = new Map(sendResult.results.map(r => [r.email, r]));
+    const deliveryResults = subscribers.map((sub) => {
+      const result = resultMap.get(sub.email);
+      return {
+        email: sub.email,
+        success: sendResult.success && !result?.error,
+        resendId: result?.resendId,
+        error: result?.error || sendResult.error,
+      };
+    });
     await recordDeliveryLogs(env, campaign.id, subscribers, deliveryResults);
 
     return sendResult;

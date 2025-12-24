@@ -4,80 +4,162 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-EdgeShift Portfolio - Personal portfolio and services website built with Astro and deployed to Cloudflare Pages.
+EdgeShift Portfolio - Personal portfolio and services website built with Astro and deployed to Cloudflare Pages, with serverless backend on Cloudflare Workers.
+
+**Live Site:** https://edgeshift.tech
 
 ## Tech Stack
 
-- **Framework**: Astro (SSG mode)
-- **Styling**: Tailwind CSS v4
-- **Language**: TypeScript
-- **Hosting**: Cloudflare Pages
-- **IaC**: Terraform (Cloudflare provider)
+| Layer | Technology |
+|:--|:--|
+| Framework | Astro (SSG) + React (islands) |
+| Styling | Tailwind CSS v4 |
+| Backend | Cloudflare Workers |
+| Database | Cloudflare D1 (SQLite) |
+| Email | Resend API |
+| Hosting | Cloudflare Pages |
+| IaC | Terraform (Cloudflare provider) |
 
 ## Development Commands
 
 ```bash
-# Start development server
+# Frontend (Astro)
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run check        # Type check
+
+# Newsletter Worker
+cd workers/newsletter
+npm run dev          # Start local worker (with D1 local)
+npm run deploy       # Deploy to Cloudflare
+npm run db:migrate   # Apply schema to local D1
+npm run db:migrate:prod  # Apply schema to production D1
+npm run test         # Run tests
+
+# Contact Form Worker
+cd workers/contact-form
 npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Type check
-npm run check
+npm run deploy
 ```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Cloudflare Pages                             │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Astro (SSG)                                              │  │
+│  │  ├── Landing page (/)                                     │  │
+│  │  ├── Newsletter signup (/newsletter/*)                    │  │
+│  │  └── Admin dashboard (/admin/*)  ← React islands          │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Cloudflare Workers                           │
+│  ┌────────────────────────┐  ┌────────────────────────────┐    │
+│  │  Newsletter Worker     │  │  Contact Form Worker       │    │
+│  │  /api/subscribers      │  │  /api/contact              │    │
+│  │  /api/campaigns        │  │                            │    │
+│  │  /api/sequences        │  │                            │    │
+│  │  /api/webhooks/resend  │  │                            │    │
+│  └──────────┬─────────────┘  └──────────┬─────────────────┘    │
+│             │                            │                      │
+│             ▼                            ▼                      │
+│  ┌────────────────────────┐  ┌────────────────────────────┐    │
+│  │  D1 Database           │  │  Resend API                │    │
+│  │  (subscribers,         │  │  (email sending)           │    │
+│  │   campaigns,           │  │                            │    │
+│  │   sequences, etc.)     │  │                            │    │
+│  └────────────────────────┘  └────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Key Patterns
+
+### Astro + React Islands
+
+Admin pages use React components with Astro's `client:load` directive:
+
+```astro
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+import MyForm from '../components/admin/MyForm';
+---
+<AdminLayout>
+  <MyForm client:load />
+</AdminLayout>
+```
+
+**Important:** Do NOT use `<script>` tags with manual `createRoot()` mounting. Use `client:load` instead.
+
+### API Routing (Newsletter Worker)
+
+Routes are defined in `workers/newsletter/src/index.ts` with Hono-like pattern:
+
+```typescript
+router.get('/api/campaigns', auth, handleGetCampaigns);
+router.post('/api/campaigns', auth, handleCreateCampaign);
+```
+
+### D1 Schema Changes
+
+When modifying schema:
+1. Update `workers/newsletter/schema.sql`
+2. Apply to local: `npm run db:migrate`
+3. Apply to prod: `npm run db:migrate:prod` or use ALTER TABLE
 
 ## Project Structure
 
 ```
-src/
-├── pages/           # Route pages (.astro files)
-│   ├── index.astro  # Landing page
-│   ├── about.astro  # About page
-│   ├── portfolio/   # Portfolio section
-│   └── blog/        # Blog links
-├── components/      # Reusable components
-│   ├── Header.astro
-│   └── Footer.astro
-├── layouts/         # Page layouts
-│   └── BaseLayout.astro
-├── content/         # Markdown content (Content Collections)
-│   └── portfolio/   # Portfolio project descriptions
-└── styles/
-    └── global.css   # Tailwind imports
-
-terraform/           # Infrastructure as Code
-├── environments/    # dev, prod configurations
-└── modules/         # Reusable modules
-
-docs/                # Project documentation
+edgeshift/
+├── src/
+│   ├── pages/
+│   │   ├── index.astro           # Landing
+│   │   ├── newsletter/           # Newsletter signup/confirm
+│   │   └── admin/                # Admin dashboard
+│   │       ├── campaigns/        # Campaign CRUD
+│   │       ├── sequences/        # Sequence CRUD
+│   │       └── subscribers/      # Subscriber list
+│   ├── components/
+│   │   └── admin/                # React components for admin
+│   └── utils/
+│       └── admin-api.ts          # API client for admin
+├── workers/
+│   ├── newsletter/               # Newsletter backend
+│   │   ├── src/
+│   │   │   ├── index.ts          # Entry + routing
+│   │   │   ├── routes/           # Route handlers
+│   │   │   └── scheduled.ts      # Cron handler
+│   │   ├── schema.sql            # D1 schema
+│   │   └── wrangler.toml         # Worker config
+│   └── contact-form/             # Contact form backend
+├── terraform/
+│   └── environments/prod/        # Cloudflare IaC
+└── package.json
 ```
-
-## Portfolio Content Source
-
-Reference these projects for portfolio descriptions:
-- `../../prod/mealmgtsystem/` - Meal Management System (AWS Lambda + DynamoDB)
-- `../../prod/inquiry-system/` - Inquiry System (AWS Step Functions)
 
 ## Deployment
 
-- **Preview**: PR branches → `pr-{number}.edgeshift.pages.dev`
-- **Production**: `main` branch → `edgeshift.pages.dev` (→ `edgeshift.dev` after domain setup)
+- **Pages (Frontend):** Push to `main` → auto-deploy to `edgeshift.tech`
+- **Workers:** Manual deploy via `wrangler deploy`
 
-## Key Conventions
+```bash
+# Deploy newsletter worker
+cd workers/newsletter && npm run deploy
 
-- Pages use `.astro` extension
-- Components are in `src/components/`
-- Content Collections for portfolio items in `src/content/portfolio/`
-- Tailwind v4 syntax (use `@import "tailwindcss"` not `@tailwind` directives)
+# Deploy pages (if not using CI)
+npm run build && npx wrangler pages deploy dist --project-name edgeshift
+```
 
-## Phase Roadmap
+## Environment & Secrets
 
-| Phase | Focus | Status |
-|:------|:------|:-------|
-| Phase 1 | MVP Portfolio | Current |
-| Phase 2 | Custom domain, Contact form, SEO | Planned |
-| Phase 3 | Blog integration | Future |
+### Newsletter Worker Secrets (set via `wrangler secret put`)
+- `RESEND_API_KEY` - Resend API key
+- `ADMIN_API_KEY` - Admin authentication key
+- `RESEND_WEBHOOK_SECRET` - Webhook signature verification
+
+### Terraform Variables
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`

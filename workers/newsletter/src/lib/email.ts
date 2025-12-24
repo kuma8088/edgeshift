@@ -103,14 +103,22 @@ interface BatchEmailOptions {
   html: string;
 }
 
+export interface BatchSendResult {
+  success: boolean;
+  sent: number;
+  error?: string;
+  results: Array<{ email: string; resendId?: string; error?: string }>;
+}
+
 export async function sendBatchEmails(
   apiKey: string,
   from: string,
   emails: BatchEmailOptions[]
-): Promise<{ success: boolean; sent: number; error?: string }> {
+): Promise<BatchSendResult> {
   // Resend batch API supports max 100 emails per request
   const MAX_BATCH_SIZE = 100;
   let totalSent = 0;
+  const allResults: Array<{ email: string; resendId?: string; error?: string }> = [];
 
   try {
     for (let i = 0; i < emails.length; i += MAX_BATCH_SIZE) {
@@ -132,25 +140,44 @@ export async function sendBatchEmails(
         ),
       });
 
-      if (!response.ok) {
-        const result: ResendBatchResponse = await response.json();
+      const result: ResendBatchResponse = await response.json();
+
+      if (!response.ok || result.error) {
         console.error('Resend batch API error:', {
           status: response.status,
           error: result.error,
           batchIndex: i,
           batchSize: batch.length,
         });
+        // Mark all emails in this batch as failed
+        batch.forEach((email) => {
+          allResults.push({
+            email: email.to,
+            error: result.error?.message || `Batch send failed (HTTP ${response.status})`,
+          });
+        });
         return {
           success: false,
           sent: totalSent,
           error: result.error?.message || `Batch send failed (HTTP ${response.status})`,
+          results: allResults,
         };
+      }
+
+      // Map Resend IDs to emails
+      if (result.data) {
+        batch.forEach((email, index) => {
+          allResults.push({
+            email: email.to,
+            resendId: result.data?.[index]?.id,
+          });
+        });
       }
 
       totalSent += batch.length;
     }
 
-    return { success: true, sent: totalSent };
+    return { success: true, sent: totalSent, results: allResults };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Batch email sending error:', {
@@ -162,6 +189,7 @@ export async function sendBatchEmails(
       success: false,
       sent: totalSent,
       error: `Batch email sending error: ${errorMessage}`,
+      results: allResults,
     };
   }
 }
