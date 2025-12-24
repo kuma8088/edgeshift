@@ -1,13 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { AuthProvider } from '../../../components/admin/AuthProvider';
-import { CampaignDetail } from '../../../components/admin/CampaignDetail';
-
-const { id } = Astro.params;
+import { SequenceDetailWrapper } from '../../../components/admin/SequenceDetailWrapper';
 ---
 
-<AdminLayout title="キャンペーン詳細">
+<AdminLayout title="シーケンス詳細">
   <AuthProvider client:load>
-    <CampaignDetail client:load campaignId={id!} />
+    <SequenceDetailWrapper client:load />
   </AuthProvider>
 </AdminLayout>

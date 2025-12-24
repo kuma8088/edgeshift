@@ -170,7 +170,7 @@ export function CampaignList() {
                   </span>
                   {campaign.status === 'sent' && (
                     <a
-                      href={`/admin/campaigns/${campaign.id}`}
+                      href={`/admin/campaigns/detail?id=${campaign.id}`}
                       className="text-sm text-[var(--color-accent)] hover:underline"
                     >
                       詳細

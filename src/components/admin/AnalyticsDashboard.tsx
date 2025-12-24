@@ -130,7 +130,7 @@ export function AnalyticsDashboard() {
                     <tr key={campaign.id} className="hover:bg-[var(--color-bg-tertiary)]">
                       <td className="px-6 py-4 text-sm text-[var(--color-text)]">
                         <a
-                          href={`/admin/campaigns/${campaign.id}`}
+                          href={`/admin/campaigns/detail?id=${campaign.id}`}
                           className="text-[var(--color-accent)] hover:underline"
                         >
                           {campaign.subject}
@@ -206,7 +206,7 @@ export function AnalyticsDashboard() {
                     <tr key={sequence.id} className="hover:bg-[var(--color-bg-tertiary)]">
                       <td className="px-6 py-4 text-sm text-[var(--color-text)]">
                         <a
-                          href={`/admin/sequences/${sequence.id}`}
+                          href={`/admin/sequences/detail?id=${sequence.id}`}
                           className="text-[var(--color-accent)] hover:underline"
                         >
                           {sequence.name}
