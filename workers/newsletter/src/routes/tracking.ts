@@ -110,3 +110,95 @@ export async function handleGetCampaignTracking(
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+interface ClickEvent {
+  email: string;
+  name: string | null;
+  url: string;
+  clicked_at: number;
+}
+
+interface CampaignClicksResponse {
+  campaign_id: string;
+  summary: {
+    total_clicks: number;
+    unique_clickers: number;
+    unique_urls: number;
+  };
+  clicks: ClickEvent[];
+}
+
+export async function getCampaignClicks(
+  env: Env,
+  campaignId: string
+): Promise<CampaignClicksResponse | null> {
+  // Verify campaign exists
+  const campaign = await env.DB.prepare(
+    'SELECT id FROM campaigns WHERE id = ?'
+  ).bind(campaignId).first();
+
+  if (!campaign) {
+    return null;
+  }
+
+  // Get all clicks with subscriber info
+  const clicksResult = await env.DB.prepare(`
+    SELECT
+      s.email,
+      s.name,
+      ce.clicked_url as url,
+      ce.clicked_at
+    FROM click_events ce
+    JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
+    JOIN subscribers s ON ce.subscriber_id = s.id
+    WHERE dl.campaign_id = ?
+    ORDER BY ce.clicked_at DESC
+  `).bind(campaignId).all<{
+    email: string;
+    name: string | null;
+    url: string;
+    clicked_at: number;
+  }>();
+
+  const clicks = clicksResult.results || [];
+
+  // Calculate summary
+  const uniqueClickers = new Set(clicks.map(c => c.email)).size;
+  const uniqueUrls = new Set(clicks.map(c => c.url)).size;
+
+  return {
+    campaign_id: campaignId,
+    summary: {
+      total_clicks: clicks.length,
+      unique_clickers: uniqueClickers,
+      unique_urls: uniqueUrls,
+    },
+    clicks: clicks.map(c => ({
+      email: c.email,
+      name: c.name,
+      url: c.url,
+      clicked_at: c.clicked_at,
+    })),
+  };
+}
+
+export async function handleGetCampaignClicks(
+  request: Request,
+  env: Env,
+  campaignId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const result = await getCampaignClicks(env, campaignId);
+
+  if (!result) {
+    return errorResponse('Campaign not found', 404);
+  }
+
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}

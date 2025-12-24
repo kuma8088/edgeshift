@@ -69,4 +69,81 @@ describe('tracking API', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('getCampaignClicks', () => {
+    it('should return all clicks for a campaign', async () => {
+      const env = getTestEnv();
+
+      // Setup: Create subscribers (required for foreign key)
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, name, status)
+        VALUES
+          ('sub-1', 'user1@example.com', 'User 1', 'active'),
+          ('sub-2', 'user2@example.com', 'User 2', 'active')
+      `).run();
+
+      // Setup: Create campaign
+      await env.DB.prepare(`
+        INSERT INTO campaigns (id, subject, content, status)
+        VALUES ('camp-1', 'Test Campaign', '<p>Content</p>', 'sent')
+      `).run();
+
+      // Setup: Create delivery logs
+      await env.DB.prepare(`
+        INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status)
+        VALUES
+          ('dl-1', 'camp-1', 'sub-1', 'user1@example.com', 'clicked'),
+          ('dl-2', 'camp-1', 'sub-2', 'user2@example.com', 'clicked')
+      `).run();
+
+      // Setup: Create click events
+      await env.DB.prepare(`
+        INSERT INTO click_events (id, delivery_log_id, subscriber_id, clicked_url, clicked_at)
+        VALUES
+          ('ce-1', 'dl-1', 'sub-1', 'https://example.com/article1', 1703404800),
+          ('ce-2', 'dl-1', 'sub-1', 'https://example.com/article1', 1703408400),
+          ('ce-3', 'dl-2', 'sub-2', 'https://example.com/article2', 1703410000)
+      `).run();
+
+      // Import and call the function
+      const { getCampaignClicks } = await import('../routes/tracking');
+      const result = await getCampaignClicks(env, 'camp-1');
+
+      expect(result).not.toBeNull();
+      expect(result!.campaign_id).toBe('camp-1');
+      expect(result!.summary.total_clicks).toBe(3);
+      expect(result!.summary.unique_clickers).toBe(2);
+      expect(result!.summary.unique_urls).toBe(2);
+      expect(result!.clicks).toHaveLength(3);
+      expect(result!.clicks[0]).toMatchObject({
+        email: 'user2@example.com',
+        name: 'User 2',
+        url: 'https://example.com/article2',
+      });
+    });
+
+    it('should return empty clicks for campaign with no clicks', async () => {
+      const env = getTestEnv();
+
+      // Setup: Create campaign
+      await env.DB.prepare(`
+        INSERT INTO campaigns (id, subject, content, status)
+        VALUES ('camp-1', 'Test Campaign', '<p>Content</p>', 'sent')
+      `).run();
+
+      const { getCampaignClicks } = await import('../routes/tracking');
+      const result = await getCampaignClicks(env, 'camp-1');
+
+      expect(result).not.toBeNull();
+      expect(result!.summary.total_clicks).toBe(0);
+      expect(result!.clicks).toHaveLength(0);
+    });
+
+    it('should return null for non-existent campaign', async () => {
+      const env = getTestEnv();
+      const { getCampaignClicks } = await import('../routes/tracking');
+      const result = await getCampaignClicks(env, 'non-existent');
+      expect(result).toBeNull();
+    });
+  });
 });
