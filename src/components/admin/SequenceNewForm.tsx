@@ -6,6 +6,7 @@ import { SequenceForm } from './SequenceForm';
 
 interface SequenceStep {
   delay_days: number;
+  delay_time?: string;
   subject: string;
   content: string;
 }
@@ -14,7 +15,7 @@ export default function SequenceNewForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (data: { name: string; description?: string; steps: SequenceStep[] }) => {
+  const handleSubmit = async (data: { name: string; description?: string; default_send_time: string; steps: SequenceStep[] }) => {
     setLoading(true);
     setError(null);
 
