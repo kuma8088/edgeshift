@@ -24,6 +24,11 @@ import {
 import { processScheduledCampaigns } from './scheduled';
 import { handleResendWebhook } from './routes/webhook';
 import { getDashboardStats } from './routes/dashboard';
+import {
+  handleGetCampaignTracking,
+  handleGetCampaignClicks,
+  handleGetSubscriberEngagement,
+} from './routes/tracking';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -57,6 +62,12 @@ export default {
       } else if (path.match(/^\/api\/campaigns\/[^\/]+\/stats$/) && request.method === 'GET') {
         const id = path.replace('/api/campaigns/', '').replace('/stats', '');
         response = await getCampaignStats(request, env, id);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+\/tracking$/) && request.method === 'GET') {
+        const id = path.replace('/api/campaigns/', '').replace('/tracking', '');
+        response = await handleGetCampaignTracking(request, env, id);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+\/clicks$/) && request.method === 'GET') {
+        const id = path.replace('/api/campaigns/', '').replace('/clicks', '');
+        response = await handleGetCampaignClicks(request, env, id);
       } else if (path.match(/^\/api\/campaigns\/[^\/]+$/) && request.method === 'GET') {
         const id = path.replace('/api/campaigns/', '');
         response = await getCampaign(request, env, id);
@@ -90,6 +101,9 @@ export default {
       } else if (path.match(/^\/api\/subscribers\/[^\/]+\/sequences$/) && request.method === 'GET') {
         const id = path.replace('/api/subscribers/', '').replace('/sequences', '');
         response = await getSubscriberProgress(request, env, id);
+      } else if (path.match(/^\/api\/subscribers\/[^\/]+\/engagement$/) && request.method === 'GET') {
+        const id = path.replace('/api/subscribers/', '').replace('/engagement', '');
+        response = await handleGetSubscriberEngagement(request, env, id);
       }
       // Newsletter routes
       else if (path === '/api/newsletter/subscribe' && request.method === 'POST') {
