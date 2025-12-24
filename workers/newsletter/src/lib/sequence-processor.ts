@@ -1,5 +1,6 @@
 import type { Env } from '../types';
 import { sendEmail } from './email';
+import { recordSequenceDeliveryLog } from './delivery';
 
 interface PendingSequenceEmail {
   subscriber_sequence_id: string;
@@ -10,6 +11,7 @@ interface PendingSequenceEmail {
   subject: string;
   content: string;
   step_number: number;
+  step_id: string;
   sequence_id: string;
   current_step: number;
   started_at: number;
@@ -38,6 +40,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
         s.email,
         s.name,
         s.unsubscribe_token,
+        step.id as step_id,
         step.subject,
         step.content,
         step.step_number,
@@ -75,6 +78,20 @@ export async function processSequenceEmails(env: Env): Promise<void> {
       );
 
       if (result.success) {
+        // Record delivery log
+        try {
+          await recordSequenceDeliveryLog(env, {
+            sequenceId: email.sequence_id,
+            sequenceStepId: email.step_id,
+            subscriberId: email.subscriber_id,
+            email: email.email,
+            resendId: result.id,
+          });
+        } catch (logError) {
+          console.error('Failed to record sequence delivery log:', logError);
+          // Continue - email was sent successfully
+        }
+
         // Check if this is the last step
         const totalSteps = await env.DB.prepare(
           'SELECT COUNT(*) as count FROM sequence_steps WHERE sequence_id = ?'
@@ -96,6 +113,19 @@ export async function processSequenceEmails(env: Env): Promise<void> {
 
         console.log(`Sequence step ${email.step_number} sent to ${email.email}${isComplete ? ' (completed)' : ''}`);
       } else {
+        // Record failed delivery log
+        try {
+          await recordSequenceDeliveryLog(env, {
+            sequenceId: email.sequence_id,
+            sequenceStepId: email.step_id,
+            subscriberId: email.subscriber_id,
+            email: email.email,
+            status: 'failed',
+            errorMessage: result.error,
+          });
+        } catch (logError) {
+          console.error('Failed to record sequence delivery log:', logError);
+        }
         console.error(`Failed to send sequence email to ${email.email}:`, result.error);
       }
     }
