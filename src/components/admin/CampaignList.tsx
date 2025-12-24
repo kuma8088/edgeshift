@@ -168,6 +168,14 @@ export function CampaignList() {
                   >
                     {statusLabels[campaign.status as keyof typeof statusLabels]}
                   </span>
+                  {campaign.status === 'sent' && (
+                    <a
+                      href={`/admin/campaigns/${campaign.id}`}
+                      className="text-sm text-[var(--color-accent)] hover:underline"
+                    >
+                      詳細
+                    </a>
+                  )}
                 </div>
                 <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2 mb-2">
                   {campaign.content}

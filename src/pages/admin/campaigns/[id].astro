@@ -1,0 +1,13 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { CampaignDetail } from '../../../components/admin/CampaignDetail';
+
+const { id } = Astro.params;
+---
+
+<AdminLayout title="キャンペーン詳細">
+  <AuthProvider client:load>
+    <CampaignDetail client:load campaignId={id!} />
+  </AuthProvider>
+</AdminLayout>
