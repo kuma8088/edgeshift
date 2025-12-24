@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { SequenceStepEditor } from './SequenceStepEditor';
+import { SequenceTimelinePreview } from './SequenceTimelinePreview';
 
 interface SequenceStep {
   delay_days: number;
@@ -140,6 +141,13 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
         </label>
         <SequenceStepEditor steps={steps} onChange={setSteps} />
       </div>
+
+      {steps.length > 0 && steps[0].subject && (
+        <SequenceTimelinePreview
+          defaultSendTime={defaultSendTime}
+          steps={steps}
+        />
+      )}
 
       <div className="flex gap-3">
         <button
