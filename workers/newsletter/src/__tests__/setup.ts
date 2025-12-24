@@ -1,6 +1,10 @@
 import { env } from 'cloudflare:test';
 
 export function getTestEnv() {
+  // Create a proper whsec_ format secret (whsec_ + base64 encoded key)
+  const rawKey = 'test_secret_key_12345_bytes!';
+  const webhookSecret = 'whsec_' + btoa(rawKey);
+
   return {
     DB: env.DB,
     RESEND_API_KEY: 'test-api-key',
@@ -10,7 +14,7 @@ export function getTestEnv() {
     SENDER_EMAIL: 'test@example.com',
     SENDER_NAME: 'Test Newsletter',
     SITE_URL: 'http://localhost:4321',
-    RESEND_WEBHOOK_SECRET: 'whsec_test_secret',
+    RESEND_WEBHOOK_SECRET: webhookSecret,
   };
 }
 
@@ -42,7 +46,9 @@ export async function setupTestDb() {
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS delivery_logs (
       id TEXT PRIMARY KEY,
-      campaign_id TEXT NOT NULL,
+      campaign_id TEXT,
+      sequence_id TEXT,
+      sequence_step_id TEXT,
       subscriber_id TEXT NOT NULL,
       email TEXT NOT NULL,
       status TEXT DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed')),
@@ -86,6 +92,16 @@ export async function setupTestDb() {
       FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
       FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE,
       UNIQUE(subscriber_id, sequence_id)
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS click_events (
+      id TEXT PRIMARY KEY,
+      delivery_log_id TEXT NOT NULL,
+      subscriber_id TEXT NOT NULL,
+      clicked_url TEXT NOT NULL,
+      clicked_at INTEGER NOT NULL,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (delivery_log_id) REFERENCES delivery_logs(id),
+      FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
     )`)
   ]);
 }
@@ -95,6 +111,7 @@ export async function cleanupTestDb() {
   // Use WHERE 1=1 to make it valid even if table is empty
   try {
     await env.DB.batch([
+      env.DB.prepare('DELETE FROM click_events WHERE 1=1'),
       env.DB.prepare('DELETE FROM delivery_logs WHERE 1=1'),
       env.DB.prepare('DELETE FROM subscriber_sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequence_steps WHERE 1=1'),

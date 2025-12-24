@@ -1,4 +1,4 @@
-import type { Env, DeliveryLog, DeliveryStatus } from '../types';
+import type { Env, DeliveryLog, DeliveryStatus, ClickEvent } from '../types';
 
 export interface RecordDeliveryLogParams {
   campaignId: string;
@@ -195,4 +195,87 @@ export async function findDeliveryLogByResendId(
   ).bind(resendId).first<DeliveryLog>();
 
   return result || null;
+}
+
+export interface RecordClickEventParams {
+  deliveryLogId: string;
+  subscriberId: string;
+  clickedUrl: string;
+}
+
+/**
+ * Record a click event
+ */
+export async function recordClickEvent(
+  env: Env,
+  params: RecordClickEventParams
+): Promise<void> {
+  const id = crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+
+  await env.DB.prepare(`
+    INSERT INTO click_events (id, delivery_log_id, subscriber_id, clicked_url, clicked_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    params.deliveryLogId,
+    params.subscriberId,
+    params.clickedUrl,
+    now
+  ).run();
+}
+
+/**
+ * Get click events for a delivery log
+ */
+export async function getClickEvents(
+  env: Env,
+  deliveryLogId: string
+): Promise<ClickEvent[]> {
+  const result = await env.DB.prepare(`
+    SELECT * FROM click_events
+    WHERE delivery_log_id = ?
+    ORDER BY clicked_at ASC
+  `).bind(deliveryLogId).all<ClickEvent>();
+
+  return result.results || [];
+}
+
+export interface RecordSequenceDeliveryLogParams {
+  sequenceId: string;
+  sequenceStepId: string;
+  subscriberId: string;
+  email: string;
+  resendId?: string;
+  status?: DeliveryStatus;
+  errorMessage?: string;
+}
+
+/**
+ * Record a sequence delivery log entry
+ */
+export async function recordSequenceDeliveryLog(
+  env: Env,
+  params: RecordSequenceDeliveryLogParams
+): Promise<void> {
+  const id = crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+  const status = params.status || 'sent';
+
+  await env.DB.prepare(`
+    INSERT INTO delivery_logs (
+      id, campaign_id, sequence_id, sequence_step_id, subscriber_id, email, status, resend_id, sent_at, error_message
+    )
+    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    params.sequenceId,
+    params.sequenceStepId,
+    params.subscriberId,
+    params.email,
+    status,
+    params.resendId || null,
+    status === 'sent' || status === 'delivered' ? now : null,
+    params.errorMessage || null
+  ).run();
 }

@@ -617,4 +617,106 @@ describe('Sequence Processor', () => {
       expect(mockSendEmail).not.toHaveBeenCalled();
     });
   });
+
+  describe('sequence delivery logging', () => {
+    it('should record delivery log when sending sequence email', async () => {
+      const env = getTestEnv();
+      const mockSendEmail = vi.mocked(email.sendEmail);
+      mockSendEmail.mockResolvedValue({ success: true, id: 'resend-seq-123' });
+
+      // Create subscriber
+      const subscriberId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(subscriberId, 'test@example.com', 'Test User', 'active', 'unsub-token').run();
+
+      // Create sequence
+      const sequenceId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name, is_active)
+        VALUES (?, ?, ?)
+      `).bind(sequenceId, 'Welcome Series', 1).run();
+
+      const stepId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(stepId, sequenceId, 1, 0, 'Welcome!', '<p>Welcome content</p>').run();
+
+      // Enroll subscriber (due now)
+      const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
+      const enrollmentId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(enrollmentId, subscriberId, sequenceId, 0, oneDayAgo).run();
+
+      // Process sequence emails
+      await processSequenceEmails(env);
+
+      // Verify delivery log was created
+      const log = await env.DB.prepare(
+        'SELECT * FROM delivery_logs WHERE sequence_id = ? AND sequence_step_id = ?'
+      ).bind(sequenceId, stepId).first();
+
+      expect(log).toBeTruthy();
+      expect(log?.campaign_id).toBeNull();
+      expect(log?.sequence_id).toBe(sequenceId);
+      expect(log?.sequence_step_id).toBe(stepId);
+      expect(log?.subscriber_id).toBe(subscriberId);
+      expect(log?.email).toBe('test@example.com');
+      expect(log?.status).toBe('sent');
+      expect(log?.resend_id).toBe('resend-seq-123');
+      expect(log?.sent_at).toBeGreaterThan(0);
+    });
+
+    it('should record failed delivery log when email send fails', async () => {
+      const env = getTestEnv();
+      const mockSendEmail = vi.mocked(email.sendEmail);
+      mockSendEmail.mockResolvedValue({ success: false, error: 'Email send failed' });
+
+      // Create subscriber
+      const subscriberId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status, unsubscribe_token)
+        VALUES (?, ?, ?, ?)
+      `).bind(subscriberId, 'test@example.com', 'active', 'unsub-token').run();
+
+      // Create sequence
+      const sequenceId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name, is_active)
+        VALUES (?, ?, ?)
+      `).bind(sequenceId, 'Test Sequence', 1).run();
+
+      const stepId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(stepId, sequenceId, 1, 0, 'Test', '<p>Test content</p>').run();
+
+      // Enroll subscriber
+      const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
+      const enrollmentId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(enrollmentId, subscriberId, sequenceId, 0, oneDayAgo).run();
+
+      // Process sequence emails
+      await processSequenceEmails(env);
+
+      // Verify failed delivery log was created
+      const log = await env.DB.prepare(
+        'SELECT * FROM delivery_logs WHERE sequence_id = ?'
+      ).bind(sequenceId).first();
+
+      expect(log).toBeTruthy();
+      expect(log?.status).toBe('failed');
+      expect(log?.error_message).toBe('Email send failed');
+      expect(log?.resend_id).toBeNull();
+      expect(log?.sent_at).toBeNull();
+    });
+  });
 });

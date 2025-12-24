@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
-import { recordDeliveryLog, updateDeliveryStatus, getDeliveryLogs, findDeliveryLogByResendId } from '../lib/delivery';
+import { recordDeliveryLog, updateDeliveryStatus, getDeliveryLogs, findDeliveryLogByResendId, recordSequenceDeliveryLog } from '../lib/delivery';
 
 describe('delivery logging', () => {
   beforeEach(async () => {
@@ -221,6 +221,69 @@ describe('delivery logging', () => {
       const result = await findDeliveryLogByResendId(env, 'non_existent');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('recordSequenceDeliveryLog', () => {
+    beforeEach(async () => {
+      const env = getTestEnv();
+
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name, is_active)
+        VALUES ('seq-1', 'Welcome Sequence', 1)
+      `).run();
+
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, subject, content)
+        VALUES ('step-1', 'seq-1', 1, 0, 'Welcome!', '<p>Welcome content</p>')
+      `).run();
+    });
+
+    it('should record a sequence delivery log', async () => {
+      const env = getTestEnv();
+
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: 'seq-1',
+        sequenceStepId: 'step-1',
+        subscriberId: 'sub-1',
+        email: 'test@example.com',
+        resendId: 'resend-seq-123',
+      });
+
+      const log = await env.DB.prepare(
+        'SELECT * FROM delivery_logs WHERE sequence_id = ? AND sequence_step_id = ?'
+      ).bind('seq-1', 'step-1').first();
+
+      expect(log).toBeTruthy();
+      expect(log?.campaign_id).toBeNull();
+      expect(log?.sequence_id).toBe('seq-1');
+      expect(log?.sequence_step_id).toBe('step-1');
+      expect(log?.subscriber_id).toBe('sub-1');
+      expect(log?.email).toBe('test@example.com');
+      expect(log?.resend_id).toBe('resend-seq-123');
+      expect(log?.status).toBe('sent');
+      expect(log?.sent_at).toBeGreaterThan(0);
+    });
+
+    it('should record a failed sequence delivery log', async () => {
+      const env = getTestEnv();
+
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: 'seq-1',
+        sequenceStepId: 'step-1',
+        subscriberId: 'sub-1',
+        email: 'test@example.com',
+        status: 'failed',
+        errorMessage: 'Email send failed',
+      });
+
+      const log = await env.DB.prepare(
+        'SELECT * FROM delivery_logs WHERE sequence_id = ?'
+      ).bind('seq-1').first();
+
+      expect(log?.status).toBe('failed');
+      expect(log?.error_message).toBe('Email send failed');
+      expect(log?.resend_id).toBeNull();
     });
   });
 });

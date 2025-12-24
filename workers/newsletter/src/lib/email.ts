@@ -53,7 +53,7 @@ export async function sendEmail(
   apiKey: string,
   from: string,
   options: SendEmailOptions
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
     const response = await fetchWithRetry('https://api.resend.com/emails', {
       method: 'POST',
@@ -83,7 +83,7 @@ export async function sendEmail(
       };
     }
 
-    return { success: true };
+    return { success: true, id: result.id };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Email sending error:', {

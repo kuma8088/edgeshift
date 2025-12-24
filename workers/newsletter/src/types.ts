@@ -67,10 +67,9 @@ export interface DeliveryLog {
 export interface ClickEvent {
   id: string;
   delivery_log_id: string;
-  url: string;
+  subscriber_id: string;
+  clicked_url: string;
   clicked_at: number;
-  user_agent: string | null;
-  ip_address: string | null;
   created_at: number;
 }
 
