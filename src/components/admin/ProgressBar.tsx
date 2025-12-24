@@ -4,7 +4,7 @@ interface ProgressBarProps {
   label?: string;
   showPercentage?: boolean;
   size?: 'sm' | 'md';
-  color?: 'blue' | 'green' | 'yellow' | 'red';
+  color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
 }
 
 const colorClasses = {
@@ -12,6 +12,7 @@ const colorClasses = {
   green: 'bg-green-500',
   yellow: 'bg-yellow-500',
   red: 'bg-red-500',
+  purple: 'bg-purple-500',
 };
 
 const sizeClasses = {
