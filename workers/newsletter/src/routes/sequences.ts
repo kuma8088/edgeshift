@@ -13,28 +13,38 @@ export async function createSequence(
 
   try {
     const body = await request.json<CreateSequenceRequest>();
-    const { name, description, steps } = body;
+    const { name, description, default_send_time, steps } = body;
 
     if (!name || !steps || steps.length === 0) {
       return errorResponse('Name and at least one step are required', 400);
     }
 
+    if (!default_send_time || !/^\d{2}:\d{2}$/.test(default_send_time)) {
+      return errorResponse('default_send_time is required in HH:MM format', 400);
+    }
+
     const sequenceId = crypto.randomUUID();
 
-    // Create sequence
+    // Create sequence with default_send_time
     await env.DB.prepare(`
-      INSERT INTO sequences (id, name, description)
-      VALUES (?, ?, ?)
-    `).bind(sequenceId, name, description || null).run();
+      INSERT INTO sequences (id, name, description, default_send_time)
+      VALUES (?, ?, ?, ?)
+    `).bind(sequenceId, name, description || null, default_send_time).run();
 
-    // Create steps
+    // Create steps with optional delay_time
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       const stepId = crypto.randomUUID();
+
+      // Validate delay_time format if provided
+      if (step.delay_time && !/^\d{2}:\d{2}$/.test(step.delay_time)) {
+        return errorResponse(`Step ${i + 1}: delay_time must be in HH:MM format`, 400);
+      }
+
       await env.DB.prepare(`
-        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, subject, content)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(stepId, sequenceId, i + 1, step.delay_days, step.subject, step.content).run();
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(stepId, sequenceId, i + 1, step.delay_days, step.delay_time || null, step.subject, step.content).run();
     }
 
     const sequence = await getSequenceWithSteps(env, sequenceId);
@@ -125,6 +135,13 @@ export async function updateSequence(
     if (body.description !== undefined) {
       updates.push('description = ?');
       bindings.push(body.description);
+    }
+    if (body.default_send_time !== undefined) {
+      if (!/^\d{2}:\d{2}$/.test(body.default_send_time)) {
+        return errorResponse('default_send_time must be in HH:MM format', 400);
+      }
+      updates.push('default_send_time = ?');
+      bindings.push(body.default_send_time);
     }
     if (body.is_active !== undefined) {
       updates.push('is_active = ?');
