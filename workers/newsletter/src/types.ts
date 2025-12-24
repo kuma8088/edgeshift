@@ -49,7 +49,9 @@ export interface Campaign {
 
 export interface DeliveryLog {
   id: string;
-  campaign_id: string;
+  campaign_id: string | null;
+  sequence_id: string | null;
+  sequence_step_id: string | null;
   subscriber_id: string;
   email: string;
   status: DeliveryStatus;
@@ -59,6 +61,15 @@ export interface DeliveryLog {
   opened_at: number | null;
   clicked_at: number | null;
   error_message: string | null;
+  created_at: number;
+}
+
+export interface ClickEvent {
+  id: string;
+  delivery_log_id: string;
+  subscriber_id: string;
+  clicked_url: string;
+  clicked_at: number;
   created_at: number;
 }
 

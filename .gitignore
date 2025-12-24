@@ -47,3 +47,6 @@ tfplan
 
 # Wrangler local state (D1 database, etc.)
 .wrangler/
+
+# Git worktrees
+.worktrees/
