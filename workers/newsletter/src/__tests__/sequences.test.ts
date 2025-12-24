@@ -140,11 +140,11 @@ describe('Sequence CRUD APIs', () => {
       const result = await response.json();
 
       expect(response.status).toBe(200);
-      expect(result.data.id).toBe(sequenceId);
-      expect(result.data.name).toBe('Test Sequence');
-      expect(result.data.steps).toHaveLength(2);
-      expect(result.data.steps[0].delay_days).toBe(0);
-      expect(result.data.steps[1].delay_days).toBe(7);
+      expect(result.data.sequence.id).toBe(sequenceId);
+      expect(result.data.sequence.name).toBe('Test Sequence');
+      expect(result.data.sequence.steps).toHaveLength(2);
+      expect(result.data.sequence.steps[0].delay_days).toBe(0);
+      expect(result.data.sequence.steps[1].delay_days).toBe(7);
     });
 
     it('should return 404 if sequence not found', async () => {

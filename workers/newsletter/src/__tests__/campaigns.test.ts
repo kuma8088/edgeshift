@@ -94,8 +94,8 @@ describe('Campaign CRUD', () => {
       const result = await response.json();
 
       expect(response.status).toBe(200);
-      expect(result.data.id).toBe(campaignId);
-      expect(result.data.subject).toBe('Test Newsletter');
+      expect(result.data.campaign.id).toBe(campaignId);
+      expect(result.data.campaign.subject).toBe('Test Newsletter');
     });
 
     it('should return 404 for non-existent campaign', async () => {

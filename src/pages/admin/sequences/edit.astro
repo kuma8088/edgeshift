@@ -51,7 +51,8 @@ import { AuthProvider } from '../../../components/admin/AuthProvider';
       // Load sequence data
       getSequence(sequenceId).then((result) => {
         if (result.success && result.data) {
-          const sequence = result.data as any;
+          const data = result.data as { sequence: any };
+          const sequence = data.sequence;
 
           const handleSubmit = async (data: any) => {
             // For update, we only send name, description, and is_active

@@ -148,3 +148,29 @@ export async function listSubscribers(params?: { status?: string; limit?: number
   const queryString = query.toString();
   return apiRequest(`/newsletter/subscribers${queryString ? `?${queryString}` : ''}`);
 }
+
+// Tracking
+export async function getCampaignTracking(id: string) {
+  return apiRequest(`/campaigns/${id}/tracking`);
+}
+
+export async function getCampaignClicks(id: string) {
+  return apiRequest(`/campaigns/${id}/clicks`);
+}
+
+export async function getSequenceStats(id: string) {
+  return apiRequest(`/sequences/${id}/stats`);
+}
+
+export async function getSequenceSubscribers(id: string) {
+  return apiRequest(`/sequences/${id}/subscribers`);
+}
+
+export async function getSubscriberEngagement(id: string) {
+  return apiRequest(`/subscribers/${id}/engagement`);
+}
+
+// Analytics
+export async function getAnalyticsOverview() {
+  return apiRequest('/analytics/overview');
+}

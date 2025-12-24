@@ -26,7 +26,8 @@ export default function CampaignEditForm({ campaignId }: CampaignEditFormProps) 
     const fetchCampaign = async () => {
       const result = await getCampaign(campaignId);
       if (result.success && result.data) {
-        setCampaign(result.data as Campaign);
+        const data = result.data as { campaign: Campaign };
+        setCampaign(data.campaign);
       } else {
         setFetchError(result.error || 'Failed to load campaign');
       }

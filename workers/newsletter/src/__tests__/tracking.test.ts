@@ -55,6 +55,7 @@ describe('tracking API', () => {
           clicked: 1,
           bounced: 1,
           failed: 0,
+          reached: 3,
           delivery_rate: 25.0,
           open_rate: 66.7,
           click_rate: 33.3,
@@ -112,8 +113,9 @@ describe('tracking API', () => {
       expect(result).not.toBeNull();
       expect(result!.campaign_id).toBe('camp-1');
       expect(result!.summary.total_clicks).toBe(3);
-      expect(result!.summary.unique_clickers).toBe(2);
-      expect(result!.summary.unique_urls).toBe(2);
+      expect(result!.summary.unique_clicks).toBe(2);
+      expect(result!.summary.top_urls).toHaveLength(2);
+      expect(result!.summary.top_urls[0].clicks).toBeGreaterThanOrEqual(result!.summary.top_urls[1].clicks);
       expect(result!.clicks).toHaveLength(3);
       expect(result!.clicks[0]).toMatchObject({
         email: 'user2@example.com',

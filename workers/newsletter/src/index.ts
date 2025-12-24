@@ -28,7 +28,9 @@ import {
   handleGetCampaignTracking,
   handleGetCampaignClicks,
   handleGetSubscriberEngagement,
+  handleGetSequenceStats,
 } from './routes/tracking';
+import { handleGetAnalyticsOverview } from './routes/analytics';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -98,6 +100,9 @@ export default {
       } else if (path.match(/^\/api\/sequences\/[^\/]+\/subscribers$/) && request.method === 'GET') {
         const id = path.replace('/api/sequences/', '').replace('/subscribers', '');
         response = await getSequenceSubscribers(request, env, id);
+      } else if (path.match(/^\/api\/sequences\/[^\/]+\/stats$/) && request.method === 'GET') {
+        const id = path.replace('/api/sequences/', '').replace('/stats', '');
+        response = await handleGetSequenceStats(request, env, id);
       } else if (path.match(/^\/api\/subscribers\/[^\/]+\/sequences$/) && request.method === 'GET') {
         const id = path.replace('/api/subscribers/', '').replace('/sequences', '');
         response = await getSubscriberProgress(request, env, id);
@@ -122,6 +127,8 @@ export default {
         response = await handleResendWebhook(request, env);
       } else if (path === '/api/dashboard/stats' && request.method === 'GET') {
         response = await getDashboardStats(request, env);
+      } else if (path === '/api/analytics/overview' && request.method === 'GET') {
+        response = await handleGetAnalyticsOverview(request, env);
       } else {
         response = new Response(
           JSON.stringify({ success: false, error: 'Not found' }),

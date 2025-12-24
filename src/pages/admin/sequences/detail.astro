@@ -1,0 +1,11 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { SequenceDetailWrapper } from '../../../components/admin/SequenceDetailWrapper';
+---
+
+<AdminLayout title="シーケンス詳細">
+  <AuthProvider client:load>
+    <SequenceDetailWrapper client:load />
+  </AuthProvider>
+</AdminLayout>

@@ -163,6 +163,12 @@ export function SequenceList() {
               </div>
 
               <div className="flex gap-2 ml-4">
+                <a
+                  href={`/admin/sequences/detail?id=${sequence.id}`}
+                  className="px-3 py-1 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                >
+                  詳細
+                </a>
                 <button
                   onClick={() => handleToggleActive(sequence)}
                   disabled={actionLoading}

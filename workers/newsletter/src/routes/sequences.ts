@@ -79,7 +79,7 @@ export async function getSequence(
       return errorResponse('Sequence not found', 404);
     }
 
-    return successResponse(sequence);
+    return successResponse({ sequence });
   } catch (error) {
     console.error('Get sequence error:', error);
     return errorResponse('Internal server error', 500);

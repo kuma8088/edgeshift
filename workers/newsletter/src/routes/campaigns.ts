@@ -69,7 +69,7 @@ export async function getCampaign(
       return errorResponse('Campaign not found', 404);
     }
 
-    return successResponse(campaign);
+    return successResponse({ campaign });
   } catch (error) {
     console.error('Get campaign error:', error);
     return errorResponse('Internal server error', 500);
