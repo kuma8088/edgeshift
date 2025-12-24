@@ -202,3 +202,197 @@ export async function handleGetCampaignClicks(
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+interface SubscriberEngagementResponse {
+  subscriber: {
+    id: string;
+    email: string;
+    name: string | null;
+    status: string;
+  };
+  campaigns: Array<{
+    id: string;
+    subject: string;
+    status: string;
+    sent_at: number | null;
+    opened_at: number | null;
+    clicks: Array<{ url: string; clicked_at: number }>;
+  }>;
+  sequences: Array<{
+    id: string;
+    name: string;
+    steps: Array<{
+      step_number: number;
+      subject: string;
+      status: string;
+      sent_at: number | null;
+      opened_at: number | null;
+      clicks: Array<{ url: string; clicked_at: number }>;
+    }>;
+  }>;
+}
+
+export async function getSubscriberEngagement(
+  env: Env,
+  subscriberId: string
+): Promise<SubscriberEngagementResponse | null> {
+  // Get subscriber
+  const subscriber = await env.DB.prepare(
+    'SELECT id, email, name, status FROM subscribers WHERE id = ?'
+  ).bind(subscriberId).first<{
+    id: string;
+    email: string;
+    name: string | null;
+    status: string;
+  }>();
+
+  if (!subscriber) {
+    return null;
+  }
+
+  // Get campaign delivery logs
+  const campaignLogs = await env.DB.prepare(`
+    SELECT
+      dl.id as delivery_log_id,
+      dl.status,
+      dl.sent_at,
+      dl.opened_at,
+      c.id as campaign_id,
+      c.subject
+    FROM delivery_logs dl
+    JOIN campaigns c ON dl.campaign_id = c.id
+    WHERE dl.subscriber_id = ? AND dl.campaign_id IS NOT NULL
+    ORDER BY dl.sent_at DESC
+  `).bind(subscriberId).all<{
+    delivery_log_id: string;
+    status: string;
+    sent_at: number | null;
+    opened_at: number | null;
+    campaign_id: string;
+    subject: string;
+  }>();
+
+  // Get sequence delivery logs
+  const sequenceLogs = await env.DB.prepare(`
+    SELECT
+      dl.id as delivery_log_id,
+      dl.status,
+      dl.sent_at,
+      dl.opened_at,
+      s.id as sequence_id,
+      s.name as sequence_name,
+      ss.step_number,
+      ss.subject
+    FROM delivery_logs dl
+    JOIN sequences s ON dl.sequence_id = s.id
+    JOIN sequence_steps ss ON dl.sequence_step_id = ss.id
+    WHERE dl.subscriber_id = ? AND dl.sequence_id IS NOT NULL
+    ORDER BY s.id, ss.step_number
+  `).bind(subscriberId).all<{
+    delivery_log_id: string;
+    status: string;
+    sent_at: number | null;
+    opened_at: number | null;
+    sequence_id: string;
+    sequence_name: string;
+    step_number: number;
+    subject: string;
+  }>();
+
+  // Get all clicks for this subscriber
+  const clicks = await env.DB.prepare(`
+    SELECT delivery_log_id, clicked_url, clicked_at
+    FROM click_events
+    WHERE subscriber_id = ?
+    ORDER BY clicked_at DESC
+  `).bind(subscriberId).all<{
+    delivery_log_id: string;
+    clicked_url: string;
+    clicked_at: number;
+  }>();
+
+  const clicksByLog = new Map<string, Array<{ url: string; clicked_at: number }>>();
+  for (const click of clicks.results || []) {
+    if (!clicksByLog.has(click.delivery_log_id)) {
+      clicksByLog.set(click.delivery_log_id, []);
+    }
+    clicksByLog.get(click.delivery_log_id)!.push({
+      url: click.clicked_url,
+      clicked_at: click.clicked_at,
+    });
+  }
+
+  // Build campaigns array
+  const campaigns = (campaignLogs.results || []).map(log => ({
+    id: log.campaign_id,
+    subject: log.subject,
+    status: log.status,
+    sent_at: log.sent_at,
+    opened_at: log.opened_at,
+    clicks: clicksByLog.get(log.delivery_log_id) || [],
+  }));
+
+  // Build sequences array (group by sequence)
+  const sequenceMap = new Map<string, {
+    id: string;
+    name: string;
+    steps: Array<{
+      step_number: number;
+      subject: string;
+      status: string;
+      sent_at: number | null;
+      opened_at: number | null;
+      clicks: Array<{ url: string; clicked_at: number }>;
+    }>;
+  }>();
+
+  for (const log of sequenceLogs.results || []) {
+    if (!sequenceMap.has(log.sequence_id)) {
+      sequenceMap.set(log.sequence_id, {
+        id: log.sequence_id,
+        name: log.sequence_name,
+        steps: [],
+      });
+    }
+    sequenceMap.get(log.sequence_id)!.steps.push({
+      step_number: log.step_number,
+      subject: log.subject,
+      status: log.status,
+      sent_at: log.sent_at,
+      opened_at: log.opened_at,
+      clicks: clicksByLog.get(log.delivery_log_id) || [],
+    });
+  }
+
+  return {
+    subscriber: {
+      id: subscriber.id,
+      email: subscriber.email,
+      name: subscriber.name,
+      status: subscriber.status,
+    },
+    campaigns,
+    sequences: Array.from(sequenceMap.values()),
+  };
+}
+
+export async function handleGetSubscriberEngagement(
+  request: Request,
+  env: Env,
+  subscriberId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const result = await getSubscriberEngagement(env, subscriberId);
+
+  if (!result) {
+    return errorResponse('Subscriber not found', 404);
+  }
+
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
