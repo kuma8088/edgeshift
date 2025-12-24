@@ -18,32 +18,32 @@ const fullTitle = `${title} | EdgeShift Admin`;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{fullTitle}</title>
   </head>
-  <body class="min-h-screen bg-[#f5f5f5]">
+  <body class="min-h-screen bg-[var(--color-bg-secondary)]">
     <div class="flex min-h-screen">
-      <!-- Sidebar -->
-      <aside class="w-64 bg-[#1e1e1e] text-white flex-shrink-0">
-        <div class="p-4 border-b border-[#333]">
-          <a href="/admin" class="text-xl font-bold text-[#7c3aed]">EdgeShift Admin</a>
+      <!-- Sidebar - Light theme -->
+      <aside class="w-64 bg-[var(--color-bg)] border-r border-[var(--color-border)] flex-shrink-0">
+        <div class="p-4 border-b border-[var(--color-border)]">
+          <a href="/admin" class="text-xl font-bold text-[var(--color-accent)]">EdgeShift Admin</a>
         </div>
         <nav class="p-4">
           <ul class="space-y-2">
             <li>
-              <a href="/admin" class="block px-4 py-2 rounded-lg hover:bg-[#333] transition-colors">
+              <a href="/admin" class="block px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
                 ダッシュボード
               </a>
             </li>
             <li>
-              <a href="/admin/campaigns" class="block px-4 py-2 rounded-lg hover:bg-[#333] transition-colors">
+              <a href="/admin/campaigns" class="block px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
                 キャンペーン
               </a>
             </li>
             <li>
-              <a href="/admin/sequences" class="block px-4 py-2 rounded-lg hover:bg-[#333] transition-colors">
+              <a href="/admin/sequences" class="block px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
                 シーケンス
               </a>
             </li>
             <li>
-              <a href="/admin/subscribers" class="block px-4 py-2 rounded-lg hover:bg-[#333] transition-colors">
+              <a href="/admin/subscribers" class="block px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
                 購読者
               </a>
             </li>
