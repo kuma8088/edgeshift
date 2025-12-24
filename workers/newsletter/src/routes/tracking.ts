@@ -487,11 +487,11 @@ export async function getSequenceStats(
     in_progress: 0,
   };
 
-  // Get all steps for this sequence
+  // Get all enabled steps for this sequence (excludes soft-deleted steps)
   const steps = await env.DB.prepare(`
     SELECT id, step_number, subject
     FROM sequence_steps
-    WHERE sequence_id = ?
+    WHERE sequence_id = ? AND is_enabled = 1
     ORDER BY step_number
   `).bind(sequenceId).all<{
     id: string;

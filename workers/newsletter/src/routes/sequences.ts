@@ -170,20 +170,25 @@ export async function updateSequence(
         }
       }
 
-      // Soft delete: disable existing enabled steps (preserves FK references and history)
-      await env.DB.prepare(
-        'UPDATE sequence_steps SET is_enabled = 0 WHERE sequence_id = ? AND is_enabled = 1'
-      ).bind(id).run();
-
-      // Insert new steps with is_enabled = 1
+      // Insert new steps FIRST (before disabling old ones)
+      // This ensures we always have valid steps even if operation is interrupted
+      const newStepIds: string[] = [];
       for (let i = 0; i < body.steps.length; i++) {
         const step = body.steps[i];
         const stepId = crypto.randomUUID();
+        newStepIds.push(stepId);
         await env.DB.prepare(`
           INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content, is_enabled)
           VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         `).bind(stepId, id, i + 1, step.delay_days, step.delay_time || null, step.subject, step.content).run();
       }
+
+      // Only disable old steps AFTER new steps are successfully inserted
+      // Exclude newly inserted steps from being disabled
+      const placeholders = newStepIds.map(() => '?').join(',');
+      await env.DB.prepare(
+        `UPDATE sequence_steps SET is_enabled = 0 WHERE sequence_id = ? AND is_enabled = 1 AND id NOT IN (${placeholders})`
+      ).bind(id, ...newStepIds).run();
     }
 
     // Return updated sequence with steps
