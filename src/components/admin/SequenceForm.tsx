@@ -5,6 +5,7 @@ import { SequenceStepEditor } from './SequenceStepEditor';
 
 interface SequenceStep {
   delay_days: number;
+  delay_time?: string;
   subject: string;
   content: string;
 }
@@ -13,12 +14,13 @@ interface Sequence {
   id?: string;
   name: string;
   description?: string;
+  default_send_time?: string;
   steps: SequenceStep[];
 }
 
 interface SequenceFormProps {
   sequence?: Sequence;
-  onSubmit: (data: { name: string; description?: string; steps: SequenceStep[] }) => Promise<void>;
+  onSubmit: (data: { name: string; description?: string; default_send_time: string; steps: SequenceStep[] }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -26,6 +28,7 @@ interface SequenceFormProps {
 export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: SequenceFormProps) {
   const [name, setName] = useState(sequence?.name || '');
   const [description, setDescription] = useState(sequence?.description || '');
+  const [defaultSendTime, setDefaultSendTime] = useState(sequence?.default_send_time || '10:00');
   const [steps, setSteps] = useState<SequenceStep[]>(
     sequence?.steps || [{ delay_days: 0, subject: '', content: '' }]
   );
@@ -65,8 +68,10 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
     const data = {
       name: name.trim(),
       description: description.trim() || undefined,
+      default_send_time: defaultSendTime,
       steps: steps.map(step => ({
         delay_days: step.delay_days,
+        delay_time: step.delay_time,
         subject: step.subject.trim(),
         content: step.content.trim(),
       })),
@@ -110,6 +115,23 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
           rows={3}
           className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
         />
+      </div>
+
+      <div>
+        <label htmlFor="default_send_time" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+          デフォルト送信時刻 <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="time"
+          id="default_send_time"
+          value={defaultSendTime}
+          onChange={(e) => setDefaultSendTime(e.target.value)}
+          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+          required
+        />
+        <p className="text-xs text-[var(--color-text-muted)] mt-1">
+          各ステップで個別に指定しない場合、この時刻に送信されます（日本時間）
+        </p>
       </div>
 
       <div>
