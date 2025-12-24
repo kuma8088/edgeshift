@@ -88,7 +88,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
       FROM subscriber_sequences ss
       JOIN subscribers s ON s.id = ss.subscriber_id
       JOIN sequences seq ON seq.id = ss.sequence_id
-      JOIN sequence_steps step ON step.sequence_id = ss.sequence_id
+      JOIN sequence_steps step ON step.sequence_id = ss.sequence_id AND step.is_enabled = 1
       WHERE ss.completed_at IS NULL
       AND s.status = 'active'
       AND seq.is_active = 1
@@ -138,6 +138,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
             sequenceStepId: email.step_id,
             subscriberId: email.subscriber_id,
             email: email.email,
+            emailSubject: email.subject,
             resendId: result.id,
           });
         } catch (logError) {
@@ -145,9 +146,9 @@ export async function processSequenceEmails(env: Env): Promise<void> {
           // Continue - email was sent successfully
         }
 
-        // Check if this is the last step
+        // Check if this is the last step (only count enabled steps)
         const totalSteps = await env.DB.prepare(
-          'SELECT COUNT(*) as count FROM sequence_steps WHERE sequence_id = ?'
+          'SELECT COUNT(*) as count FROM sequence_steps WHERE sequence_id = ? AND is_enabled = 1'
         ).bind(email.sequence_id).first<{ count: number }>();
 
         const isComplete = email.step_number >= (totalSteps?.count || 0);
@@ -173,6 +174,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
             sequenceStepId: email.step_id,
             subscriberId: email.subscriber_id,
             email: email.email,
+            emailSubject: email.subject,
             status: 'failed',
             errorMessage: result.error,
           });

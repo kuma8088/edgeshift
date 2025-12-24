@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS delivery_logs (
   sequence_step_id TEXT,
   subscriber_id TEXT NOT NULL,
   email TEXT NOT NULL,
+  email_subject TEXT,  -- Preserved at send time for historical reference
   status TEXT DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed')),
   resend_id TEXT,
   sent_at INTEGER,
@@ -83,6 +84,7 @@ CREATE TABLE IF NOT EXISTS sequence_steps (
   delay_time TEXT,
   subject TEXT NOT NULL,
   content TEXT NOT NULL,
+  is_enabled INTEGER DEFAULT 1,  -- Soft delete: 0 = disabled, 1 = enabled
   created_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE
 );

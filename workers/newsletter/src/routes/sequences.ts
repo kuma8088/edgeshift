@@ -129,7 +129,6 @@ export async function updateSequence(
     }
 
     const body = await request.json<UpdateSequenceRequest>();
-    console.log('updateSequence body:', JSON.stringify(body));
 
     const updates: string[] = [];
     const bindings: (string | number | null)[] = [];
@@ -171,16 +170,18 @@ export async function updateSequence(
         }
       }
 
-      // Delete existing steps
-      await env.DB.prepare('DELETE FROM sequence_steps WHERE sequence_id = ?').bind(id).run();
+      // Soft delete: disable existing enabled steps (preserves FK references and history)
+      await env.DB.prepare(
+        'UPDATE sequence_steps SET is_enabled = 0 WHERE sequence_id = ? AND is_enabled = 1'
+      ).bind(id).run();
 
-      // Insert new steps
+      // Insert new steps with is_enabled = 1
       for (let i = 0; i < body.steps.length; i++) {
         const step = body.steps[i];
         const stepId = crypto.randomUUID();
         await env.DB.prepare(`
-          INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content, is_enabled)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         `).bind(stepId, id, i + 1, step.delay_days, step.delay_time || null, step.subject, step.content).run();
       }
     }
@@ -342,16 +343,19 @@ export async function getSequenceSubscribers(
   }
 }
 
-async function getSequenceWithSteps(env: Env, id: string) {
+async function getSequenceWithSteps(env: Env, id: string, includeDisabled = false) {
   const sequence = await env.DB.prepare(
     'SELECT * FROM sequences WHERE id = ?'
   ).bind(id).first<Sequence>();
 
   if (!sequence) return null;
 
-  const steps = await env.DB.prepare(
-    'SELECT * FROM sequence_steps WHERE sequence_id = ? ORDER BY step_number'
-  ).bind(id).all<SequenceStep>();
+  // By default, only return enabled steps
+  const query = includeDisabled
+    ? 'SELECT * FROM sequence_steps WHERE sequence_id = ? ORDER BY step_number'
+    : 'SELECT * FROM sequence_steps WHERE sequence_id = ? AND is_enabled = 1 ORDER BY step_number';
+
+  const steps = await env.DB.prepare(query).bind(id).all<SequenceStep>();
 
   return {
     ...sequence,
