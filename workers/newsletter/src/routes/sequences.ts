@@ -170,8 +170,8 @@ export async function updateSequence(
         }
       }
 
-      // Insert new steps FIRST (before disabling old ones)
-      // This ensures we always have valid steps even if operation is interrupted
+      // Phase 1: Insert new steps as DISABLED (is_enabled = 0)
+      // If any insert fails, only disabled (non-deliverable) steps remain
       const newStepIds: string[] = [];
       for (let i = 0; i < body.steps.length; i++) {
         const step = body.steps[i];
@@ -179,16 +179,22 @@ export async function updateSequence(
         newStepIds.push(stepId);
         await env.DB.prepare(`
           INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content, is_enabled)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 0)
         `).bind(stepId, id, i + 1, step.delay_days, step.delay_time || null, step.subject, step.content).run();
       }
 
-      // Only disable old steps AFTER new steps are successfully inserted
-      // Exclude newly inserted steps from being disabled
+      // Phase 2: Atomically switch - disable old steps AND enable new steps in batch
+      // D1 batch() executes all statements in a single round-trip
+      // Even if one fails, old steps remain enabled (delivery continues)
       const placeholders = newStepIds.map(() => '?').join(',');
-      await env.DB.prepare(
-        `UPDATE sequence_steps SET is_enabled = 0 WHERE sequence_id = ? AND is_enabled = 1 AND id NOT IN (${placeholders})`
-      ).bind(id, ...newStepIds).run();
+      await env.DB.batch([
+        env.DB.prepare(
+          'UPDATE sequence_steps SET is_enabled = 0 WHERE sequence_id = ? AND is_enabled = 1'
+        ).bind(id),
+        env.DB.prepare(
+          `UPDATE sequence_steps SET is_enabled = 1 WHERE id IN (${placeholders})`
+        ).bind(...newStepIds),
+      ]);
     }
 
     // Return updated sequence with steps
