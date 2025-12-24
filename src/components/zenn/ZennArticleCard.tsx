@@ -15,13 +15,13 @@ export function ZennArticleCard({ article }: Props) {
       href={article.link}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block bg-white rounded-xl overflow-hidden border border-[#e5e5e5]
-                 hover:border-[#7c3aed]/50 hover:shadow-xl
+      className="group block bg-white rounded-xl overflow-hidden border border-[var(--color-border)]
+                 hover:border-[var(--color-accent)]/50 hover:shadow-xl
                  hover:-translate-y-1 transition-all duration-300
-                 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c3aed]"
+                 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
     >
       {/* OG Image (contains title) */}
-      <div className="aspect-[1200/630] bg-[#1e1e1e] overflow-hidden">
+      <div className="aspect-[1200/630] bg-[var(--color-text)] overflow-hidden">
         {article.enclosure ? (
           <img
             src={article.enclosure}
@@ -30,7 +30,7 @@ export function ZennArticleCard({ article }: Props) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#404040] to-[#1e1e1e]">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#404040] to-[var(--color-text)]">
             <span className="text-4xl">📝</span>
           </div>
         )}
@@ -38,7 +38,7 @@ export function ZennArticleCard({ article }: Props) {
 
       {/* Footer: Relative time only */}
       <div className="px-4 py-3">
-        <time dateTime={article.pubDate} className="text-sm text-[#a3a3a3]">
+        <time dateTime={article.pubDate} className="text-sm text-[var(--color-text-muted)]">
           {formatRelativeTime(article.pubDate)}
         </time>
       </div>

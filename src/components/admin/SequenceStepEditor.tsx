@@ -35,10 +35,10 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
       {steps.map((step, index) => (
         <div
           key={index}
-          className="bg-white border border-[#e5e5e5] rounded-lg p-4 space-y-3"
+          className="bg-white border border-[var(--color-border)] rounded-lg p-4 space-y-3"
         >
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-[#1e1e1e]">
+            <h4 className="text-sm font-medium text-[var(--color-text)]">
               ステップ {index + 1}
             </h4>
             <button
@@ -53,7 +53,7 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
           <div>
             <label
               htmlFor={`delay_days_${index}`}
-              className="block text-sm font-medium text-[#525252] mb-1"
+              className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
             >
               送信までの日数 <span className="text-red-500">*</span>
             </label>
@@ -64,10 +64,10 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
               onChange={(e) => updateStep(index, 'delay_days', parseInt(e.target.value) || 0)}
               min="0"
               placeholder="0"
-              className="w-full px-3 py-2 border border-[#e5e5e5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent transition-all"
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
               required
             />
-            <p className="text-xs text-[#a3a3a3] mt-1">
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">
               購読登録後、何日後に送信するか（0 = 即時送信）
             </p>
           </div>
@@ -75,7 +75,7 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
           <div>
             <label
               htmlFor={`subject_${index}`}
-              className="block text-sm font-medium text-[#525252] mb-1"
+              className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
             >
               件名 <span className="text-red-500">*</span>
             </label>
@@ -85,7 +85,7 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
               value={step.subject}
               onChange={(e) => updateStep(index, 'subject', e.target.value)}
               placeholder="メールの件名を入力"
-              className="w-full px-3 py-2 border border-[#e5e5e5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent transition-all"
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
               required
             />
           </div>
@@ -93,7 +93,7 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
           <div>
             <label
               htmlFor={`content_${index}`}
-              className="block text-sm font-medium text-[#525252] mb-1"
+              className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
             >
               本文 <span className="text-red-500">*</span>
             </label>
@@ -103,7 +103,7 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
               onChange={(e) => updateStep(index, 'content', e.target.value)}
               placeholder="メール本文を入力"
               rows={6}
-              className="w-full px-3 py-2 border border-[#e5e5e5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent transition-all font-mono text-sm"
+              className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all font-mono text-sm"
               required
             />
           </div>
@@ -113,7 +113,7 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
       <button
         type="button"
         onClick={addStep}
-        className="w-full py-3 border-2 border-dashed border-[#e5e5e5] text-[#525252] rounded-lg hover:border-[#7c3aed] hover:text-[#7c3aed] transition-colors"
+        className="w-full py-3 border-2 border-dashed border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
       >
         + ステップを追加
       </button>

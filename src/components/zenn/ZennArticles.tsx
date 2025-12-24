@@ -64,12 +64,12 @@ export function ZennArticles() {
   };
 
   return (
-    <section id="blog" className="py-24 bg-[#f5f5f5]">
+    <section id="blog" className="py-24 bg-[var(--color-bg-tertiary)]">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-[#1e1e1e] mb-4">Blog</h2>
-          <p className="text-[#525252] max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-[var(--color-text)] mb-4">Blog</h2>
+          <p className="text-[var(--color-text-secondary)] max-w-3xl mx-auto">
             技術ブログで発信している記事の一覧です。AWS、インフラ、開発手法などについて書いています。
           </p>
         </div>
@@ -80,9 +80,9 @@ export function ZennArticles() {
             <p className="text-red-600 mb-4">{error}</p>
             <button
               onClick={fetchArticles}
-              className="px-8 py-3 bg-[#7c3aed] text-white rounded-lg
-                       hover:bg-[#6d28d9] transition-colors
-                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c3aed]"
+              className="px-8 py-3 bg-[var(--color-accent)] text-white rounded-lg
+                       hover:bg-[var(--color-accent-hover)] transition-colors
+                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             >
               再読み込み
             </button>
@@ -110,7 +110,7 @@ export function ZennArticles() {
         {/* Empty state */}
         {!loading && !error && allArticles.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-[#525252]">記事がまだありません。</p>
+            <p className="text-[var(--color-text-secondary)]">記事がまだありません。</p>
           </div>
         )}
 
@@ -121,10 +121,10 @@ export function ZennArticles() {
             <button
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-4 py-2 rounded-lg border border-[#e5e5e5] bg-white text-[#525252]
-                       hover:border-[#7c3aed] hover:text-[#7c3aed] transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[#e5e5e5] disabled:hover:text-[#525252]
-                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c3aed]"
+              className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-white text-[var(--color-text-secondary)]
+                       hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors
+                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--color-border)] disabled:hover:text-[var(--color-text-secondary)]
+                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               aria-label="前のページ"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -140,10 +140,10 @@ export function ZennArticles() {
                   key={page}
                   onClick={() => goToPage(page)}
                   className={`w-10 h-10 rounded-lg font-medium transition-colors
-                            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c3aed]
+                            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]
                             ${currentPage === page
-                              ? 'bg-[#7c3aed] text-white'
-                              : 'border border-[#e5e5e5] bg-white text-[#525252] hover:border-[#7c3aed] hover:text-[#7c3aed]'
+                              ? 'bg-[var(--color-accent)] text-white'
+                              : 'border border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
                             }`}
                   aria-label={`ページ ${page}`}
                   aria-current={currentPage === page ? 'page' : undefined}
@@ -157,10 +157,10 @@ export function ZennArticles() {
             <button
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-lg border border-[#e5e5e5] bg-white text-[#525252]
-                       hover:border-[#7c3aed] hover:text-[#7c3aed] transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[#e5e5e5] disabled:hover:text-[#525252]
-                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c3aed]"
+              className="px-4 py-2 rounded-lg border border-[var(--color-border)] bg-white text-[var(--color-text-secondary)]
+                       hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors
+                       disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-[var(--color-border)] disabled:hover:text-[var(--color-text-secondary)]
+                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               aria-label="次のページ"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -177,9 +177,9 @@ export function ZennArticles() {
               href="https://zenn.dev/kuma8088"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-[#7c3aed] font-medium
+              className="inline-flex items-center gap-2 text-[var(--color-accent)] font-medium
                        hover:underline
-                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7c3aed]"
+                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             >
               Zenn で全記事を見る
               <svg

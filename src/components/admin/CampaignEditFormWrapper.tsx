@@ -22,7 +22,7 @@ export default function CampaignEditFormWrapper() {
   if (!campaignId) {
     return (
       <div className="text-center py-12">
-        <div className="text-[#525252]">読み込み中...</div>
+        <div className="text-[var(--color-text-secondary)]">読み込み中...</div>
       </div>
     );
   }

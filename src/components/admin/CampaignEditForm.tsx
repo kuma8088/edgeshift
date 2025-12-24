@@ -60,7 +60,7 @@ export default function CampaignEditForm({ campaignId }: CampaignEditFormProps) 
         <p className="text-red-600 mb-4">{fetchError}</p>
         <a
           href="/admin/campaigns"
-          className="inline-block px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+          className="inline-block px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           キャンペーン一覧に戻る
         </a>
@@ -71,7 +71,7 @@ export default function CampaignEditForm({ campaignId }: CampaignEditFormProps) 
   if (!campaign) {
     return (
       <div className="text-center py-12">
-        <div className="text-[#525252]">読み込み中...</div>
+        <div className="text-[var(--color-text-secondary)]">読み込み中...</div>
       </div>
     );
   }

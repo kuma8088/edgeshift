@@ -84,7 +84,7 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
       )}
 
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-[#525252] mb-2">
+        <label htmlFor="name" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
           シーケンス名 <span className="text-red-500">*</span>
         </label>
         <input
@@ -93,13 +93,13 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="例: ウェルカムシーケンス"
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent transition-all"
+          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
           required
         />
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-[#525252] mb-2">
+        <label htmlFor="description" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
           説明（オプション）
         </label>
         <textarea
@@ -108,12 +108,12 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
           onChange={(e) => setDescription(e.target.value)}
           placeholder="このシーケンスの目的や内容を説明"
           rows={3}
-          className="w-full px-4 py-2 border border-[#e5e5e5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent transition-all"
+          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[#525252] mb-3">
+        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-3">
           メールステップ <span className="text-red-500">*</span>
         </label>
         <SequenceStepEditor steps={steps} onChange={setSteps} />
@@ -124,14 +124,14 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="px-6 py-2 border border-[#e5e5e5] text-[#525252] rounded-lg hover:bg-[#f5f5f5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           キャンセル
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? '保存中...' : sequence?.id ? '更新' : '作成'}
         </button>

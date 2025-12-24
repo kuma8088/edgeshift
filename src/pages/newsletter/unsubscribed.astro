@@ -15,7 +15,7 @@ const isError = status === 'error';
   title="配信停止"
   description="ニュースレターの配信を停止しました"
 >
-  <section class="py-24 px-4 bg-[#fafafa]">
+  <section class="py-24 px-4 bg-[var(--color-bg-secondary)]">
     <div class="max-w-lg mx-auto text-center">
       <!-- Icon -->
       <div class="mb-8">
@@ -43,14 +43,14 @@ const isError = status === 'error';
       </div>
 
       <!-- Title -->
-      <h1 class="text-3xl font-bold text-[#1e1e1e] mb-4">
+      <h1 class="text-3xl font-bold text-[var(--color-text)] mb-4">
         {isSuccess && '配信を停止しました'}
         {isInfo && 'お知らせ'}
         {isError && 'エラーが発生しました'}
       </h1>
 
       <!-- Message -->
-      <p class="text-[#525252] mb-8 leading-relaxed">
+      <p class="text-[var(--color-text-secondary)] mb-8 leading-relaxed">
         {isSuccess && (
           <>
             ニュースレターの配信を停止しました。<br />
@@ -64,13 +64,13 @@ const isError = status === 'error';
       <!-- Back to Home -->
       <a
         href="/"
-        class="inline-block bg-[#7c3aed] text-white px-6 py-3 rounded font-medium hover:bg-[#6d28d9] transition-colors"
+        class="inline-block bg-[var(--color-accent)] text-white px-6 py-3 rounded font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
       >
         トップページへ戻る
       </a>
 
       {isSuccess && (
-        <p class="mt-8 text-sm text-[#a3a3a3]">
+        <p class="mt-8 text-sm text-[var(--color-text-muted)]">
           また登録をご希望の場合は、トップページからお申し込みください。
         </p>
       )}

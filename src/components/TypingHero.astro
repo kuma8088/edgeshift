@@ -12,9 +12,9 @@ const phrases = [
 ---
 
 <div class="typing-hero">
-  <h1 class="text-4xl md:text-6xl font-bold text-[#1e1e1e] mb-6 leading-tight">
+  <h1 class="text-4xl md:text-6xl font-bold text-[var(--color-text)] mb-6 leading-tight">
     <span id="typing-text"></span>
-    <span id="cursor" class="text-[#7c3aed]">|</span>
+    <span id="cursor" class="text-[var(--color-accent)]">|</span>
   </h1>
 </div>
 
@@ -35,16 +35,16 @@ const phrases = [
   function highlightEdge(text) {
     // Highlight EdgeShift, Edge, and Shift with purple color
     if (text.includes('EdgeShift')) {
-      return text.replace('EdgeShift', '<span class="text-[#7c3aed]">EdgeShift</span>');
+      return text.replace('EdgeShift', '<span class="text-[var(--color-accent)]">EdgeShift</span>');
     }
     // Handle "Shift" when not part of EdgeShift
     let result = text;
     if (text.includes('Shift') && !text.includes('EdgeShift')) {
-      result = result.replace('Shift', '<span class="text-[#7c3aed]">Shift</span>');
+      result = result.replace('Shift', '<span class="text-[var(--color-accent)]">Shift</span>');
     }
     // Handle "Edge" when not part of EdgeShift
     if (text.includes('Edge') && !text.includes('EdgeShift')) {
-      result = result.replace('Edge', '<span class="text-[#7c3aed]">Edge</span>');
+      result = result.replace('Edge', '<span class="text-[var(--color-accent)]">Edge</span>');
     }
     return result;
   }
