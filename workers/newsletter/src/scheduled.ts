@@ -6,9 +6,12 @@ import { processSequenceEmails } from './lib/sequence-processor';
 /**
  * Convert plain text URLs to clickable links
  * Matches URLs starting with http:// or https://
+ * Uses negative lookbehind to avoid matching URLs already inside HTML attributes
  */
 function linkifyUrls(text: string): string {
-  const urlRegex = /(https?:\/\/[^\s<>"]+)/g;
+  // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
+  // Also skip URLs that are already inside <a> tags
+  const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"]+)(?![^<]*<\/a>)/g;
   return text.replace(urlRegex, '<a href="$1" style="color: #7c3aed;">$1</a>');
 }
 
