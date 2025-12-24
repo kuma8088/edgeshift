@@ -31,21 +31,21 @@ export function ConfirmModal({
 
       {/* Modal */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h3 className="text-lg font-bold text-[#1e1e1e] mb-2">{title}</h3>
-        <p className="text-[#525252] mb-6">{message}</p>
+        <h3 className="text-lg font-bold text-[var(--color-text)] mb-2">{title}</h3>
+        <p className="text-[var(--color-text-secondary)] mb-6">{message}</p>
 
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 border border-[#e5e5e5] text-[#525252] rounded-lg hover:bg-[#f5f5f5] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? '処理中...' : confirmText}
           </button>

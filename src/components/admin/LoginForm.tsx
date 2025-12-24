@@ -27,19 +27,19 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-tertiary)] p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-[#1e1e1e]">EdgeShift Admin</h1>
-            <p className="text-[#525252] mt-2">管理画面にログイン</p>
+            <h1 className="text-2xl font-bold text-[var(--color-text)]">EdgeShift Admin</h1>
+            <p className="text-[var(--color-text-secondary)] mt-2">管理画面にログイン</p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
               <label
                 htmlFor="apiKey"
-                className="block text-sm font-medium text-[#525252] mb-2"
+                className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2"
               >
                 API キー
               </label>
@@ -49,8 +49,8 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="sk_..."
-                className="w-full px-4 py-3 border border-[#e5e5e5] rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent
+                className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg
+                       focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent
                        transition-all"
               />
             </div>
@@ -64,8 +64,8 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-[#7c3aed] text-white font-medium rounded-lg
-                     hover:bg-[#6d28d9] transition-colors
+              className="w-full py-3 bg-[var(--color-accent)] text-white font-medium rounded-lg
+                     hover:bg-[var(--color-accent-hover)] transition-colors
                      disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'ログイン中...' : 'ログイン'}

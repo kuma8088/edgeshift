@@ -57,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-[#525252]">Loading...</div>
+        <div className="text-[var(--color-text-secondary)]">Loading...</div>
       </div>
     );
   }

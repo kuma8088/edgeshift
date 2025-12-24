@@ -15,7 +15,7 @@ interface Campaign {
 }
 
 const statusColors = {
-  draft: 'bg-[#a3a3a3] text-white',
+  draft: 'bg-[var(--color-text-muted)] text-white',
   scheduled: 'bg-yellow-500 text-white',
   sent: 'bg-green-500 text-white',
   failed: 'bg-red-500 text-white',
@@ -125,7 +125,7 @@ export function CampaignList() {
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={fetchCampaigns}
-          className="px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+          className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           再読み込み
         </button>
@@ -136,10 +136,10 @@ export function CampaignList() {
   if (campaigns.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-[#525252] mb-4">キャンペーンがまだありません</p>
+        <p className="text-[var(--color-text-secondary)] mb-4">キャンペーンがまだありません</p>
         <a
           href="/admin/campaigns/new"
-          className="inline-block px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+          className="inline-block px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           新規作成
         </a>
@@ -153,12 +153,12 @@ export function CampaignList() {
         {campaigns.map((campaign) => (
           <div
             key={campaign.id}
-            className="bg-white rounded-lg p-6 shadow-sm border border-[#e5e5e5] hover:shadow-md transition-shadow"
+            className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)] hover:shadow-md transition-shadow"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-lg font-medium text-[#1e1e1e]">
+                  <h3 className="text-lg font-medium text-[var(--color-text)]">
                     {campaign.subject}
                   </h3>
                   <span
@@ -169,10 +169,10 @@ export function CampaignList() {
                     {statusLabels[campaign.status as keyof typeof statusLabels]}
                   </span>
                 </div>
-                <p className="text-sm text-[#525252] line-clamp-2 mb-2">
+                <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2 mb-2">
                   {campaign.content}
                 </p>
-                <div className="flex gap-4 text-xs text-[#a3a3a3]">
+                <div className="flex gap-4 text-xs text-[var(--color-text-muted)]">
                   <span>作成: {new Date(campaign.created_at * 1000).toLocaleString('ja-JP')}</span>
                   {campaign.scheduled_at && (
                     <span>予約: {new Date(campaign.scheduled_at * 1000).toLocaleString('ja-JP')}</span>
@@ -186,14 +186,14 @@ export function CampaignList() {
               <div className="flex gap-2 ml-4">
                 <a
                   href={`/admin/campaigns/edit?id=${campaign.id}`}
-                  className="px-3 py-1 text-sm border border-[#e5e5e5] text-[#525252] rounded-lg hover:bg-[#f5f5f5] transition-colors"
+                  className="px-3 py-1 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
                 >
                   編集
                 </a>
                 {campaign.status === 'draft' && (
                   <button
                     onClick={() => handleSend(campaign)}
-                    className="px-3 py-1 text-sm bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+                    className="px-3 py-1 text-sm bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
                   >
                     送信
                   </button>

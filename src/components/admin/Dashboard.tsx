@@ -49,7 +49,7 @@ export function Dashboard() {
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={fetchStats}
-          className="px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+          className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           再読み込み
         </button>
@@ -61,11 +61,11 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-[#1e1e1e]">ダッシュボード</h1>
+      <h1 className="text-2xl font-bold text-[var(--color-text)]">ダッシュボード</h1>
 
       {/* Subscriber Stats */}
       <section>
-        <h2 className="text-lg font-medium text-[#525252] mb-4">購読者</h2>
+        <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">購読者</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard title="総購読者数" value={stats.subscribers.total} />
           <KPICard title="アクティブ" value={stats.subscribers.active} color="success" />
@@ -76,7 +76,7 @@ export function Dashboard() {
 
       {/* Campaign Stats */}
       <section>
-        <h2 className="text-lg font-medium text-[#525252] mb-4">キャンペーン</h2>
+        <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">キャンペーン</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard title="総キャンペーン" value={stats.campaigns.total} />
           <KPICard title="下書き" value={stats.campaigns.draft} />
@@ -87,7 +87,7 @@ export function Dashboard() {
 
       {/* Delivery Stats */}
       <section>
-        <h2 className="text-lg font-medium text-[#525252] mb-4">配信パフォーマンス</h2>
+        <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">配信パフォーマンス</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard title="総配信数" value={stats.delivery.total} />
           <KPICard title="配信完了" value={stats.delivery.delivered} color="success" />

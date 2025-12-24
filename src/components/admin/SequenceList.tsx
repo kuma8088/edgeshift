@@ -105,7 +105,7 @@ export function SequenceList() {
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={fetchSequences}
-          className="px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+          className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           再読み込み
         </button>
@@ -116,10 +116,10 @@ export function SequenceList() {
   if (sequences.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-[#525252] mb-4">シーケンスがまだありません</p>
+        <p className="text-[var(--color-text-secondary)] mb-4">シーケンスがまだありません</p>
         <a
           href="/admin/sequences/new"
-          className="inline-block px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+          className="inline-block px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           新規作成
         </a>
@@ -133,30 +133,30 @@ export function SequenceList() {
         {sequences.map((sequence) => (
           <div
             key={sequence.id}
-            className="bg-white rounded-lg p-6 shadow-sm border border-[#e5e5e5] hover:shadow-md transition-shadow"
+            className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)] hover:shadow-md transition-shadow"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-lg font-medium text-[#1e1e1e]">
+                  <h3 className="text-lg font-medium text-[var(--color-text)]">
                     {sequence.name}
                   </h3>
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
                       sequence.is_active === 1
                         ? 'bg-green-500 text-white'
-                        : 'bg-[#a3a3a3] text-white'
+                        : 'bg-[var(--color-text-muted)] text-white'
                     }`}
                   >
                     {sequence.is_active === 1 ? 'アクティブ' : '非アクティブ'}
                   </span>
                 </div>
                 {sequence.description && (
-                  <p className="text-sm text-[#525252] mb-2">
+                  <p className="text-sm text-[var(--color-text-secondary)] mb-2">
                     {sequence.description}
                   </p>
                 )}
-                <div className="flex gap-4 text-xs text-[#a3a3a3]">
+                <div className="flex gap-4 text-xs text-[var(--color-text-muted)]">
                   <span>ステップ数: {sequence.steps?.length || 0}</span>
                   <span>作成: {new Date(sequence.created_at * 1000).toLocaleString('ja-JP')}</span>
                 </div>
@@ -168,7 +168,7 @@ export function SequenceList() {
                   disabled={actionLoading}
                   className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                     sequence.is_active === 1
-                      ? 'border border-[#a3a3a3] text-[#525252] hover:bg-[#f5f5f5]'
+                      ? 'border border-[var(--color-text-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]'
                       : 'bg-green-500 text-white hover:bg-green-600'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
@@ -176,7 +176,7 @@ export function SequenceList() {
                 </button>
                 <a
                   href={`/admin/sequences/edit?id=${sequence.id}`}
-                  className="px-3 py-1 text-sm border border-[#e5e5e5] text-[#525252] rounded-lg hover:bg-[#f5f5f5] transition-colors"
+                  className="px-3 py-1 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
                 >
                   編集
                 </a>

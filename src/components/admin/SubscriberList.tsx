@@ -16,7 +16,7 @@ interface Subscriber {
 const statusColors = {
   active: 'bg-green-500 text-white',
   pending: 'bg-yellow-500 text-white',
-  unsubscribed: 'bg-[#a3a3a3] text-white',
+  unsubscribed: 'bg-[var(--color-text-muted)] text-white',
 };
 
 const statusLabels = {
@@ -69,7 +69,7 @@ export function SubscriberList() {
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={() => fetchSubscribers(filterStatus)}
-          className="px-6 py-2 bg-[#7c3aed] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+          className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
           再読み込み
         </button>
@@ -81,14 +81,14 @@ export function SubscriberList() {
     <>
       {/* Filter dropdown */}
       <div className="mb-6">
-        <label htmlFor="status-filter" className="block text-sm font-medium text-[#525252] mb-2">
+        <label htmlFor="status-filter" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
           ステータスで絞り込み
         </label>
         <select
           id="status-filter"
           value={filterStatus}
           onChange={handleFilterChange}
-          className="px-4 py-2 border border-[#e5e5e5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+          className="px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
         >
           <option value="all">すべて</option>
           <option value="active">アクティブ</option>
@@ -100,39 +100,39 @@ export function SubscriberList() {
       {/* Subscribers table */}
       {subscribers.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-[#525252]">
+          <p className="text-[var(--color-text-secondary)]">
             {filterStatus === 'all'
               ? '購読者がまだいません'
               : `${statusLabels[filterStatus as keyof typeof statusLabels]}の購読者がいません`}
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-[#e5e5e5] overflow-hidden">
-          <table className="min-w-full divide-y divide-[#e5e5e5]">
-            <thead className="bg-[#f5f5f5]">
+        <div className="bg-white rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden">
+          <table className="min-w-full divide-y divide-[var(--color-border)]">
+            <thead className="bg-[var(--color-bg-tertiary)]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#525252] uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                   メールアドレス
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#525252] uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                   名前
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#525252] uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                   ステータス
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-[#525252] uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                   登録日時
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-[#e5e5e5]">
+            <tbody className="bg-white divide-y divide-[var(--color-border)]">
               {subscribers.map((subscriber) => (
-                <tr key={subscriber.id} className="hover:bg-[#f9f9f9] transition-colors">
+                <tr key={subscriber.id} className="hover:bg-[var(--color-bg-secondary)] transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-[#1e1e1e]">{subscriber.email}</div>
+                    <div className="text-sm text-[var(--color-text)]">{subscriber.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-[#525252]">
+                    <div className="text-sm text-[var(--color-text-secondary)]">
                       {subscriber.name || '-'}
                     </div>
                   </td>
@@ -146,10 +146,10 @@ export function SubscriberList() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-[#525252]">
+                    <div className="text-sm text-[var(--color-text-secondary)]">
                       {subscriber.status === 'unsubscribed' && subscriber.unsubscribed_at ? (
                         <div>
-                          <div className="text-xs text-[#a3a3a3]">登録解除:</div>
+                          <div className="text-xs text-[var(--color-text-muted)]">登録解除:</div>
                           <div>{new Date(subscriber.unsubscribed_at * 1000).toLocaleString('ja-JP')}</div>
                         </div>
                       ) : subscriber.subscribed_at ? (
