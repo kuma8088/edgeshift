@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS sequences (
   name TEXT NOT NULL,
   description TEXT,
   is_active INTEGER DEFAULT 1,
+  default_send_time TEXT NOT NULL DEFAULT '10:00',
   created_at INTEGER DEFAULT (unixepoch())
 );
 
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS sequence_steps (
   sequence_id TEXT NOT NULL,
   step_number INTEGER NOT NULL,
   delay_days INTEGER NOT NULL,
+  delay_time TEXT,
   subject TEXT NOT NULL,
   content TEXT NOT NULL,
   created_at INTEGER DEFAULT (unixepoch()),

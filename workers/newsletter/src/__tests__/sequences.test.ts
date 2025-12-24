@@ -32,6 +32,7 @@ describe('Sequence CRUD APIs', () => {
         body: JSON.stringify({
           name: 'Welcome Series',
           description: 'Onboarding sequence',
+          default_send_time: '10:00',
           steps: [
             {
               delay_days: 0,
@@ -120,6 +121,7 @@ describe('Sequence CRUD APIs', () => {
         },
         body: JSON.stringify({
           name: 'Test Sequence',
+          default_send_time: '10:00',
           steps: [
             { delay_days: 0, subject: 'Step 1', content: '<p>Content 1</p>' },
             { delay_days: 7, subject: 'Step 2', content: '<p>Content 2</p>' },
@@ -180,6 +182,7 @@ describe('Sequence CRUD APIs', () => {
           },
           body: JSON.stringify({
             name: 'Sequence 1',
+            default_send_time: '10:00',
             steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
           }),
         }),
@@ -195,6 +198,7 @@ describe('Sequence CRUD APIs', () => {
           },
           body: JSON.stringify({
             name: 'Sequence 2',
+            default_send_time: '10:00',
             steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
           }),
         }),
@@ -252,6 +256,7 @@ describe('Sequence CRUD APIs', () => {
         body: JSON.stringify({
           name: 'Original Name',
           description: 'Original Description',
+          default_send_time: '10:00',
           steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
         }),
       });
@@ -292,6 +297,7 @@ describe('Sequence CRUD APIs', () => {
         },
         body: JSON.stringify({
           name: 'Test Sequence',
+          default_send_time: '10:00',
           steps: [{ delay_days: 0, subject: 'Test', content: '<p>Test</p>' }],
         }),
       });
@@ -357,6 +363,7 @@ describe('Sequence CRUD APIs', () => {
         },
         body: JSON.stringify({
           name: 'Test Sequence',
+          default_send_time: '10:00',
           steps: [
             { delay_days: 0, subject: 'Step 1', content: '<p>Content 1</p>' },
             { delay_days: 7, subject: 'Step 2', content: '<p>Content 2</p>' },
@@ -618,6 +625,87 @@ describe('Sequence Types and Schema', () => {
     expect(request.name).toBe('Welcome Series');
     expect(request.description).toBeUndefined();
     expect(request.steps).toHaveLength(1);
+  });
+});
+
+describe('Sequence with time specification', () => {
+  beforeEach(async () => {
+    await setupTestDb();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDb();
+  });
+
+  it('should create sequence with default_send_time', async () => {
+    const env = getTestEnv();
+    const request = new Request('http://localhost/api/sequences', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({
+        name: 'Test Sequence',
+        default_send_time: '09:30',
+        steps: [
+          { delay_days: 0, subject: 'Welcome', content: 'Hello!' }
+        ]
+      }),
+    });
+
+    const response = await createSequence(request, env);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(data.data.default_send_time).toBe('09:30');
+  });
+
+  it('should reject sequence without default_send_time', async () => {
+    const env = getTestEnv();
+    const request = new Request('http://localhost/api/sequences', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({
+        name: 'Test Sequence',
+        steps: [
+          { delay_days: 0, subject: 'Welcome', content: 'Hello!' }
+        ]
+      }),
+    });
+
+    const response = await createSequence(request, env);
+    expect(response.status).toBe(400);
+  });
+
+  it('should create step with delay_time override', async () => {
+    const env = getTestEnv();
+    const request = new Request('http://localhost/api/sequences', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+      },
+      body: JSON.stringify({
+        name: 'Test Sequence',
+        default_send_time: '10:00',
+        steps: [
+          { delay_days: 0, subject: 'Welcome', content: 'Hello!' },
+          { delay_days: 3, delay_time: '18:30', subject: 'Follow-up', content: 'Hi again!' }
+        ]
+      }),
+    });
+
+    const response = await createSequence(request, env);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(data.data.steps[1].delay_time).toBe('18:30');
   });
 });
 

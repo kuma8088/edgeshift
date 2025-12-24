@@ -67,6 +67,7 @@ export async function setupTestDb() {
       name TEXT NOT NULL,
       description TEXT,
       is_active INTEGER DEFAULT 1,
+      default_send_time TEXT NOT NULL DEFAULT '10:00',
       created_at INTEGER DEFAULT (unixepoch())
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS sequence_steps (
@@ -74,6 +75,7 @@ export async function setupTestDb() {
       sequence_id TEXT NOT NULL,
       step_number INTEGER NOT NULL,
       delay_days INTEGER NOT NULL,
+      delay_time TEXT,
       subject TEXT NOT NULL,
       content TEXT NOT NULL,
       created_at INTEGER DEFAULT (unixepoch()),

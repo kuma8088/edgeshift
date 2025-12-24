@@ -15,6 +15,43 @@ interface PendingSequenceEmail {
   sequence_id: string;
   current_step: number;
   started_at: number;
+  default_send_time: string;
+  delay_time: string | null;
+}
+
+const JST_OFFSET_SECONDS = 9 * 60 * 60; // +9 hours in seconds
+
+/**
+ * Calculate the scheduled send time in Unix timestamp
+ * @param startedAt - When the subscriber enrolled (Unix timestamp)
+ * @param delayDays - Days to wait
+ * @param sendTime - Time to send in "HH:MM" format (JST)
+ * @returns Unix timestamp of scheduled send time
+ */
+function calculateScheduledTime(
+  startedAt: number,
+  delayDays: number,
+  sendTime: string
+): number {
+  // Calculate the target date (started_at + delay_days)
+  const targetDateUtc = startedAt + delayDays * 86400;
+
+  // Convert to JST midnight of that day
+  // 1. Add JST offset to get JST time
+  // 2. Floor to day boundary
+  // 3. Subtract JST offset to get back to UTC
+  const jstTime = targetDateUtc + JST_OFFSET_SECONDS;
+  const jstMidnight = Math.floor(jstTime / 86400) * 86400;
+  const utcMidnightOfJstDay = jstMidnight - JST_OFFSET_SECONDS;
+
+  // Parse send time
+  const [hours, minutes] = sendTime.split(':').map(Number);
+
+  // Add send time (in seconds) - this is JST time, so we add it directly
+  // Then subtract JST offset to convert to UTC
+  const scheduledTime = utcMidnightOfJstDay + hours * 3600 + minutes * 60;
+
+  return scheduledTime;
 }
 
 /**
@@ -44,7 +81,10 @@ export async function processSequenceEmails(env: Env): Promise<void> {
         step.subject,
         step.content,
         step.step_number,
-        step.sequence_id
+        step.sequence_id,
+        step.delay_days,
+        step.delay_time,
+        seq.default_send_time
       FROM subscriber_sequences ss
       JOIN subscribers s ON s.id = ss.subscriber_id
       JOIN sequences seq ON seq.id = ss.sequence_id
@@ -53,13 +93,26 @@ export async function processSequenceEmails(env: Env): Promise<void> {
       AND s.status = 'active'
       AND seq.is_active = 1
       AND step.step_number = ss.current_step + 1
-      AND (ss.started_at + step.delay_days * 86400) <= ?
-    `).bind(now).all<PendingSequenceEmail>();
+    `).all<PendingSequenceEmail & { delay_days: number }>();
 
     const pending = pendingEmails.results || [];
-    console.log(`Found ${pending.length} sequence email(s) to send`);
+    console.log(`Found ${pending.length} potential sequence email(s), checking scheduled times...`);
 
     for (const email of pending) {
+      // Calculate scheduled send time
+      const sendTime = email.delay_time ?? email.default_send_time;
+      const scheduledAt = calculateScheduledTime(
+        email.started_at,
+        email.delay_days,
+        sendTime
+      );
+
+      // Skip if not yet time to send
+      if (now < scheduledAt) {
+        console.log(`Skipping ${email.email} step ${email.step_number}: scheduled for ${new Date(scheduledAt * 1000).toISOString()}`);
+        continue;
+      }
+
       console.log(`Sending sequence email to ${email.email}, step ${email.step_number}`);
 
       const result = await sendEmail(
