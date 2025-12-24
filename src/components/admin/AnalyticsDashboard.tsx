@@ -143,7 +143,7 @@ export function AnalyticsDashboard() {
                         <div className="w-32">
                           <ProgressBar
                             value={campaign.open_rate}
-                            max={1}
+                            max={100}
                             showPercentage={true}
                             size="sm"
                             color="blue"
@@ -154,7 +154,7 @@ export function AnalyticsDashboard() {
                         <div className="w-32">
                           <ProgressBar
                             value={campaign.click_rate}
-                            max={1}
+                            max={100}
                             showPercentage={true}
                             size="sm"
                             color="green"
@@ -219,7 +219,7 @@ export function AnalyticsDashboard() {
                         <div className="w-40">
                           <ProgressBar
                             value={sequence.completion_rate}
-                            max={1}
+                            max={100}
                             showPercentage={true}
                             size="sm"
                             color="purple"

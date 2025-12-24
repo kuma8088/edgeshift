@@ -105,7 +105,10 @@ export async function handleGetCampaignTracking(
     return errorResponse('Campaign not found', 404);
   }
 
-  return new Response(JSON.stringify(result), {
+  return new Response(JSON.stringify({
+    success: true,
+    data: { stats: result.stats },
+  }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
@@ -122,8 +125,8 @@ interface CampaignClicksResponse {
   campaign_id: string;
   summary: {
     total_clicks: number;
-    unique_clickers: number;
-    unique_urls: number;
+    unique_clicks: number;
+    top_urls: Array<{ url: string; clicks: number }>;
   };
   clicks: ClickEvent[];
 }
@@ -166,12 +169,22 @@ export async function getCampaignClicks(
   const uniqueClickers = new Set(clicks.map(c => c.email)).size;
   const uniqueUrls = new Set(clicks.map(c => c.url)).size;
 
+  // Calculate top URLs with click counts
+  const urlCounts = new Map<string, number>();
+  for (const click of clicks) {
+    urlCounts.set(click.url, (urlCounts.get(click.url) || 0) + 1);
+  }
+  const topUrls = Array.from(urlCounts.entries())
+    .map(([url, count]) => ({ url, clicks: count }))
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 10);
+
   return {
     campaign_id: campaignId,
     summary: {
       total_clicks: clicks.length,
-      unique_clickers: uniqueClickers,
-      unique_urls: uniqueUrls,
+      unique_clicks: uniqueClickers,
+      top_urls: topUrls,
     },
     clicks: clicks.map(c => ({
       email: c.email,
@@ -197,7 +210,13 @@ export async function handleGetCampaignClicks(
     return errorResponse('Campaign not found', 404);
   }
 
-  return new Response(JSON.stringify(result), {
+  return new Response(JSON.stringify({
+    success: true,
+    data: {
+      clicks: result.clicks,
+      summary: result.summary,
+    },
+  }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
@@ -550,7 +569,23 @@ export async function handleGetSequenceStats(
     return errorResponse('Sequence not found', 404);
   }
 
-  return new Response(JSON.stringify(result), {
+  // Calculate completion rate
+  const completionRate = result.enrollment_stats.total_enrolled > 0
+    ? (result.enrollment_stats.completed / result.enrollment_stats.total_enrolled) * 100
+    : 0;
+
+  return new Response(JSON.stringify({
+    success: true,
+    data: {
+      stats: {
+        total_enrolled: result.enrollment_stats.total_enrolled,
+        completed: result.enrollment_stats.completed,
+        in_progress: result.enrollment_stats.in_progress,
+        completion_rate: Math.round(completionRate * 10) / 10,
+        steps: result.steps,
+      },
+    },
+  }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });

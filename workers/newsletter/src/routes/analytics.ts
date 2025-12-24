@@ -156,9 +156,32 @@ export async function handleGetAnalyticsOverview(
   try {
     const overview = await getAnalyticsOverview(env);
 
+    // Transform to match UI expectations
+    const analytics = {
+      campaigns: overview.campaigns.map(c => ({
+        id: c.campaign_id,
+        subject: c.subject,
+        recipient_count: c.recipient_count,
+        open_rate: c.open_rate,
+        click_rate: c.click_rate,
+        sent_at: c.sent_at,
+      })),
+      sequences: overview.sequences.map(s => ({
+        id: s.sequence_id,
+        name: s.name,
+        enrolled: s.enrolled,
+        completion_rate: s.completion_rate,
+      })),
+      top_subscribers: overview.top_subscribers.map(t => ({
+        email: t.email,
+        open_count: t.open_count,
+        click_count: t.click_count,
+      })),
+    };
+
     return new Response(JSON.stringify({
       success: true,
-      data: overview,
+      data: { analytics },
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
