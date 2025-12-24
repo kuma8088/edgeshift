@@ -33,10 +33,14 @@ CREATE TABLE IF NOT EXISTS campaigns (
   created_at INTEGER DEFAULT (unixepoch())
 );
 
--- Delivery logs table (Phase 2)
+-- Delivery logs table (Phase 2 + Phase 3B tracking foundation)
+-- campaign_id is nullable for sequence emails
+-- sequence_id/sequence_step_id are set for sequence emails
 CREATE TABLE IF NOT EXISTS delivery_logs (
   id TEXT PRIMARY KEY,
-  campaign_id TEXT NOT NULL,
+  campaign_id TEXT,
+  sequence_id TEXT,
+  sequence_step_id TEXT,
   subscriber_id TEXT NOT NULL,
   email TEXT NOT NULL,
   status TEXT DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed')),
@@ -48,6 +52,8 @@ CREATE TABLE IF NOT EXISTS delivery_logs (
   error_message TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
+  FOREIGN KEY (sequence_id) REFERENCES sequences(id),
+  FOREIGN KEY (sequence_step_id) REFERENCES sequence_steps(id),
   FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
 );
 
@@ -55,6 +61,8 @@ CREATE INDEX IF NOT EXISTS idx_delivery_logs_campaign ON delivery_logs(campaign_
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_subscriber ON delivery_logs(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_status ON delivery_logs(status);
 CREATE INDEX IF NOT EXISTS idx_delivery_logs_resend_id ON delivery_logs(resend_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_logs_sequence ON delivery_logs(sequence_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_logs_sequence_step ON delivery_logs(sequence_step_id);
 
 -- Sequences table (for step emails)
 CREATE TABLE IF NOT EXISTS sequences (
