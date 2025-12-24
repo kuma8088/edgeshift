@@ -23,6 +23,14 @@ export async function createSequence(
       return errorResponse('default_send_time is required in HH:MM format', 400);
     }
 
+    // Pre-validate all steps BEFORE any database inserts to avoid orphaned rows
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      if (step.delay_time && !/^\d{2}:\d{2}$/.test(step.delay_time)) {
+        return errorResponse(`Step ${i + 1}: delay_time must be in HH:MM format`, 400);
+      }
+    }
+
     const sequenceId = crypto.randomUUID();
 
     // Create sequence with default_send_time
@@ -31,15 +39,10 @@ export async function createSequence(
       VALUES (?, ?, ?, ?)
     `).bind(sequenceId, name, description || null, default_send_time).run();
 
-    // Create steps with optional delay_time
+    // Create steps (already validated above)
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       const stepId = crypto.randomUUID();
-
-      // Validate delay_time format if provided
-      if (step.delay_time && !/^\d{2}:\d{2}$/.test(step.delay_time)) {
-        return errorResponse(`Step ${i + 1}: delay_time must be in HH:MM format`, 400);
-      }
 
       await env.DB.prepare(`
         INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)

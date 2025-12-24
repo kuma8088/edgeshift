@@ -131,7 +131,7 @@ export async function createSequence(data: CreateSequenceData) {
   return apiRequest('/sequences', { method: 'POST', body: data });
 }
 
-export async function updateSequence(id: string, data: { name?: string; description?: string; is_active?: number }) {
+export async function updateSequence(id: string, data: { name?: string; description?: string; is_active?: number; default_send_time?: string }) {
   return apiRequest(`/sequences/${id}`, { method: 'PUT', body: data });
 }
 
