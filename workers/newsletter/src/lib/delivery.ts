@@ -204,14 +204,33 @@ export interface RecordClickEventParams {
 }
 
 /**
- * Record a click event
+ * Record a click event (with duplicate prevention)
+ * Skips if same delivery_log_id + clicked_url was recorded within 60 seconds
  */
 export async function recordClickEvent(
   env: Env,
   params: RecordClickEventParams
 ): Promise<void> {
-  const id = crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
+  const dedupeWindow = 60; // seconds
+
+  // Check for recent duplicate
+  const existing = await env.DB.prepare(`
+    SELECT id FROM click_events
+    WHERE delivery_log_id = ? AND clicked_url = ? AND clicked_at > ?
+    LIMIT 1
+  `).bind(
+    params.deliveryLogId,
+    params.clickedUrl,
+    now - dedupeWindow
+  ).first();
+
+  if (existing) {
+    console.log(`Skipping duplicate click event for ${params.deliveryLogId}: ${params.clickedUrl}`);
+    return;
+  }
+
+  const id = crypto.randomUUID();
 
   await env.DB.prepare(`
     INSERT INTO click_events (id, delivery_log_id, subscriber_id, clicked_url, clicked_at)

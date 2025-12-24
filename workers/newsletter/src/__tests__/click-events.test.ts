@@ -48,7 +48,7 @@ describe('click events', () => {
       expect(event?.clicked_at).toBeGreaterThan(0);
     });
 
-    it('should record multiple clicks on same URL', async () => {
+    it('should deduplicate clicks on same URL within 60 seconds', async () => {
       const env = getTestEnv();
 
       await recordClickEvent(env, {
@@ -57,6 +57,7 @@ describe('click events', () => {
         clickedUrl: 'https://example.com/article',
       });
 
+      // Second click on same URL within 60 seconds should be skipped
       await recordClickEvent(env, {
         deliveryLogId: 'log-1',
         subscriberId: 'sub-1',
@@ -67,7 +68,8 @@ describe('click events', () => {
         'SELECT * FROM click_events WHERE delivery_log_id = ?'
       ).bind('log-1').all();
 
-      expect(events.results).toHaveLength(2);
+      // Only 1 click should be recorded due to deduplication
+      expect(events.results).toHaveLength(1);
     });
 
     it('should record clicks on different URLs', async () => {
