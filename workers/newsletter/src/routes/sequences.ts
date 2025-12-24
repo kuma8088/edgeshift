@@ -2,6 +2,7 @@ import type { Env, Sequence, SequenceStep, CreateSequenceRequest, UpdateSequence
 import { isAuthorized } from '../lib/auth';
 import { errorResponse, successResponse, jsonResponse } from '../lib/response';
 import { enrollSubscriberInSequence } from '../lib/sequence-processor';
+import { isValidTime } from '../lib/validation';
 
 export async function createSequence(
   request: Request,
@@ -19,15 +20,15 @@ export async function createSequence(
       return errorResponse('Name and at least one step are required', 400);
     }
 
-    if (!default_send_time || !/^\d{2}:\d{2}$/.test(default_send_time)) {
-      return errorResponse('default_send_time is required in HH:MM format', 400);
+    if (!default_send_time || !isValidTime(default_send_time)) {
+      return errorResponse('default_send_time is required in HH:MM format (00:00-23:59)', 400);
     }
 
     // Pre-validate all steps BEFORE any database inserts to avoid orphaned rows
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      if (step.delay_time && !/^\d{2}:\d{2}$/.test(step.delay_time)) {
-        return errorResponse(`Step ${i + 1}: delay_time must be in HH:MM format`, 400);
+      if (step.delay_time && !isValidTime(step.delay_time)) {
+        return errorResponse(`Step ${i + 1}: delay_time must be in HH:MM format (00:00-23:59)`, 400);
       }
     }
 
@@ -140,8 +141,8 @@ export async function updateSequence(
       bindings.push(body.description);
     }
     if (body.default_send_time !== undefined) {
-      if (!/^\d{2}:\d{2}$/.test(body.default_send_time)) {
-        return errorResponse('default_send_time must be in HH:MM format', 400);
+      if (!isValidTime(body.default_send_time)) {
+        return errorResponse('default_send_time must be in HH:MM format (00:00-23:59)', 400);
       }
       updates.push('default_send_time = ?');
       bindings.push(body.default_send_time);
