@@ -1,6 +1,10 @@
 import { env } from 'cloudflare:test';
 
 export function getTestEnv() {
+  // Create a proper whsec_ format secret (whsec_ + base64 encoded key)
+  const rawKey = 'test_secret_key_12345_bytes!';
+  const webhookSecret = 'whsec_' + btoa(rawKey);
+
   return {
     DB: env.DB,
     RESEND_API_KEY: 'test-api-key',
@@ -10,7 +14,7 @@ export function getTestEnv() {
     SENDER_EMAIL: 'test@example.com',
     SENDER_NAME: 'Test Newsletter',
     SITE_URL: 'http://localhost:4321',
-    RESEND_WEBHOOK_SECRET: 'whsec_test_secret',
+    RESEND_WEBHOOK_SECRET: webhookSecret,
   };
 }
 

@@ -1,6 +1,6 @@
 import type { Env, ResendWebhookEvent, DeliveryStatus } from '../types';
 import { verifyWebhookSignature } from '../lib/webhook';
-import { findDeliveryLogByResendId, updateDeliveryStatus } from '../lib/delivery';
+import { findDeliveryLogByResendId, updateDeliveryStatus, recordClickEvent } from '../lib/delivery';
 
 export async function handleResendWebhook(
   request: Request,
@@ -78,6 +78,20 @@ export async function handleResendWebhook(
       break;
     case 'email.clicked':
       newStatus = 'clicked';
+      // Record click event if link is present
+      if (event.data.click?.link) {
+        try {
+          await recordClickEvent(env, {
+            deliveryLogId: deliveryLog.id,
+            subscriberId: deliveryLog.subscriber_id,
+            clickedUrl: event.data.click.link,
+          });
+          console.log(`Recorded click event for ${deliveryLog.id}: ${event.data.click.link}`);
+        } catch (error) {
+          // Log error but don't fail the webhook
+          console.error('Failed to record click event:', error);
+        }
+      }
       break;
     case 'email.bounced':
       newStatus = 'bounced';
