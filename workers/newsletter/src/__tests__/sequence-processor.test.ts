@@ -483,4 +483,138 @@ describe('Sequence Processor', () => {
       expect(mockSendEmail).not.toHaveBeenCalled();
     });
   });
+
+  describe('Time-based scheduling', () => {
+    it('should not send email before scheduled time', async () => {
+      const env = getTestEnv();
+      const mockSendEmail = vi.mocked(email.sendEmail);
+
+      // Setup: subscriber enrolled at 2024-01-01 15:00 JST
+      // Step: delay_days=1, delay_time=NULL (uses default_send_time=10:00)
+      // Current time: 2024-01-02 09:00 JST (before 10:00)
+      // Expected: No email sent
+
+      const enrolledAt = Date.UTC(2024, 0, 1, 6, 0, 0) / 1000; // 15:00 JST = 06:00 UTC
+      const currentTime = Date.UTC(2024, 0, 2, 0, 0, 0) / 1000; // 09:00 JST = 00:00 UTC
+
+      // Insert test data with default_send_time and delay_time
+      const sequenceId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name, default_send_time, is_active)
+        VALUES (?, ?, ?, ?)
+      `).bind(sequenceId, 'Test Sequence', '10:00', 1).run();
+
+      const stepId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(stepId, sequenceId, 1, 1, null, 'Test Subject', 'Test Content').run();
+
+      const subscriberId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status, unsubscribe_token)
+        VALUES (?, ?, ?, ?)
+      `).bind(subscriberId, 'test@example.com', 'active', 'token-1').run();
+
+      const enrollmentId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(enrollmentId, subscriberId, sequenceId, 0, enrolledAt).run();
+
+      // Mock Date.now to return currentTime
+      vi.spyOn(Date, 'now').mockReturnValue(currentTime * 1000);
+
+      await processSequenceEmails(env);
+
+      // Verify no email was sent
+      expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+
+    it('should send email at or after scheduled time', async () => {
+      const env = getTestEnv();
+      const mockSendEmail = vi.mocked(email.sendEmail);
+      mockSendEmail.mockResolvedValue({ success: true });
+
+      // Setup: subscriber enrolled at 2024-01-01 15:00 JST
+      // Step: delay_days=1, default_send_time=10:00
+      // Current time: 2024-01-02 10:30 JST (after 10:00)
+      // Expected: Email sent
+
+      const enrolledAt = Date.UTC(2024, 0, 1, 6, 0, 0) / 1000; // 15:00 JST = 06:00 UTC
+      const currentTime = Date.UTC(2024, 0, 2, 1, 30, 0) / 1000; // 10:30 JST = 01:30 UTC
+
+      const sequenceId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name, default_send_time, is_active)
+        VALUES (?, ?, ?, ?)
+      `).bind(sequenceId, 'Test Sequence', '10:00', 1).run();
+
+      const stepId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(stepId, sequenceId, 1, 1, null, 'Test Subject', 'Test Content').run();
+
+      const subscriberId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status, unsubscribe_token)
+        VALUES (?, ?, ?, ?)
+      `).bind(subscriberId, 'test@example.com', 'active', 'token-1').run();
+
+      const enrollmentId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(enrollmentId, subscriberId, sequenceId, 0, enrolledAt).run();
+
+      vi.spyOn(Date, 'now').mockReturnValue(currentTime * 1000);
+
+      await processSequenceEmails(env);
+
+      expect(mockSendEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use step delay_time over sequence default_send_time', async () => {
+      const env = getTestEnv();
+      const mockSendEmail = vi.mocked(email.sendEmail);
+
+      // Step has delay_time=18:30, sequence has default_send_time=10:00
+      // Current time: 2024-01-02 12:00 JST
+      // Expected: No email (18:30 not reached yet)
+
+      const enrolledAt = Date.UTC(2024, 0, 1, 6, 0, 0) / 1000;
+      const currentTime = Date.UTC(2024, 0, 2, 3, 0, 0) / 1000; // 12:00 JST = 03:00 UTC
+
+      const sequenceId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name, default_send_time, is_active)
+        VALUES (?, ?, ?, ?)
+      `).bind(sequenceId, 'Test Sequence', '10:00', 1).run();
+
+      const stepId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(stepId, sequenceId, 1, 1, '18:30', 'Test Subject', 'Test Content').run();
+
+      const subscriberId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status, unsubscribe_token)
+        VALUES (?, ?, ?, ?)
+      `).bind(subscriberId, 'test@example.com', 'active', 'token-1').run();
+
+      const enrollmentId = crypto.randomUUID();
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(enrollmentId, subscriberId, sequenceId, 0, enrolledAt).run();
+
+      vi.spyOn(Date, 'now').mockReturnValue(currentTime * 1000);
+
+      await processSequenceEmails(env);
+
+      expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+  });
 });
