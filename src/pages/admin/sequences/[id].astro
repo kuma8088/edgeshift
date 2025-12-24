@@ -1,0 +1,13 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { SequenceDetail } from '../../../components/admin/SequenceDetail';
+
+const { id } = Astro.params;
+---
+
+<AdminLayout title="シーケンス詳細">
+  <AuthProvider client:load>
+    <SequenceDetail client:load sequenceId={id!} />
+  </AuthProvider>
+</AdminLayout>
