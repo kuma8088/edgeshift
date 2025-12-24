@@ -37,7 +37,22 @@ export async function recordDeliveryLog(
 }
 
 /**
+ * Status hierarchy (higher number = more advanced state)
+ * Prevents downgrade when webhooks arrive out of order
+ */
+const STATUS_HIERARCHY: Record<DeliveryStatus, number> = {
+  'sent': 0,
+  'delivered': 1,
+  'opened': 2,
+  'clicked': 3,
+  'bounced': -1,  // Failure states are separate
+  'failed': -1,
+};
+
+/**
  * Update delivery status (for webhooks: delivered, opened, clicked, bounced)
+ * Prevents status downgrade when webhooks arrive out of order
+ * Example: if 'clicked' arrives before 'opened', status stays 'clicked'
  */
 export async function updateDeliveryStatus(
   env: Env,
@@ -47,34 +62,86 @@ export async function updateDeliveryStatus(
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
 
-  // Determine which timestamp field to update based on status
-  let timestampField: string | null = null;
-  switch (status) {
-    case 'delivered':
-      timestampField = 'delivered_at';
-      break;
-    case 'opened':
-      timestampField = 'opened_at';
-      break;
-    case 'clicked':
-      timestampField = 'clicked_at';
-      break;
+  // Get current status to check hierarchy
+  const currentLog = await env.DB.prepare(
+    'SELECT status, delivered_at, opened_at, clicked_at FROM delivery_logs WHERE id = ?'
+  ).bind(logId).first<{
+    status: DeliveryStatus;
+    delivered_at: number | null;
+    opened_at: number | null;
+    clicked_at: number | null;
+  }>();
+
+  if (!currentLog) {
+    console.warn(`Delivery log not found: ${logId}`);
+    return;
   }
 
-  if (timestampField) {
-    await env.DB.prepare(`
-      UPDATE delivery_logs
-      SET status = ?, ${timestampField} = ?, error_message = ?
-      WHERE id = ?
-    `).bind(status, now, errorMessage || null, logId).run();
-  } else {
-    // For statuses without timestamp (bounced, failed)
-    await env.DB.prepare(`
-      UPDATE delivery_logs
-      SET status = ?, error_message = ?
-      WHERE id = ?
-    `).bind(status, errorMessage || null, logId).run();
+  const currentLevel = STATUS_HIERARCHY[currentLog.status];
+  const newLevel = STATUS_HIERARCHY[status];
+
+  // Prevent downgrade (except for failure states)
+  if (newLevel >= 0 && currentLevel >= 0 && newLevel <= currentLevel) {
+    console.log(`Skipping status downgrade: ${currentLog.status} -> ${status}`);
+    return;
   }
+
+  // Determine which timestamps to set
+  const updates: string[] = ['status = ?'];
+  const params: (string | number | null)[] = [status];
+
+  // For failure states, only set error_message
+  if (newLevel < 0) {
+    if (errorMessage) {
+      updates.push('error_message = ?');
+      params.push(errorMessage);
+    }
+  } else {
+    // For success states, set timestamps hierarchically
+    switch (status) {
+      case 'clicked':
+        // Set clicked_at, and also opened_at + delivered_at if not set
+        updates.push('clicked_at = ?');
+        params.push(now);
+        if (!currentLog.opened_at) {
+          updates.push('opened_at = ?');
+          params.push(now);
+        }
+        if (!currentLog.delivered_at) {
+          updates.push('delivered_at = ?');
+          params.push(now);
+        }
+        break;
+
+      case 'opened':
+        // Set opened_at, and also delivered_at if not set
+        updates.push('opened_at = ?');
+        params.push(now);
+        if (!currentLog.delivered_at) {
+          updates.push('delivered_at = ?');
+          params.push(now);
+        }
+        break;
+
+      case 'delivered':
+        updates.push('delivered_at = ?');
+        params.push(now);
+        break;
+    }
+
+    if (errorMessage) {
+      updates.push('error_message = ?');
+      params.push(errorMessage);
+    }
+  }
+
+  params.push(logId);
+
+  await env.DB.prepare(`
+    UPDATE delivery_logs
+    SET ${updates.join(', ')}
+    WHERE id = ?
+  `).bind(...params).run();
 }
 
 /**
@@ -265,6 +332,7 @@ export interface RecordSequenceDeliveryLogParams {
   sequenceStepId: string;
   subscriberId: string;
   email: string;
+  emailSubject: string;  // Preserved for historical reference
   resendId?: string;
   status?: DeliveryStatus;
   errorMessage?: string;
@@ -272,6 +340,7 @@ export interface RecordSequenceDeliveryLogParams {
 
 /**
  * Record a sequence delivery log entry
+ * Stores email_subject at send time so history is preserved even if step is edited/deleted
  */
 export async function recordSequenceDeliveryLog(
   env: Env,
@@ -283,15 +352,16 @@ export async function recordSequenceDeliveryLog(
 
   await env.DB.prepare(`
     INSERT INTO delivery_logs (
-      id, campaign_id, sequence_id, sequence_step_id, subscriber_id, email, status, resend_id, sent_at, error_message
+      id, campaign_id, sequence_id, sequence_step_id, subscriber_id, email, email_subject, status, resend_id, sent_at, error_message
     )
-    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id,
     params.sequenceId,
     params.sequenceStepId,
     params.subscriberId,
     params.email,
+    params.emailSubject,
     status,
     params.resendId || null,
     status === 'sent' || status === 'delivered' ? now : null,

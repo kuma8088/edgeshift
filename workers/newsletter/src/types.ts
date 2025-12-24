@@ -54,6 +54,7 @@ export interface DeliveryLog {
   sequence_step_id: string | null;
   subscriber_id: string;
   email: string;
+  email_subject: string | null;  // Preserved at send time for historical reference
   status: DeliveryStatus;
   resend_id: string | null;
   sent_at: number | null;
@@ -115,6 +116,7 @@ export interface SequenceStep {
   delay_time?: string; // "HH:MM" format, JST (optional override)
   subject: string;
   content: string;
+  is_enabled: number;  // Soft delete: 0 = disabled, 1 = enabled
   created_at: number;
 }
 
@@ -145,6 +147,12 @@ export interface UpdateSequenceRequest {
   description?: string;
   default_send_time?: string;
   is_active?: number;
+  steps?: {
+    delay_days: number;
+    delay_time?: string;
+    subject: string;
+    content: string;
+  }[];
 }
 
 export interface ApiResponse<T = unknown> {

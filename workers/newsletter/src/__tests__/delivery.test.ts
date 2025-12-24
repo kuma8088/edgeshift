@@ -247,6 +247,7 @@ describe('delivery logging', () => {
         sequenceStepId: 'step-1',
         subscriberId: 'sub-1',
         email: 'test@example.com',
+        emailSubject: 'Welcome!',
         resendId: 'resend-seq-123',
       });
 
@@ -273,6 +274,7 @@ describe('delivery logging', () => {
         sequenceStepId: 'step-1',
         subscriberId: 'sub-1',
         email: 'test@example.com',
+        emailSubject: 'Welcome!',
         status: 'failed',
         errorMessage: 'Email send failed',
       });

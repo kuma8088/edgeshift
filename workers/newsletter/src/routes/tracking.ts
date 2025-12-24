@@ -36,12 +36,14 @@ export async function getCampaignTracking(
   }
 
   // Get delivery stats
+  // Use timestamp fields for opened/clicked to count cumulative events
+  // (status transitions: sent → delivered → opened → clicked, so status alone misses intermediate states)
   const statsResult = await env.DB.prepare(`
     SELECT
       COUNT(*) as total_sent,
-      SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
-      SUM(CASE WHEN status = 'opened' THEN 1 ELSE 0 END) as opened,
-      SUM(CASE WHEN status = 'clicked' THEN 1 ELSE 0 END) as clicked,
+      SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered,
+      SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+      SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked,
       SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
       SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
     FROM delivery_logs
@@ -60,17 +62,23 @@ export async function getCampaignTracking(
   };
 
   // Calculate rates (avoid division by zero)
+  // With timestamp-based counting:
+  // - delivered = all emails that were successfully delivered
+  // - opened = all emails that were opened (subset of delivered)
+  // - clicked = all emails that had clicks (subset of opened)
   const deliveryRate = stats.total_sent > 0
     ? (stats.delivered / stats.total_sent) * 100
     : 0;
 
-  // opened/clicked/bounced count as "reached" for rate calculation
-  const reached = stats.delivered + stats.opened + stats.clicked;
-  const openRate = reached > 0
-    ? ((stats.opened + stats.clicked) / reached) * 100
+  // reached = delivered count (everyone who received the email)
+  const reached = stats.delivered;
+  // open_rate = opened / delivered (what % of delivered emails were opened)
+  const openRate = stats.delivered > 0
+    ? (stats.opened / stats.delivered) * 100
     : 0;
-  const clickRate = reached > 0
-    ? (stats.clicked / reached) * 100
+  // click_rate = clicked / opened (what % of opened emails had clicks)
+  const clickRate = stats.opened > 0
+    ? (stats.clicked / stats.opened) * 100
     : 0;
 
   return {
@@ -479,11 +487,11 @@ export async function getSequenceStats(
     in_progress: 0,
   };
 
-  // Get all steps for this sequence
+  // Get all enabled steps for this sequence (excludes soft-deleted steps)
   const steps = await env.DB.prepare(`
     SELECT id, step_number, subject
     FROM sequence_steps
-    WHERE sequence_id = ?
+    WHERE sequence_id = ? AND is_enabled = 1
     ORDER BY step_number
   `).bind(sequenceId).all<{
     id: string;
