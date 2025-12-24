@@ -30,6 +30,7 @@ import {
   handleGetSubscriberEngagement,
   handleGetSequenceStats,
 } from './routes/tracking';
+import { handleGetAnalyticsOverview } from './routes/analytics';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -126,6 +127,8 @@ export default {
         response = await handleResendWebhook(request, env);
       } else if (path === '/api/dashboard/stats' && request.method === 'GET') {
         response = await getDashboardStats(request, env);
+      } else if (path === '/api/analytics/overview' && request.method === 'GET') {
+        response = await handleGetAnalyticsOverview(request, env);
       } else {
         response = new Response(
           JSON.stringify({ success: false, error: 'Not found' }),
