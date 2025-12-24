@@ -145,6 +145,12 @@ export interface UpdateSequenceRequest {
   description?: string;
   default_send_time?: string;
   is_active?: number;
+  steps?: {
+    delay_days: number;
+    delay_time?: string;
+    subject: string;
+    content: string;
+  }[];
 }
 
 export interface ApiResponse<T = unknown> {

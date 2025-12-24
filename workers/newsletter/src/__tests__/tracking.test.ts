@@ -30,35 +30,47 @@ describe('tracking API', () => {
         VALUES ('camp-1', 'Test Campaign', '<p>Content</p>', 'sent', 1703404800)
       `).run();
 
-      // Setup: Create delivery logs with various statuses
+      // Setup: Create delivery logs with various statuses and timestamps
+      // With timestamp-based counting:
+      // - delivered: 3 (dl-1, dl-2, dl-3 have delivered_at)
+      // - opened: 2 (dl-2, dl-3 have opened_at)
+      // - clicked: 1 (dl-3 has clicked_at)
       await env.DB.prepare(`
-        INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, sent_at)
+        INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, sent_at, delivered_at, opened_at, clicked_at)
         VALUES
-          ('dl-1', 'camp-1', 'sub-1', 'user1@example.com', 'delivered', 1703404800),
-          ('dl-2', 'camp-1', 'sub-2', 'user2@example.com', 'opened', 1703404800),
-          ('dl-3', 'camp-1', 'sub-3', 'user3@example.com', 'clicked', 1703404800),
-          ('dl-4', 'camp-1', 'sub-4', 'user4@example.com', 'bounced', 1703404800)
+          ('dl-1', 'camp-1', 'sub-1', 'user1@example.com', 'delivered', 1703404800, 1703404800, NULL, NULL),
+          ('dl-2', 'camp-1', 'sub-2', 'user2@example.com', 'opened', 1703404800, 1703404800, 1703408400, NULL),
+          ('dl-3', 'camp-1', 'sub-3', 'user3@example.com', 'clicked', 1703404800, 1703404800, 1703408400, 1703412000),
+          ('dl-4', 'camp-1', 'sub-4', 'user4@example.com', 'bounced', 1703404800, NULL, NULL, NULL)
       `).run();
 
       // Import and call the function
       const { getCampaignTracking } = await import('../routes/tracking');
       const result = await getCampaignTracking(env, 'camp-1');
 
+      // Expected with timestamp-based counting:
+      // - delivered: 3 (all with delivered_at)
+      // - opened: 2 (all with opened_at)
+      // - clicked: 1 (all with clicked_at)
+      // - reached: 3 (= delivered)
+      // - delivery_rate: 75.0 (3/4 * 100)
+      // - open_rate: 66.7 (2/3 * 100)
+      // - click_rate: 50.0 (1/2 * 100)
       expect(result).toEqual({
         campaign_id: 'camp-1',
         subject: 'Test Campaign',
         sent_at: 1703404800,
         stats: {
           total_sent: 4,
-          delivered: 1,
-          opened: 1,
+          delivered: 3,
+          opened: 2,
           clicked: 1,
           bounced: 1,
           failed: 0,
           reached: 3,
-          delivery_rate: 25.0,
+          delivery_rate: 75.0,
           open_rate: 66.7,
-          click_rate: 33.3,
+          click_rate: 50.0,
         },
       });
     });

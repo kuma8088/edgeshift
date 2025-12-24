@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { SequenceStepEditor } from './SequenceStepEditor';
 import { SequenceTimelinePreview } from './SequenceTimelinePreview';
 
@@ -34,6 +34,16 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
     sequence?.steps || [{ delay_days: 0, subject: '', content: '' }]
   );
   const [error, setError] = useState('');
+
+  // Update state when sequence prop changes (e.g., after API fetch)
+  useEffect(() => {
+    if (sequence) {
+      setName(sequence.name || '');
+      setDescription(sequence.description || '');
+      setDefaultSendTime(sequence.default_send_time || '10:00');
+      setSteps(sequence.steps || [{ delay_days: 0, subject: '', content: '' }]);
+    }
+  }, [sequence]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

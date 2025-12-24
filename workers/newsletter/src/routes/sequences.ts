@@ -129,6 +129,8 @@ export async function updateSequence(
     }
 
     const body = await request.json<UpdateSequenceRequest>();
+    console.log('updateSequence body:', JSON.stringify(body));
+
     const updates: string[] = [];
     const bindings: (string | number | null)[] = [];
 
@@ -152,20 +154,40 @@ export async function updateSequence(
       bindings.push(body.is_active);
     }
 
-    if (updates.length === 0) {
-      return errorResponse('No updates provided', 400);
+    // Update sequence metadata if any fields provided
+    if (updates.length > 0) {
+      bindings.push(id);
+      const sql = `UPDATE sequences SET ${updates.join(', ')} WHERE id = ?`;
+      await env.DB.prepare(sql).bind(...bindings).run();
     }
 
-    bindings.push(id);
-    await env.DB.prepare(
-      `UPDATE sequences SET ${updates.join(', ')} WHERE id = ?`
-    ).bind(...bindings).run();
+    // Update steps if provided
+    if (body.steps && body.steps.length > 0) {
+      // Validate steps first
+      for (let i = 0; i < body.steps.length; i++) {
+        const step = body.steps[i];
+        if (step.delay_time && !isValidTime(step.delay_time)) {
+          return errorResponse(`Step ${i + 1}: delay_time must be in HH:MM format`, 400);
+        }
+      }
 
-    const updated = await env.DB.prepare(
-      'SELECT * FROM sequences WHERE id = ?'
-    ).bind(id).first<Sequence>();
+      // Delete existing steps
+      await env.DB.prepare('DELETE FROM sequence_steps WHERE sequence_id = ?').bind(id).run();
 
-    return successResponse(updated);
+      // Insert new steps
+      for (let i = 0; i < body.steps.length; i++) {
+        const step = body.steps[i];
+        const stepId = crypto.randomUUID();
+        await env.DB.prepare(`
+          INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(stepId, id, i + 1, step.delay_days, step.delay_time || null, step.subject, step.content).run();
+      }
+    }
+
+    // Return updated sequence with steps
+    const sequence = await getSequenceWithSteps(env, id);
+    return successResponse(sequence);
   } catch (error) {
     console.error('Update sequence error:', error);
     return errorResponse('Internal server error', 500);
