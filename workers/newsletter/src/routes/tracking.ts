@@ -1,0 +1,398 @@
+import type { Env, Campaign } from '../types';
+import { isAuthorized } from '../lib/auth';
+import { errorResponse } from '../lib/response';
+
+interface TrackingStats {
+  total_sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  failed: number;
+  delivery_rate: number;
+  open_rate: number;
+  click_rate: number;
+}
+
+interface CampaignTrackingResponse {
+  campaign_id: string;
+  subject: string;
+  sent_at: number | null;
+  stats: TrackingStats;
+}
+
+export async function getCampaignTracking(
+  env: Env,
+  campaignId: string
+): Promise<CampaignTrackingResponse | null> {
+  // Get campaign
+  const campaign = await env.DB.prepare(
+    'SELECT id, subject, sent_at FROM campaigns WHERE id = ?'
+  ).bind(campaignId).first<Campaign>();
+
+  if (!campaign) {
+    return null;
+  }
+
+  // Get delivery stats
+  const statsResult = await env.DB.prepare(`
+    SELECT
+      COUNT(*) as total_sent,
+      SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
+      SUM(CASE WHEN status = 'opened' THEN 1 ELSE 0 END) as opened,
+      SUM(CASE WHEN status = 'clicked' THEN 1 ELSE 0 END) as clicked,
+      SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
+      SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+    FROM delivery_logs
+    WHERE campaign_id = ?
+  `).bind(campaignId).first<{
+    total_sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+    failed: number;
+  }>();
+
+  const stats = statsResult || {
+    total_sent: 0, delivered: 0, opened: 0, clicked: 0, bounced: 0, failed: 0
+  };
+
+  // Calculate rates (avoid division by zero)
+  const deliveryRate = stats.total_sent > 0
+    ? (stats.delivered / stats.total_sent) * 100
+    : 0;
+
+  // opened/clicked/bounced count as "reached" for rate calculation
+  const reached = stats.delivered + stats.opened + stats.clicked;
+  const openRate = reached > 0
+    ? ((stats.opened + stats.clicked) / reached) * 100
+    : 0;
+  const clickRate = reached > 0
+    ? (stats.clicked / reached) * 100
+    : 0;
+
+  return {
+    campaign_id: campaign.id,
+    subject: campaign.subject,
+    sent_at: campaign.sent_at || null,
+    stats: {
+      total_sent: stats.total_sent,
+      delivered: stats.delivered,
+      opened: stats.opened,
+      clicked: stats.clicked,
+      bounced: stats.bounced,
+      failed: stats.failed,
+      delivery_rate: Math.round(deliveryRate * 10) / 10,
+      open_rate: Math.round(openRate * 10) / 10,
+      click_rate: Math.round(clickRate * 10) / 10,
+    },
+  };
+}
+
+export async function handleGetCampaignTracking(
+  request: Request,
+  env: Env,
+  campaignId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const result = await getCampaignTracking(env, campaignId);
+
+  if (!result) {
+    return errorResponse('Campaign not found', 404);
+  }
+
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+interface ClickEvent {
+  email: string;
+  name: string | null;
+  url: string;
+  clicked_at: number;
+}
+
+interface CampaignClicksResponse {
+  campaign_id: string;
+  summary: {
+    total_clicks: number;
+    unique_clickers: number;
+    unique_urls: number;
+  };
+  clicks: ClickEvent[];
+}
+
+export async function getCampaignClicks(
+  env: Env,
+  campaignId: string
+): Promise<CampaignClicksResponse | null> {
+  // Verify campaign exists
+  const campaign = await env.DB.prepare(
+    'SELECT id FROM campaigns WHERE id = ?'
+  ).bind(campaignId).first();
+
+  if (!campaign) {
+    return null;
+  }
+
+  // Get all clicks with subscriber info
+  const clicksResult = await env.DB.prepare(`
+    SELECT
+      s.email,
+      s.name,
+      ce.clicked_url as url,
+      ce.clicked_at
+    FROM click_events ce
+    JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
+    JOIN subscribers s ON ce.subscriber_id = s.id
+    WHERE dl.campaign_id = ?
+    ORDER BY ce.clicked_at DESC
+  `).bind(campaignId).all<{
+    email: string;
+    name: string | null;
+    url: string;
+    clicked_at: number;
+  }>();
+
+  const clicks = clicksResult.results || [];
+
+  // Calculate summary
+  const uniqueClickers = new Set(clicks.map(c => c.email)).size;
+  const uniqueUrls = new Set(clicks.map(c => c.url)).size;
+
+  return {
+    campaign_id: campaignId,
+    summary: {
+      total_clicks: clicks.length,
+      unique_clickers: uniqueClickers,
+      unique_urls: uniqueUrls,
+    },
+    clicks: clicks.map(c => ({
+      email: c.email,
+      name: c.name,
+      url: c.url,
+      clicked_at: c.clicked_at,
+    })),
+  };
+}
+
+export async function handleGetCampaignClicks(
+  request: Request,
+  env: Env,
+  campaignId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const result = await getCampaignClicks(env, campaignId);
+
+  if (!result) {
+    return errorResponse('Campaign not found', 404);
+  }
+
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+interface SubscriberEngagementResponse {
+  subscriber: {
+    id: string;
+    email: string;
+    name: string | null;
+    status: string;
+  };
+  campaigns: Array<{
+    id: string;
+    subject: string;
+    status: string;
+    sent_at: number | null;
+    opened_at: number | null;
+    clicks: Array<{ url: string; clicked_at: number }>;
+  }>;
+  sequences: Array<{
+    id: string;
+    name: string;
+    steps: Array<{
+      step_number: number;
+      subject: string;
+      status: string;
+      sent_at: number | null;
+      opened_at: number | null;
+      clicks: Array<{ url: string; clicked_at: number }>;
+    }>;
+  }>;
+}
+
+export async function getSubscriberEngagement(
+  env: Env,
+  subscriberId: string
+): Promise<SubscriberEngagementResponse | null> {
+  // Get subscriber
+  const subscriber = await env.DB.prepare(
+    'SELECT id, email, name, status FROM subscribers WHERE id = ?'
+  ).bind(subscriberId).first<{
+    id: string;
+    email: string;
+    name: string | null;
+    status: string;
+  }>();
+
+  if (!subscriber) {
+    return null;
+  }
+
+  // Get campaign delivery logs
+  const campaignLogs = await env.DB.prepare(`
+    SELECT
+      dl.id as delivery_log_id,
+      dl.status,
+      dl.sent_at,
+      dl.opened_at,
+      c.id as campaign_id,
+      c.subject
+    FROM delivery_logs dl
+    JOIN campaigns c ON dl.campaign_id = c.id
+    WHERE dl.subscriber_id = ? AND dl.campaign_id IS NOT NULL
+    ORDER BY dl.sent_at DESC
+  `).bind(subscriberId).all<{
+    delivery_log_id: string;
+    status: string;
+    sent_at: number | null;
+    opened_at: number | null;
+    campaign_id: string;
+    subject: string;
+  }>();
+
+  // Get sequence delivery logs
+  const sequenceLogs = await env.DB.prepare(`
+    SELECT
+      dl.id as delivery_log_id,
+      dl.status,
+      dl.sent_at,
+      dl.opened_at,
+      s.id as sequence_id,
+      s.name as sequence_name,
+      ss.step_number,
+      ss.subject
+    FROM delivery_logs dl
+    JOIN sequences s ON dl.sequence_id = s.id
+    JOIN sequence_steps ss ON dl.sequence_step_id = ss.id
+    WHERE dl.subscriber_id = ? AND dl.sequence_id IS NOT NULL
+    ORDER BY s.id, ss.step_number
+  `).bind(subscriberId).all<{
+    delivery_log_id: string;
+    status: string;
+    sent_at: number | null;
+    opened_at: number | null;
+    sequence_id: string;
+    sequence_name: string;
+    step_number: number;
+    subject: string;
+  }>();
+
+  // Get all clicks for this subscriber
+  const clicks = await env.DB.prepare(`
+    SELECT delivery_log_id, clicked_url, clicked_at
+    FROM click_events
+    WHERE subscriber_id = ?
+    ORDER BY clicked_at DESC
+  `).bind(subscriberId).all<{
+    delivery_log_id: string;
+    clicked_url: string;
+    clicked_at: number;
+  }>();
+
+  const clicksByLog = new Map<string, Array<{ url: string; clicked_at: number }>>();
+  for (const click of clicks.results || []) {
+    if (!clicksByLog.has(click.delivery_log_id)) {
+      clicksByLog.set(click.delivery_log_id, []);
+    }
+    clicksByLog.get(click.delivery_log_id)!.push({
+      url: click.clicked_url,
+      clicked_at: click.clicked_at,
+    });
+  }
+
+  // Build campaigns array
+  const campaigns = (campaignLogs.results || []).map(log => ({
+    id: log.campaign_id,
+    subject: log.subject,
+    status: log.status,
+    sent_at: log.sent_at,
+    opened_at: log.opened_at,
+    clicks: clicksByLog.get(log.delivery_log_id) || [],
+  }));
+
+  // Build sequences array (group by sequence)
+  const sequenceMap = new Map<string, {
+    id: string;
+    name: string;
+    steps: Array<{
+      step_number: number;
+      subject: string;
+      status: string;
+      sent_at: number | null;
+      opened_at: number | null;
+      clicks: Array<{ url: string; clicked_at: number }>;
+    }>;
+  }>();
+
+  for (const log of sequenceLogs.results || []) {
+    if (!sequenceMap.has(log.sequence_id)) {
+      sequenceMap.set(log.sequence_id, {
+        id: log.sequence_id,
+        name: log.sequence_name,
+        steps: [],
+      });
+    }
+    sequenceMap.get(log.sequence_id)!.steps.push({
+      step_number: log.step_number,
+      subject: log.subject,
+      status: log.status,
+      sent_at: log.sent_at,
+      opened_at: log.opened_at,
+      clicks: clicksByLog.get(log.delivery_log_id) || [],
+    });
+  }
+
+  return {
+    subscriber: {
+      id: subscriber.id,
+      email: subscriber.email,
+      name: subscriber.name,
+      status: subscriber.status,
+    },
+    campaigns,
+    sequences: Array.from(sequenceMap.values()),
+  };
+}
+
+export async function handleGetSubscriberEngagement(
+  request: Request,
+  env: Env,
+  subscriberId: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const result = await getSubscriberEngagement(env, subscriberId);
+
+  if (!result) {
+    return errorResponse('Subscriber not found', 404);
+  }
+
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
