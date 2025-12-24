@@ -107,6 +107,18 @@ export async function getCampaignStats(id: string) {
 }
 
 // Sequences
+interface CreateSequenceData {
+  name: string;
+  description?: string;
+  default_send_time: string;
+  steps: {
+    delay_days: number;
+    delay_time?: string;
+    subject: string;
+    content: string;
+  }[];
+}
+
 export async function listSequences() {
   return apiRequest('/sequences');
 }
@@ -115,7 +127,7 @@ export async function getSequence(id: string) {
   return apiRequest(`/sequences/${id}`);
 }
 
-export async function createSequence(data: { name: string; description?: string; steps: { delay_days: number; subject: string; content: string }[] }) {
+export async function createSequence(data: CreateSequenceData) {
   return apiRequest('/sequences', { method: 'POST', body: data });
 }
 
