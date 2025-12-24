@@ -240,3 +240,42 @@ export async function getClickEvents(
 
   return result.results || [];
 }
+
+export interface RecordSequenceDeliveryLogParams {
+  sequenceId: string;
+  sequenceStepId: string;
+  subscriberId: string;
+  email: string;
+  resendId?: string;
+  status?: DeliveryStatus;
+  errorMessage?: string;
+}
+
+/**
+ * Record a sequence delivery log entry
+ */
+export async function recordSequenceDeliveryLog(
+  env: Env,
+  params: RecordSequenceDeliveryLogParams
+): Promise<void> {
+  const id = crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+  const status = params.status || 'sent';
+
+  await env.DB.prepare(`
+    INSERT INTO delivery_logs (
+      id, campaign_id, sequence_id, sequence_step_id, subscriber_id, email, status, resend_id, sent_at, error_message
+    )
+    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    params.sequenceId,
+    params.sequenceStepId,
+    params.subscriberId,
+    params.email,
+    status,
+    params.resendId || null,
+    status === 'sent' || status === 'delivered' ? now : null,
+    params.errorMessage || null
+  ).run();
+}
