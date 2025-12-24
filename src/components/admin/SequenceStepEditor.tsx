@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -173,17 +174,32 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
     })
   );
 
-  // Ensure all steps have IDs
-  const stepsWithIds = steps.map((step, index) => ({
-    ...step,
-    id: step.id || `step-${index}-${Date.now()}`,
-  }));
+  // Use ref to maintain stable ID counter across renders
+  const idCounterRef = useRef(0);
+  const stableIdsRef = useRef(new Map<number, string>());
+
+  // Ensure all steps have stable IDs
+  const stepsWithIds = steps.map((step, index) => {
+    if (step.id) {
+      return step;
+    }
+
+    // Check if we already generated an ID for this position
+    if (!stableIdsRef.current.has(index)) {
+      stableIdsRef.current.set(index, `step-${idCounterRef.current++}`);
+    }
+
+    return {
+      ...step,
+      id: stableIdsRef.current.get(index)!,
+    };
+  });
 
   const addStep = () => {
     onChange([
       ...stepsWithIds,
       {
-        id: `step-${stepsWithIds.length}-${Date.now()}`,
+        id: `step-${idCounterRef.current++}`,
         delay_days: 0,
         delay_time: '',
         subject: '',
@@ -194,6 +210,8 @@ export function SequenceStepEditor({ steps, onChange }: SequenceStepEditorProps)
 
   const removeStep = (index: number) => {
     const newSteps = stepsWithIds.filter((_, i) => i !== index);
+    // Clean up stable ID mapping
+    stableIdsRef.current.delete(index);
     onChange(newSteps);
   };
 
