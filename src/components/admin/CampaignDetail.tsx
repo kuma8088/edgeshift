@@ -19,7 +19,9 @@ interface TrackingStats {
   opened: number;
   clicked: number;
   bounced: number;
-  complained: number;
+  failed: number;
+  reached: number;
+  delivery_rate: number;
   open_rate: number;
   click_rate: number;
 }
@@ -174,7 +176,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
               </div>
               <ProgressBar
                 value={stats.opened}
-                max={stats.delivered}
+                max={stats.reached}
                 showPercentage={true}
                 size="sm"
                 color="blue"
@@ -190,7 +192,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
               </div>
               <ProgressBar
                 value={stats.clicked}
-                max={stats.delivered}
+                max={stats.reached}
                 showPercentage={true}
                 size="sm"
                 color="green"

@@ -55,6 +55,7 @@ describe('tracking API', () => {
           clicked: 1,
           bounced: 1,
           failed: 0,
+          reached: 3,
           delivery_rate: 25.0,
           open_rate: 66.7,
           click_rate: 33.3,

@@ -9,6 +9,7 @@ interface TrackingStats {
   clicked: number;
   bounced: number;
   failed: number;
+  reached: number;
   delivery_rate: number;
   open_rate: number;
   click_rate: number;
@@ -83,6 +84,7 @@ export async function getCampaignTracking(
       clicked: stats.clicked,
       bounced: stats.bounced,
       failed: stats.failed,
+      reached,
       delivery_rate: Math.round(deliveryRate * 10) / 10,
       open_rate: Math.round(openRate * 10) / 10,
       click_rate: Math.round(clickRate * 10) / 10,
