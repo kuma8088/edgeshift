@@ -28,6 +28,7 @@ import {
   handleGetCampaignTracking,
   handleGetCampaignClicks,
   handleGetSubscriberEngagement,
+  handleGetSequenceStats,
 } from './routes/tracking';
 
 export default {
@@ -98,6 +99,9 @@ export default {
       } else if (path.match(/^\/api\/sequences\/[^\/]+\/subscribers$/) && request.method === 'GET') {
         const id = path.replace('/api/sequences/', '').replace('/subscribers', '');
         response = await getSequenceSubscribers(request, env, id);
+      } else if (path.match(/^\/api\/sequences\/[^\/]+\/stats$/) && request.method === 'GET') {
+        const id = path.replace('/api/sequences/', '').replace('/stats', '');
+        response = await handleGetSequenceStats(request, env, id);
       } else if (path.match(/^\/api\/subscribers\/[^\/]+\/sequences$/) && request.method === 'GET') {
         const id = path.replace('/api/subscribers/', '').replace('/sequences', '');
         response = await getSubscriberProgress(request, env, id);
