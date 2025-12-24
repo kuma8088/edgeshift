@@ -103,6 +103,7 @@ export interface Sequence {
   id: string;
   name: string;
   description: string | null;
+  default_send_time: string; // "HH:MM" format, JST
   is_active: number;
   created_at: number;
 }
@@ -112,6 +113,7 @@ export interface SequenceStep {
   sequence_id: string;
   step_number: number;
   delay_days: number;
+  delay_time?: string; // "HH:MM" format, JST (optional override)
   subject: string;
   content: string;
   created_at: number;
@@ -130,8 +132,10 @@ export interface SubscriberSequence {
 export interface CreateSequenceRequest {
   name: string;
   description?: string;
+  default_send_time: string; // Required, "HH:MM" format
   steps: {
     delay_days: number;
+    delay_time?: string; // Optional, "HH:MM" format
     subject: string;
     content: string;
   }[];
@@ -140,6 +144,7 @@ export interface CreateSequenceRequest {
 export interface UpdateSequenceRequest {
   name?: string;
   description?: string;
+  default_send_time?: string;
   is_active?: number;
 }
 
