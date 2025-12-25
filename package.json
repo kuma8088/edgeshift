@@ -9,7 +9,11 @@
     "preview": "astro preview",
     "check": "astro check",
     "lint": "eslint src --ext .ts,.astro",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e": "npm run test:e2e:cleanup && playwright test --config=tests/e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --ui --config=tests/e2e/playwright.config.ts",
+    "test:e2e:debug": "playwright test --debug --config=tests/e2e/playwright.config.ts",
+    "test:e2e:cleanup": "tsx tests/e2e/helpers/cleanup.ts"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",
@@ -33,6 +37,8 @@
     "@astrojs/check": "^0.9.0",
     "@astrojs/node": "^9.5.1",
     "@playwright/test": "^1.57.0",
+    "dotenv": "^16.6.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.0.0"
   }
 }

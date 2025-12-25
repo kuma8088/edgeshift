@@ -40,6 +40,26 @@ zone_name = "edgeshift.tech"
 pattern = "edgeshift.tech/api/analytics/*"
 zone_name = "edgeshift.tech"
 
+[[routes]]
+pattern = "edgeshift.tech/api/admin/*"
+zone_name = "edgeshift.tech"
+
+[[routes]]
+pattern = "edgeshift.tech/api/signup-pages"
+zone_name = "edgeshift.tech"
+
+[[routes]]
+pattern = "edgeshift.tech/api/signup-pages/*"
+zone_name = "edgeshift.tech"
+
+[[routes]]
+pattern = "edgeshift.tech/api/contact-lists"
+zone_name = "edgeshift.tech"
+
+[[routes]]
+pattern = "edgeshift.tech/api/contact-lists/*"
+zone_name = "edgeshift.tech"
+
 [vars]
 ALLOWED_ORIGIN = "https://edgeshift.tech"
 SENDER_EMAIL = "newsletter@mail.edgeshift.tech"
