@@ -138,9 +138,11 @@ export function SignupPageList() {
 
       {deleteTarget && (
         <ConfirmModal
+          isOpen={!!deleteTarget}
           title="ページを削除"
           message={`「${deleteTarget.title}」を削除しますか？この操作は取り消せません。`}
           confirmText="削除"
+          cancelText="キャンセル"
           onConfirm={handleDelete}
           onCancel={() => setDeleteTarget(null)}
           loading={deleting}

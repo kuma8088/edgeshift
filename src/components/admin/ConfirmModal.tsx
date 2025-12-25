@@ -7,6 +7,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
+  danger?: boolean;
 }
 
 export function ConfirmModal({
@@ -18,6 +19,7 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
   loading = false,
+  danger = false,
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
@@ -45,7 +47,11 @@ export function ConfirmModal({
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              danger
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)]'
+            }`}
           >
             {loading ? '処理中...' : confirmText}
           </button>
