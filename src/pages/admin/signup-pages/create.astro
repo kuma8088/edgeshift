@@ -1,0 +1,16 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { SignupPageEditForm } from '../../../components/admin/SignupPageEditForm';
+
+const url = new URL(Astro.request.url);
+const pageType = url.searchParams.get('type');
+
+// Redirect if page type is not provided
+if (!pageType || (pageType !== 'landing' && pageType !== 'embed')) {
+  return Astro.redirect('/admin/signup-pages');
+}
+---
+
+<AdminLayout title="新しいページを作成">
+  <SignupPageEditForm client:load initialPageType={pageType} />
+</AdminLayout>

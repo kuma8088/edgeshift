@@ -16,10 +16,12 @@ import { EmbedCodeGenerator } from './EmbedCodeGenerator';
 
 interface SignupPageEditFormProps {
   pageId?: string;
+  initialPageType?: PageType;
 }
 
-export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
+export function SignupPageEditForm({ pageId, initialPageType }: SignupPageEditFormProps) {
   const isEditMode = Boolean(pageId);
+  const isCreateMode = !isEditMode;
 
   // Form state - Basic
   const [slug, setSlug] = useState('');
@@ -73,6 +75,37 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
       loadPage();
     }
   }, [pageId]);
+
+  // Set defaults based on page type for create mode
+  useEffect(() => {
+    if (isCreateMode && initialPageType) {
+      setPageType(initialPageType);
+
+      if (initialPageType === 'landing') {
+        // Landing page defaults
+        setButtonText('登録する');
+        setEmailLabel('メールアドレス');
+        setEmailPlaceholder('your@email.com');
+        setNameLabel('お名前');
+        setNamePlaceholder('山田太郎');
+        setSuccessMessage('登録ありがとうございます！確認メールをお送りしました。');
+        setPendingTitle('確認メールを送信しました');
+        setPendingMessage('メール内のリンクをクリックして登録を完了してください。');
+        setConfirmedTitle('登録が完了しました');
+        setConfirmedMessage('ニュースレターへのご登録ありがとうございます。');
+      } else if (initialPageType === 'embed') {
+        // Embed page defaults
+        setButtonText('登録する');
+        setEmailLabel('メールアドレス');
+        setEmailPlaceholder('your@email.com');
+        setNameLabel('お名前');
+        setNamePlaceholder('山田太郎');
+        setSuccessMessage('登録ありがとうございます！確認メールをお送りしました。');
+        setEmbedTheme('light');
+        setEmbedSize('full');
+      }
+    }
+  }, [isCreateMode, initialPageType]);
 
   async function loadSequences() {
     try {
@@ -168,14 +201,20 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
       let result;
       if (isEditMode && pageId) {
         result = await updateSignupPage(pageId, pageData);
+        if (result.success) {
+          window.location.href = '/admin/signup-pages';
+        } else {
+          setError(result.error || 'Failed to save page');
+        }
       } else {
         result = await createSignupPage(pageData);
-      }
-
-      if (result.success) {
-        window.location.href = '/admin/signup-pages';
-      } else {
-        setError(result.error || 'Failed to save page');
+        if (result.success && result.data) {
+          // Redirect to edit page of created page
+          const newPageId = result.data.id;
+          window.location.href = `/admin/signup-pages/edit?id=${newPageId}`;
+        } else {
+          setError(result.error || 'Failed to save page');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save page');
@@ -204,14 +243,20 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
         {/* Page Type Selection */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">ページタイプ</h2>
+          {isCreateMode && (
+            <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+              作成後は変更できません
+            </div>
+          )}
           <div className="space-y-3">
-            <label className="flex items-start cursor-pointer">
+            <label className={`flex items-start ${isCreateMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
               <input
                 type="radio"
                 name="page_type"
                 value="landing"
                 checked={pageType === 'landing'}
                 onChange={(e) => setPageType(e.target.value as PageType)}
+                disabled={isCreateMode}
                 className="mt-1 mr-3"
               />
               <div>
@@ -221,13 +266,14 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
                 </div>
               </div>
             </label>
-            <label className="flex items-start cursor-pointer">
+            <label className={`flex items-start ${isCreateMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
               <input
                 type="radio"
                 name="page_type"
                 value="embed"
                 checked={pageType === 'embed'}
                 onChange={(e) => setPageType(e.target.value as PageType)}
+                disabled={isCreateMode}
                 className="mt-1 mr-3"
               />
               <div>

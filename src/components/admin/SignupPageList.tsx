@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSignupPages, deleteSignupPage, type SignupPage } from '../../utils/admin-api';
+import { getSignupPages, deleteSignupPage, type SignupPage, type PageType } from '../../utils/admin-api';
 import { ConfirmModal } from './ConfirmModal';
+import { PageTypeModal } from './PageTypeModal';
 
 export function SignupPageList() {
   const [pages, setPages] = useState<SignupPage[]>([]);
@@ -10,6 +11,7 @@ export function SignupPageList() {
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SignupPage | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showPageTypeModal, setShowPageTypeModal] = useState(false);
 
   useEffect(() => {
     loadPages();
@@ -52,6 +54,11 @@ export function SignupPageList() {
     }
   }
 
+  function handlePageTypeSelect(pageType: PageType) {
+    setShowPageTypeModal(false);
+    window.location.href = `/admin/signup-pages/create?type=${pageType}`;
+  }
+
   if (loading) {
     return <div className="text-center py-12 text-gray-500">Loading...</div>;
   }
@@ -74,23 +81,23 @@ export function SignupPageList() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">登録ページ管理</h1>
-        <a
-          href="/admin/signup-pages/new"
+        <button
+          onClick={() => setShowPageTypeModal(true)}
           className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
         >
           + 新規作成
-        </a>
+        </button>
       </div>
 
       {pages.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-500 mb-4">登録ページがありません</p>
-          <a
-            href="/admin/signup-pages/new"
+          <button
+            onClick={() => setShowPageTypeModal(true)}
             className="text-gray-800 underline hover:no-underline"
           >
             最初のページを作成
-          </a>
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -149,6 +156,12 @@ export function SignupPageList() {
           danger
         />
       )}
+
+      <PageTypeModal
+        isOpen={showPageTypeModal}
+        onSelect={handlePageTypeSelect}
+        onCancel={() => setShowPageTypeModal(false)}
+      />
     </div>
   );
 }
