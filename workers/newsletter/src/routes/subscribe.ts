@@ -80,19 +80,24 @@ export async function handleSubscribe(
       );
     }
 
-    // Verify Turnstile token
-    const ip = request.headers.get('CF-Connecting-IP') || undefined;
-    const turnstileResult = await verifyTurnstileToken(
-      turnstileToken,
-      env.TURNSTILE_SECRET_KEY,
-      ip
-    );
+    // テストモード: test+* メールアドレスはTurnstileスキップ
+    const isTestEmail = email.startsWith('test+') && email.endsWith('@edgeshift.tech');
 
-    if (!turnstileResult.success) {
-      return jsonResponse<ApiResponse>(
-        { success: false, error: 'Security verification failed' },
-        400
+    if (!isTestEmail) {
+      // Verify Turnstile token
+      const ip = request.headers.get('CF-Connecting-IP') || undefined;
+      const turnstileResult = await verifyTurnstileToken(
+        turnstileToken,
+        env.TURNSTILE_SECRET_KEY,
+        ip
       );
+
+      if (!turnstileResult.success) {
+        return jsonResponse<ApiResponse>(
+          { success: false, error: 'Security verification failed' },
+          400
+        );
+      }
     }
 
     // Check for existing subscriber
