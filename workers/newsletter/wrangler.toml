@@ -52,7 +52,28 @@ binding = "DB"
 database_name = "edgeshift-newsletter"
 database_id = "4ca2faf7-7486-4a66-b153-278acfa10d17"
 
-# KV Namespace for rate limiting
+# KV Namespace for rate limiting (Batch S)
+# Purpose: Store rate limit state for /api/newsletter/subscribe endpoint
+# Default limits: 5 requests per 10 minutes per email address
+#
+# SETUP INSTRUCTIONS:
+# To create the KV namespace and get actual IDs, run:
+#   1. Production: wrangler kv:namespace create RATE_LIMIT_KV --preview false
+#   2. Preview:    wrangler kv:namespace create RATE_LIMIT_KV --preview
+# Then replace the placeholder IDs below with the actual namespace IDs from the output.
+#
+# MANAGEMENT:
+# - View keys:   wrangler kv:key list --namespace-id=<id>
+# - Get value:   wrangler kv:key get <key> --namespace-id=<id>
+# - Delete key:  wrangler kv:key delete <key> --namespace-id=<id>
+# - Bulk delete: wrangler kv:bulk delete <key1> <key2> --namespace-id=<id>
+#
+# RATE LIMIT CONFIGURATION:
+# The rate limit settings are defined in src/routes/subscribe.ts:
+# - Window: 10 minutes (600 seconds)
+# - Max attempts: 5 per email address
+# - Key format: "ratelimit:subscribe:<email>"
+# To change limits, modify the constants in subscribe.ts
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
 id = "placeholder_for_prod"
