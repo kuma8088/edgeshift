@@ -12,6 +12,7 @@ import {
 import { RichTextEditor } from './RichTextEditor';
 import { SignupPagePreview } from './SignupPagePreview';
 import { ListSelector } from './ListSelector';
+import { EmbedCodeGenerator } from './EmbedCodeGenerator';
 
 interface SignupPageEditFormProps {
   pageId?: string;
@@ -543,47 +544,59 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
 
         {/* Embed Page Only - Embed Customization */}
         {pageType === 'embed' && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              埋め込み設定（Embed Page）
-            </h2>
+          <>
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                埋め込み設定（Embed Page）
+              </h2>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  テーマ
-                </label>
-                <select
-                  value={embedTheme}
-                  onChange={(e) => setEmbedTheme(e.target.value as 'light' | 'dark')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-800"
-                >
-                  <option value="light">ライト（明るい背景）</option>
-                  <option value="dark">ダーク（暗い背景）</option>
-                </select>
-                <p className="mt-1 text-sm text-gray-500">
-                  埋め込み先のサイトデザインに合わせて選択してください
-                </p>
-              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    テーマ
+                  </label>
+                  <select
+                    value={embedTheme}
+                    onChange={(e) => setEmbedTheme(e.target.value as 'light' | 'dark')}
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-800"
+                  >
+                    <option value="light">ライト（明るい背景）</option>
+                    <option value="dark">ダーク（暗い背景）</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-500">
+                    埋め込み先のサイトデザインに合わせて選択してください
+                  </p>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  サイズ
-                </label>
-                <select
-                  value={embedSize}
-                  onChange={(e) => setEmbedSize(e.target.value as 'compact' | 'full')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-800"
-                >
-                  <option value="compact">コンパクト（300px）</option>
-                  <option value="full">フル（600px）</option>
-                </select>
-                <p className="mt-1 text-sm text-gray-500">
-                  埋め込み先のスペースに合わせて選択してください
-                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    サイズ
+                  </label>
+                  <select
+                    value={embedSize}
+                    onChange={(e) => setEmbedSize(e.target.value as 'compact' | 'full')}
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-800"
+                  >
+                    <option value="compact">コンパクト（300px）</option>
+                    <option value="full">フル（600px）</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-500">
+                    埋め込み先のスペースに合わせて選択してください
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Embed Code Generator - Only for saved pages */}
+            {isEditMode && pageId && (
+              <EmbedCodeGenerator
+                pageId={pageId}
+                slug={slug}
+                embedTheme={embedTheme}
+                embedSize={embedSize}
+              />
+            )}
+          </>
         )}
 
         {/* Actions */}
