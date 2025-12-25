@@ -7,6 +7,19 @@ const execAsync = promisify(exec);
 const DB_NAME = 'edgeshift-newsletter';
 
 /**
+ * Sanitize email for SQL query (escape single quotes)
+ * Also validates email format
+ */
+function sanitizeEmail(email: string): string {
+  // Validate email format
+  if (!/^[a-zA-Z0-9+._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+    throw new Error(`Invalid email format: ${email}`);
+  }
+  // Escape single quotes for SQL
+  return email.replace(/'/g, "''");
+}
+
+/**
  * Execute SQL query against D1 database via Wrangler CLI
  */
 export async function queryD1<T = any>(sql: string): Promise<T[]> {
@@ -32,7 +45,8 @@ export async function queryD1<T = any>(sql: string): Promise<T[]> {
     return [];
   } catch (error) {
     console.error('D1 query error:', error);
-    throw error;
+    console.error('Failed SQL:', sql);
+    throw new Error(`D1 query failed: ${error instanceof Error ? error.message : String(error)}\nSQL: ${sql}`);
   }
 }
 
@@ -40,8 +54,9 @@ export async function queryD1<T = any>(sql: string): Promise<T[]> {
  * Get confirm_token for a subscriber by email
  */
 export async function getConfirmToken(email: string): Promise<string | null> {
+  const sanitized = sanitizeEmail(email);
   const results = await queryD1<Subscriber>(
-    `SELECT confirm_token FROM subscribers WHERE email = '${email}'`
+    `SELECT confirm_token FROM subscribers WHERE email = '${sanitized}'`
   );
 
   if (results.length === 0) {
@@ -55,8 +70,9 @@ export async function getConfirmToken(email: string): Promise<string | null> {
  * Get delivery logs for a subscriber by email
  */
 export async function getDeliveryLogs(email: string): Promise<DeliveryLog[]> {
+  const sanitized = sanitizeEmail(email);
   return queryD1<DeliveryLog>(
-    `SELECT * FROM delivery_logs WHERE email = '${email}' ORDER BY created_at DESC`
+    `SELECT * FROM delivery_logs WHERE email = '${sanitized}' ORDER BY created_at DESC`
   );
 }
 
@@ -64,8 +80,9 @@ export async function getDeliveryLogs(email: string): Promise<DeliveryLog[]> {
  * Get subscriber by email
  */
 export async function getSubscriber(email: string): Promise<Subscriber | null> {
+  const sanitized = sanitizeEmail(email);
   const results = await queryD1<Subscriber>(
-    `SELECT * FROM subscribers WHERE email = '${email}'`
+    `SELECT * FROM subscribers WHERE email = '${sanitized}'`
   );
 
   return results.length > 0 ? results[0] : null;
