@@ -330,7 +330,7 @@ export async function handleGetListMembers(
 
   try {
     const result = await env.DB.prepare(
-      `SELECT s.*, clm.added_at
+      `SELECT s.id AS subscriber_id, s.email, s.name, s.status, s.created_at, s.subscribed_at, s.unsubscribed_at, clm.added_at
        FROM contact_list_members clm
        JOIN subscribers s ON clm.subscriber_id = s.id
        WHERE clm.contact_list_id = ?
