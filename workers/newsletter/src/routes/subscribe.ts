@@ -1,6 +1,8 @@
 import type { Env, SubscribeRequest, ApiResponse, Subscriber } from '../types';
 import { verifyTurnstileToken } from '../lib/turnstile';
 import { sendEmail } from '../lib/email';
+import { checkRateLimit } from '../lib/rate-limiter';
+import { isDisposableEmail } from '../lib/disposable-emails';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -83,9 +85,11 @@ export async function handleSubscribe(
     // テストモード: test+* メールアドレスはTurnstileスキップ
     const isTestEmail = email.startsWith('test+') && email.endsWith('@edgeshift.tech');
 
+    // Get IP address for rate limiting and Turnstile verification
+    const ip = request.headers.get('CF-Connecting-IP') || undefined;
+
     if (!isTestEmail) {
       // Verify Turnstile token
-      const ip = request.headers.get('CF-Connecting-IP') || undefined;
       const turnstileResult = await verifyTurnstileToken(
         turnstileToken,
         env.TURNSTILE_SECRET_KEY,
@@ -98,6 +102,34 @@ export async function handleSubscribe(
           400
         );
       }
+    }
+
+    // Rate limiting check (only if KV namespace is configured)
+    if (ip && env.RATE_LIMIT_KV) {
+      const rateLimitResult = await checkRateLimit(env.RATE_LIMIT_KV, ip);
+      if (!rateLimitResult.allowed) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Too many requests. Please try again later.',
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': '600', // 10 minutes in seconds
+            },
+          }
+        );
+      }
+    }
+
+    // Disposable email check
+    if (isDisposableEmail(email)) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'Please use a permanent email address' },
+        400
+      );
     }
 
     // Check for existing subscriber

@@ -1,32 +1,27 @@
 ---
+// Server-side rendering for dynamic content
+export const prerender = false;
+
 const { slug } = Astro.params;
+
+// Fetch page data at request time
+const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
+const pageResponse = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
+
+if (!pageResponse.ok) {
+  return Astro.redirect('/404');
+}
+
+const pageData = await pageResponse.json();
+const page = pageData.data.page;
 
 // Read query params for theme/size override
 const themeParam = Astro.url.searchParams.get('theme');
 const sizeParam = Astro.url.searchParams.get('size');
 
-// Fetch page config
-const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
-
-let page;
-
-try {
-  const response = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
-
-  if (!response.ok) {
-    return Astro.redirect('/404');
-  }
-
-  const { data } = await response.json();
-  page = data.page;
-
-  // Redirect if not an embed page
-  if (page.page_type !== 'embed') {
-    return Astro.redirect(`/newsletter/signup/${slug}`);
-  }
-} catch (error) {
-  console.error('Failed to fetch signup page:', error);
-  return Astro.redirect('/404');
+// Redirect if not an embed page
+if (page.page_type !== 'embed') {
+  return Astro.redirect(`/newsletter/signup/${slug}`);
 }
 
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';

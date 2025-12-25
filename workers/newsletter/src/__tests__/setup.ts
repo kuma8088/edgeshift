@@ -15,6 +15,8 @@ export function getTestEnv() {
     SENDER_NAME: 'Test Newsletter',
     SITE_URL: 'http://localhost:4321',
     RESEND_WEBHOOK_SECRET: webhookSecret,
+    // RATE_LIMIT_KV is NOT included by default
+    // Tests that need rate limiting must provide it explicitly
   };
 }
 
