@@ -78,6 +78,7 @@ export interface SubscribeRequest {
   email: string;
   name?: string;
   turnstileToken: string;
+  sequenceId?: string;
 }
 
 export interface BroadcastRequest {
@@ -194,4 +195,51 @@ export interface ResendWebhookEvent {
     template_id?: string;
     tags?: Record<string, string>;
   };
+}
+
+// Signup Page (Batch 4A)
+export interface SignupPage {
+  id: string;
+  slug: string;
+  sequence_id: string | null;
+  title: string;
+  content: string;
+  button_text: string;
+  form_fields: string;
+  theme: string;
+  pending_title: string;
+  pending_message: string;
+  confirmed_title: string;
+  confirmed_message: string;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateSignupPageRequest {
+  slug: string;
+  sequence_id?: string;
+  title: string;
+  content: string;
+  button_text?: string;
+  form_fields?: string;
+  theme?: string;
+  pending_title?: string;
+  pending_message?: string;
+  confirmed_title?: string;
+  confirmed_message?: string;
+}
+
+export interface UpdateSignupPageRequest {
+  slug?: string;
+  sequence_id?: string;
+  title?: string;
+  content?: string;
+  button_text?: string;
+  form_fields?: string;
+  theme?: string;
+  pending_title?: string;
+  pending_message?: string;
+  confirmed_title?: string;
+  confirmed_message?: string;
 }
