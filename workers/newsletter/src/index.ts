@@ -222,7 +222,7 @@ export default {
         if (!isAuthorized(request, env)) {
           response = new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
-            { status: 401, headers: { 'Content-Type': 'application/json' } }
+            { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
           );
         } else {
           try {
@@ -242,7 +242,7 @@ export default {
             console.error('Manual cron trigger error:', error);
             response = new Response(
               JSON.stringify({ success: false, error: 'Internal server error' }),
-              { status: 500, headers: { 'Content-Type': 'application/json' } }
+              { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
             );
           }
         }
