@@ -1,4 +1,30 @@
 ---
+// Generate static paths at build time
+export async function getStaticPaths() {
+  const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
+
+  try {
+    const response = await fetch(`${apiUrl}/api/signup-pages`);
+
+    if (!response.ok) {
+      console.error('Failed to fetch signup pages:', response.status);
+      return [];
+    }
+
+    const { data } = await response.json();
+
+    // Only generate paths for active embed pages
+    return data
+      .filter((page: any) => page.is_active && page.page_type === 'embed')
+      .map((page: any) => ({
+        params: { slug: page.slug },
+      }));
+  } catch (error) {
+    console.error('Error fetching signup pages:', error);
+    return [];
+  }
+}
+
 const { slug } = Astro.params;
 
 // Read query params for theme/size override
