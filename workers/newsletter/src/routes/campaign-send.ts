@@ -68,10 +68,22 @@ export async function sendCampaign(
       return errorResponse('Campaign already sent', 400);
     }
 
-    // Get active subscribers
-    const subscribersResult = await env.DB.prepare(
-      "SELECT * FROM subscribers WHERE status = 'active'"
-    ).all<Subscriber>();
+    // Get active subscribers (list-based or broadcast)
+    let subscribersResult;
+
+    if (campaign.contact_list_id) {
+      // List-based delivery: send only to members of the specified list
+      subscribersResult = await env.DB.prepare(
+        `SELECT s.* FROM subscribers s
+         JOIN contact_list_members clm ON s.id = clm.subscriber_id
+         WHERE clm.contact_list_id = ? AND s.status = 'active'`
+      ).bind(campaign.contact_list_id).all<Subscriber>();
+    } else {
+      // Broadcast delivery: send to all active subscribers (default behavior)
+      subscribersResult = await env.DB.prepare(
+        "SELECT * FROM subscribers WHERE status = 'active'"
+      ).all<Subscriber>();
+    }
 
     const subscribers = subscribersResult.results || [];
 

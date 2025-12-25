@@ -17,6 +17,7 @@ export interface Subscriber {
   status: 'pending' | 'active' | 'unsubscribed';
   confirm_token: string | null;
   unsubscribe_token: string | null;
+  signup_page_slug: string | null;
   subscribed_at: number | null;
   unsubscribed_at: number | null;
   created_at: number;
@@ -80,6 +81,7 @@ export interface SubscribeRequest {
   name?: string;
   turnstileToken: string;
   sequenceId?: string;
+  signupPageSlug?: string;
 }
 
 export interface BroadcastRequest {

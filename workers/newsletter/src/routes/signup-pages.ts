@@ -25,6 +25,7 @@ interface SignupPageInput {
   meta_title?: string;
   meta_description?: string;
   sequence_id?: string;
+  contact_list_id?: string;
 }
 
 interface SignupPage extends SignupPageInput {
@@ -126,8 +127,8 @@ export async function createSignupPage(env: Env, input: SignupPageInput): Promis
   await env.DB.prepare(
     `INSERT INTO signup_pages (
       id, slug, title, content, meta_title, meta_description,
-      sequence_id, is_active, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+      sequence_id, contact_list_id, is_active, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
   )
     .bind(
       id,
@@ -137,6 +138,7 @@ export async function createSignupPage(env: Env, input: SignupPageInput): Promis
       input.meta_title || null,
       input.meta_description || null,
       input.sequence_id || null,
+      input.contact_list_id || null,
       now,
       now
     )
@@ -238,6 +240,10 @@ export async function updateSignupPage(
   if (input.sequence_id !== undefined) {
     updates.push('sequence_id = ?');
     bindings.push(input.sequence_id || null);
+  }
+  if (input.contact_list_id !== undefined) {
+    updates.push('contact_list_id = ?');
+    bindings.push(input.contact_list_id || null);
   }
 
   updates.push('updated_at = ?');

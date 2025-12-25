@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'unsubscribed')),
   confirm_token TEXT,
   unsubscribe_token TEXT,
+  signup_page_slug TEXT,
   subscribed_at INTEGER,
   unsubscribed_at INTEGER,
   created_at INTEGER DEFAULT (unixepoch())

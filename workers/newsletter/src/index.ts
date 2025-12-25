@@ -41,6 +41,7 @@ import {
 } from './routes/signup-pages';
 import {
   handleGetContactLists,
+  handleGetContactList,
   handleCreateContactList,
   handleUpdateContactList,
   handleDeleteContactList,
@@ -94,6 +95,9 @@ export default {
         if (request.method === 'DELETE') {
           response = await handleRemoveMember(request, env, listId, subscriberId);
         }
+      } else if (path.match(/^\/api\/contact-lists\/[^\/]+$/) && request.method === 'GET') {
+        const id = path.replace('/api/contact-lists/', '');
+        response = await handleGetContactList(request, env, id);
       } else if (path.match(/^\/api\/contact-lists\/[^\/]+$/) && request.method === 'PUT') {
         const id = path.replace('/api/contact-lists/', '');
         response = await handleUpdateContactList(request, env, id);

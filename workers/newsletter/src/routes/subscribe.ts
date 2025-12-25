@@ -62,7 +62,7 @@ export async function handleSubscribe(
 ): Promise<Response> {
   try {
     const body = await request.json<SubscribeRequest>();
-    const { email, name, turnstileToken, sequenceId } = body;
+    const { email, name, turnstileToken, sequenceId, signupPageSlug } = body;
 
     // Validate required fields
     if (!email || !turnstileToken) {
@@ -205,9 +205,9 @@ export async function handleSubscribe(
     const confirmUrl = `${env.SITE_URL}/api/newsletter/confirm/${confirmToken}`;
 
     await env.DB.prepare(`
-      INSERT INTO subscribers (id, email, name, status, confirm_token, unsubscribe_token)
-      VALUES (?, ?, ?, 'pending', ?, ?)
-    `).bind(id, email, name || null, confirmToken, unsubscribeToken).run();
+      INSERT INTO subscribers (id, email, name, status, confirm_token, unsubscribe_token, signup_page_slug)
+      VALUES (?, ?, ?, 'pending', ?, ?, ?)
+    `).bind(id, email, name || null, confirmToken, unsubscribeToken, signupPageSlug || null).run();
 
     // Enroll in sequence if provided
     if (sequenceId) {

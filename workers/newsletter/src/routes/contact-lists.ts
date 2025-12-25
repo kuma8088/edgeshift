@@ -35,6 +35,21 @@ export async function createContactList(
 }
 
 /**
+ * Get single contact list by ID
+ */
+export async function getContactList(env: Env, id: string): Promise<ContactList> {
+  const result = await env.DB.prepare(
+    'SELECT * FROM contact_lists WHERE id = ?'
+  ).bind(id).first();
+
+  if (!result) {
+    throw new Error('Contact list not found');
+  }
+
+  return result as ContactList;
+}
+
+/**
  * Get all contact lists
  */
 export async function getContactLists(env: Env): Promise<ContactList[]> {
@@ -103,6 +118,32 @@ export async function deleteContactList(env: Env, id: string): Promise<void> {
 
   if (!result.meta.changes) {
     throw new Error('Contact list not found');
+  }
+}
+
+/**
+ * GET /api/contact-lists/:id (single list)
+ */
+export async function handleGetContactList(
+  request: Request,
+  env: Env,
+  id: string
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    const list = await getContactList(env, id);
+    return successResponse({ list });
+  } catch (error) {
+    console.error('Get contact list error:', error);
+
+    if (error instanceof Error && error.message === 'Contact list not found') {
+      return errorResponse(error.message, 404);
+    }
+
+    return errorResponse('Internal server error', 500);
   }
 }
 

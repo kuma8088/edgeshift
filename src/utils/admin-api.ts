@@ -86,7 +86,14 @@ export async function getCampaign(id: string) {
   return apiRequest(`/campaigns/${id}`);
 }
 
-export async function createCampaign(data: { subject: string; content: string; scheduled_at?: number }) {
+export interface CreateCampaignData {
+  subject: string;
+  content: string;
+  scheduled_at?: number;
+  contact_list_id?: string;
+}
+
+export async function createCampaign(data: CreateCampaignData) {
   return apiRequest('/campaigns', { method: 'POST', body: data });
 }
 
@@ -223,6 +230,7 @@ export interface SignupPage {
 export interface CreateSignupPageData {
   slug: string;
   sequence_id?: string;
+  contact_list_id?: string;
   title: string;
   content: string;
   button_text?: string;
@@ -237,6 +245,7 @@ export interface CreateSignupPageData {
 export interface UpdateSignupPageData {
   slug?: string;
   sequence_id?: string;
+  contact_list_id?: string;
   title?: string;
   content?: string;
   button_text?: string;
@@ -266,4 +275,69 @@ export async function updateSignupPage(id: string, pageData: UpdateSignupPageDat
 
 export async function deleteSignupPage(id: string) {
   return apiRequest<{ message: string }>(`/signup-pages/${id}`, { method: 'DELETE' });
+}
+
+// Contact Lists API (Batch 4C)
+export interface ContactList {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateContactListData {
+  name: string;
+  description?: string;
+}
+
+export async function getContactLists() {
+  return apiRequest<{ lists: ContactList[] }>('/contact-lists');
+}
+
+export async function getContactList(id: string) {
+  return apiRequest<{ list: ContactList }>(`/contact-lists/${id}`);
+}
+
+export async function createContactList(data: CreateContactListData) {
+  return apiRequest<{ data: ContactList }>('/contact-lists', { method: 'POST', body: data });
+}
+
+export async function updateContactList(id: string, data: { name?: string; description?: string }) {
+  return apiRequest<{ list: ContactList }>(`/contact-lists/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteContactList(id: string) {
+  return apiRequest<{ message: string }>(`/contact-lists/${id}`, { method: 'DELETE' });
+}
+
+// Member Management
+export async function getListMembers(listId: string) {
+  return apiRequest(`/contact-lists/${listId}/members`);
+}
+
+export async function addMembersToList(listId: string, subscriberIds: string[]) {
+  return apiRequest(`/contact-lists/${listId}/members`, {
+    method: 'POST',
+    body: { subscriber_ids: subscriberIds },
+  });
+}
+
+export async function removeMemberFromList(listId: string, subscriberId: string) {
+  return apiRequest(`/contact-lists/${listId}/members/${subscriberId}`, { method: 'DELETE' });
+}
+
+export async function getSubscriberLists(subscriberId: string) {
+  return apiRequest<{ lists: ContactList[] }>(`/subscribers/${subscriberId}/lists`);
+}
+
+export async function addSubscriberToList(subscriberId: string, listId: string) {
+  return apiRequest(`/subscribers/${subscriberId}/lists`, {
+    method: 'POST',
+    body: { list_id: listId },
+  });
+}
+
+export async function removeSubscriberFromList(subscriberId: string, listId: string) {
+  return apiRequest(`/subscribers/${subscriberId}/lists/${listId}`, { method: 'DELETE' });
 }
