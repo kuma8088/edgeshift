@@ -102,8 +102,8 @@ export async function handleSubscribe(
       }
     }
 
-    // Rate limiting check
-    if (ip) {
+    // Rate limiting check (only if KV namespace is configured)
+    if (ip && env.RATE_LIMIT_KV) {
       const rateLimitResult = await checkRateLimit(env.RATE_LIMIT_KV, ip);
       if (!rateLimitResult.allowed) {
         return new Response(

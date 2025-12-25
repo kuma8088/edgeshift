@@ -8,7 +8,7 @@ export interface Env {
   SENDER_NAME: string;
   SITE_URL: string;
   RESEND_WEBHOOK_SECRET: string;
-  RATE_LIMIT_KV: KVNamespace;
+  RATE_LIMIT_KV?: KVNamespace; // Optional: only required when rate limiting is enabled
 }
 
 export interface Subscriber {
