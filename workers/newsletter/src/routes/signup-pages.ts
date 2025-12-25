@@ -18,6 +18,10 @@ import { jsonResponse, errorResponse, successResponse } from '../lib/response';
 const SLUG_REGEX = /^[a-z0-9-]{3,50}$/;
 const MAX_CONTENT_SIZE = 50 * 1024; // 50KB
 
+/**
+ * Input interface for creating/updating signup pages.
+ * Includes Batch 4B embed customization fields.
+ */
 interface SignupPageInput {
   slug: string;
   title: string;
@@ -26,10 +30,53 @@ interface SignupPageInput {
   meta_description?: string;
   sequence_id?: string;
   contact_list_id?: string;
+  // Batch 4B: Page type
+  page_type?: 'landing' | 'embed';
+  // Batch 4B: Form customization
+  button_text?: string;
+  form_fields?: string; // JSON string: '["email"]' or '["email","name"]'
+  email_label?: string;
+  email_placeholder?: string;
+  name_label?: string;
+  name_placeholder?: string;
+  success_message?: string;
+  // Batch 4B: Confirmation pages
+  pending_title?: string;
+  pending_message?: string;
+  confirmed_title?: string;
+  confirmed_message?: string;
+  // Batch 4B: Embed customization
+  embed_theme?: 'light' | 'dark';
+  embed_size?: 'compact' | 'full';
 }
 
-interface SignupPage extends SignupPageInput {
+/**
+ * SignupPage type returned from database.
+ * All optional fields from SignupPageInput become required (nullable).
+ */
+interface SignupPage {
   id: string;
+  slug: string;
+  title: string;
+  content: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  sequence_id: string | null;
+  contact_list_id: string | null;
+  page_type: 'landing' | 'embed';
+  button_text: string | null;
+  form_fields: string | null;
+  email_label: string | null;
+  email_placeholder: string | null;
+  name_label: string | null;
+  name_placeholder: string | null;
+  success_message: string | null;
+  pending_title: string | null;
+  pending_message: string | null;
+  confirmed_title: string | null;
+  confirmed_message: string | null;
+  embed_theme: 'light' | 'dark';
+  embed_size: 'compact' | 'full';
   is_active: number;
   created_at: number;
   updated_at: number;
@@ -45,7 +92,7 @@ export async function getSignupPagesList(env: Env): Promise<SignupPage[]> {
     'SELECT * FROM signup_pages WHERE is_active = 1 ORDER BY slug'
   ).all();
 
-  return result.results as SignupPage[];
+  return result.results as unknown as SignupPage[];
 }
 
 /**
@@ -58,7 +105,7 @@ export async function getSignupPageById(env: Env, id: string): Promise<SignupPag
     .bind(id)
     .first();
 
-  return result as SignupPage | null;
+  return result as unknown as SignupPage | null;
 }
 
 /**
@@ -71,11 +118,12 @@ export async function getSignupPageBySlug(env: Env, slug: string): Promise<Signu
     .bind(slug)
     .first();
 
-  return result as SignupPage | null;
+  return result as unknown as SignupPage | null;
 }
 
 /**
  * Create page (internal, for testing)
+ * Batch 4B: Now supports embed customization fields
  */
 export async function createSignupPage(env: Env, input: SignupPageInput): Promise<SignupPage> {
   // Validate required fields
@@ -123,12 +171,32 @@ export async function createSignupPage(env: Env, input: SignupPageInput): Promis
   const id = crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
-  // Insert
+  // Batch 4B: Extract new fields with defaults
+  const page_type = input.page_type ?? 'landing';
+  const button_text = input.button_text ?? null;
+  const form_fields = input.form_fields ?? null;
+  const email_label = input.email_label ?? null;
+  const email_placeholder = input.email_placeholder ?? null;
+  const name_label = input.name_label ?? null;
+  const name_placeholder = input.name_placeholder ?? null;
+  const success_message = input.success_message ?? null;
+  const pending_title = input.pending_title ?? null;
+  const pending_message = input.pending_message ?? null;
+  const confirmed_title = input.confirmed_title ?? null;
+  const confirmed_message = input.confirmed_message ?? null;
+  const embed_theme = input.embed_theme ?? 'light';
+  const embed_size = input.embed_size ?? 'full';
+
+  // Insert with all fields
   await env.DB.prepare(
     `INSERT INTO signup_pages (
       id, slug, title, content, meta_title, meta_description,
-      sequence_id, contact_list_id, is_active, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+      sequence_id, contact_list_id, page_type, button_text, form_fields,
+      email_label, email_placeholder, name_label, name_placeholder,
+      success_message, pending_title, pending_message,
+      confirmed_title, confirmed_message, embed_theme, embed_size,
+      is_active, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
   )
     .bind(
       id,
@@ -139,6 +207,20 @@ export async function createSignupPage(env: Env, input: SignupPageInput): Promis
       input.meta_description || null,
       input.sequence_id || null,
       input.contact_list_id || null,
+      page_type,
+      button_text,
+      form_fields,
+      email_label,
+      email_placeholder,
+      name_label,
+      name_placeholder,
+      success_message,
+      pending_title,
+      pending_message,
+      confirmed_title,
+      confirmed_message,
+      embed_theme,
+      embed_size,
       now,
       now
     )
@@ -151,11 +233,12 @@ export async function createSignupPage(env: Env, input: SignupPageInput): Promis
     .bind(id)
     .first();
 
-  return created as SignupPage;
+  return created as unknown as SignupPage;
 }
 
 /**
  * Update page (internal, for testing)
+ * Batch 4B: Now supports embed customization fields
  */
 export async function updateSignupPage(
   env: Env,
@@ -213,7 +296,7 @@ export async function updateSignupPage(
 
   const now = Math.floor(Date.now() / 1000);
 
-  // Build update query
+  // Build update query - only update provided fields
   const updates: string[] = [];
   const bindings: any[] = [];
 
@@ -246,6 +329,64 @@ export async function updateSignupPage(
     bindings.push(input.contact_list_id || null);
   }
 
+  // Batch 4B: Conditionally add new fields if provided
+  if (input.page_type !== undefined) {
+    updates.push('page_type = ?');
+    bindings.push(input.page_type);
+  }
+  if (input.button_text !== undefined) {
+    updates.push('button_text = ?');
+    bindings.push(input.button_text || null);
+  }
+  if (input.form_fields !== undefined) {
+    updates.push('form_fields = ?');
+    bindings.push(input.form_fields || null);
+  }
+  if (input.email_label !== undefined) {
+    updates.push('email_label = ?');
+    bindings.push(input.email_label || null);
+  }
+  if (input.email_placeholder !== undefined) {
+    updates.push('email_placeholder = ?');
+    bindings.push(input.email_placeholder || null);
+  }
+  if (input.name_label !== undefined) {
+    updates.push('name_label = ?');
+    bindings.push(input.name_label || null);
+  }
+  if (input.name_placeholder !== undefined) {
+    updates.push('name_placeholder = ?');
+    bindings.push(input.name_placeholder || null);
+  }
+  if (input.success_message !== undefined) {
+    updates.push('success_message = ?');
+    bindings.push(input.success_message || null);
+  }
+  if (input.pending_title !== undefined) {
+    updates.push('pending_title = ?');
+    bindings.push(input.pending_title || null);
+  }
+  if (input.pending_message !== undefined) {
+    updates.push('pending_message = ?');
+    bindings.push(input.pending_message || null);
+  }
+  if (input.confirmed_title !== undefined) {
+    updates.push('confirmed_title = ?');
+    bindings.push(input.confirmed_title || null);
+  }
+  if (input.confirmed_message !== undefined) {
+    updates.push('confirmed_message = ?');
+    bindings.push(input.confirmed_message || null);
+  }
+  if (input.embed_theme !== undefined) {
+    updates.push('embed_theme = ?');
+    bindings.push(input.embed_theme);
+  }
+  if (input.embed_size !== undefined) {
+    updates.push('embed_size = ?');
+    bindings.push(input.embed_size);
+  }
+
   updates.push('updated_at = ?');
   bindings.push(now);
 
@@ -264,7 +405,7 @@ export async function updateSignupPage(
     .bind(id)
     .first();
 
-  return updated as SignupPage;
+  return updated as unknown as SignupPage;
 }
 
 /**
