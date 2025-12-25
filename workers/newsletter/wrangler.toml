@@ -52,6 +52,12 @@ binding = "DB"
 database_name = "edgeshift-newsletter"
 database_id = "4ca2faf7-7486-4a66-b153-278acfa10d17"
 
+# KV Namespace for rate limiting
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "placeholder_for_prod"
+preview_id = "placeholder_for_preview"
+
 # Cron trigger for scheduled campaigns (every 15 minutes)
 [triggers]
 crons = ["*/15 * * * *"]
