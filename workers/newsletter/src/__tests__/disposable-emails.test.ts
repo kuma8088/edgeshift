@@ -39,6 +39,10 @@ describe('isDisposableEmail', () => {
       'protonmail.com',
       'example.com',
       'company.co.jp',
+      // Major international providers (regression tests - these were incorrectly blocked)
+      'qq.com', // Tencent QQ Mail - 500M+ users in China
+      'nus.edu.sg', // National University of Singapore
+      'poczta.onet.pl', // Poland's #2 email provider (Onet.pl)
     ];
 
     legitimateDomains.forEach((domain) => {
