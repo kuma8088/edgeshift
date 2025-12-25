@@ -78,6 +78,7 @@ export interface SubscribeRequest {
   email: string;
   name?: string;
   turnstileToken: string;
+  sequenceId?: string;
 }
 
 export interface BroadcastRequest {

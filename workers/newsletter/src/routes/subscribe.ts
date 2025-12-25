@@ -62,7 +62,7 @@ export async function handleSubscribe(
 ): Promise<Response> {
   try {
     const body = await request.json<SubscribeRequest>();
-    const { email, name, turnstileToken } = body;
+    const { email, name, turnstileToken, sequenceId } = body;
 
     // Validate required fields
     if (!email || !turnstileToken) {
@@ -117,6 +117,22 @@ export async function handleSubscribe(
           'UPDATE subscribers SET confirm_token = ? WHERE id = ?'
         ).bind(confirmToken, existing.id).run();
 
+        // Enroll in sequence if provided and not already enrolled
+        if (sequenceId) {
+          const existingEnrollment = await env.DB.prepare(
+            'SELECT * FROM subscriber_sequences WHERE subscriber_id = ? AND sequence_id = ?'
+          ).bind(existing.id, sequenceId).first();
+
+          if (!existingEnrollment) {
+            const enrollId = `enroll_${crypto.randomUUID()}`;
+            const now = Math.floor(Date.now() / 1000);
+            await env.DB.prepare(
+              `INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, started_at)
+               VALUES (?, ?, ?, ?)`
+            ).bind(enrollId, existing.id, sequenceId, now).run();
+          }
+        }
+
         await sendEmail(
           env.RESEND_API_KEY,
           `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
@@ -149,6 +165,22 @@ export async function handleSubscribe(
           WHERE id = ?
         `).bind(name || null, confirmToken, unsubscribeToken, existing.id).run();
 
+        // Enroll in sequence if provided and not already enrolled
+        if (sequenceId) {
+          const existingEnrollment = await env.DB.prepare(
+            'SELECT * FROM subscriber_sequences WHERE subscriber_id = ? AND sequence_id = ?'
+          ).bind(existing.id, sequenceId).first();
+
+          if (!existingEnrollment) {
+            const enrollId = `enroll_${crypto.randomUUID()}`;
+            const now = Math.floor(Date.now() / 1000);
+            await env.DB.prepare(
+              `INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, started_at)
+               VALUES (?, ?, ?, ?)`
+            ).bind(enrollId, existing.id, sequenceId, now).run();
+          }
+        }
+
         await sendEmail(
           env.RESEND_API_KEY,
           `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
@@ -176,6 +208,16 @@ export async function handleSubscribe(
       INSERT INTO subscribers (id, email, name, status, confirm_token, unsubscribe_token)
       VALUES (?, ?, ?, 'pending', ?, ?)
     `).bind(id, email, name || null, confirmToken, unsubscribeToken).run();
+
+    // Enroll in sequence if provided
+    if (sequenceId) {
+      const enrollId = `enroll_${crypto.randomUUID()}`;
+      const now = Math.floor(Date.now() / 1000);
+      await env.DB.prepare(
+        `INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, started_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind(enrollId, id, sequenceId, now).run();
+    }
 
     // Send confirmation email
     const emailResult = await sendEmail(
