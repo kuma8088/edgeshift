@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS contact_list_members (
 CREATE INDEX IF NOT EXISTS idx_clm_list ON contact_list_members(contact_list_id);
 CREATE INDEX IF NOT EXISTS idx_clm_subscriber ON contact_list_members(subscriber_id);
 
--- Signup Page Generation (Batch 4A)
+-- Signup Page Generation (Batch 4A + 4B)
 CREATE TABLE IF NOT EXISTS signup_pages (
   id TEXT PRIMARY KEY,
   slug TEXT UNIQUE NOT NULL,
@@ -159,6 +159,29 @@ CREATE TABLE IF NOT EXISTS signup_pages (
   meta_description TEXT,
   sequence_id TEXT,
   contact_list_id TEXT,
+
+  -- Page type (Batch 4B)
+  page_type TEXT DEFAULT 'landing' CHECK (page_type IN ('landing', 'embed')),
+
+  -- Form customization (shared between landing/embed)
+  button_text TEXT DEFAULT '登録する',
+  form_fields TEXT DEFAULT 'email,name',
+  email_label TEXT DEFAULT 'メールアドレス',
+  email_placeholder TEXT DEFAULT 'example@email.com',
+  name_label TEXT DEFAULT 'お名前',
+  name_placeholder TEXT DEFAULT '山田 太郎',
+  success_message TEXT DEFAULT '確認メールを送信しました',
+
+  -- Landing page only
+  pending_title TEXT DEFAULT '確認メールを送信しました',
+  pending_message TEXT DEFAULT 'メール内のリンクをクリックして登録を完了してください。',
+  confirmed_title TEXT DEFAULT '登録が完了しました',
+  confirmed_message TEXT DEFAULT 'ニュースレターへのご登録ありがとうございます。',
+
+  -- Embed page only
+  embed_theme TEXT DEFAULT 'light' CHECK (embed_theme IN ('light', 'dark')),
+  embed_size TEXT DEFAULT 'full' CHECK (embed_size IN ('compact', 'full')),
+
   is_active INTEGER DEFAULT 1,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),

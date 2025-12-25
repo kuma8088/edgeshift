@@ -209,6 +209,8 @@ export async function getAnalyticsOverview() {
 }
 
 // Signup Pages API
+export type PageType = 'landing' | 'embed';
+
 export interface SignupPage {
   id: string;
   slug: string;
@@ -219,10 +221,20 @@ export interface SignupPage {
   button_text: string;
   form_fields: string;
   theme: string;
+  page_type: PageType;
   pending_title: string;
   pending_message: string;
   confirmed_title: string;
   confirmed_message: string;
+  embed_theme: 'light' | 'dark';
+  embed_size: 'compact' | 'full';
+  email_label: string;
+  email_placeholder: string;
+  name_label: string;
+  name_placeholder: string;
+  success_message: string;
+  meta_title: string;
+  meta_description: string;
   is_active: number;
   created_at: number;
   updated_at: number;
@@ -234,6 +246,7 @@ export interface CreateSignupPageData {
   contact_list_id?: string;
   title: string;
   content: string;
+  page_type?: PageType;
   button_text?: string;
   form_fields?: string;
   theme?: string;
@@ -241,6 +254,15 @@ export interface CreateSignupPageData {
   pending_message?: string;
   confirmed_title?: string;
   confirmed_message?: string;
+  embed_theme?: 'light' | 'dark';
+  embed_size?: 'compact' | 'full';
+  email_label?: string;
+  email_placeholder?: string;
+  name_label?: string;
+  name_placeholder?: string;
+  success_message?: string;
+  meta_title?: string;
+  meta_description?: string;
 }
 
 export interface UpdateSignupPageData {
@@ -249,6 +271,7 @@ export interface UpdateSignupPageData {
   contact_list_id?: string;
   title?: string;
   content?: string;
+  page_type?: PageType;
   button_text?: string;
   form_fields?: string;
   theme?: string;
@@ -256,6 +279,15 @@ export interface UpdateSignupPageData {
   pending_message?: string;
   confirmed_title?: string;
   confirmed_message?: string;
+  embed_theme?: 'light' | 'dark';
+  embed_size?: 'compact' | 'full';
+  email_label?: string;
+  email_placeholder?: string;
+  name_label?: string;
+  name_placeholder?: string;
+  success_message?: string;
+  meta_title?: string;
+  meta_description?: string;
 }
 
 export async function getSignupPages() {
@@ -264,6 +296,10 @@ export async function getSignupPages() {
 
 export async function getSignupPage(id: string) {
   return apiRequest<{ page: SignupPage }>(`/signup-pages/${id}`);
+}
+
+export async function getSignupPageBySlug(slug: string) {
+  return apiRequest<{ page: SignupPage }>(`/signup-pages/by-slug/${slug}`);
 }
 
 export async function createSignupPage(pageData: CreateSignupPageData) {

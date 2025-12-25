@@ -2,165 +2,274 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 
 const { slug } = Astro.params;
+const status = Astro.url.searchParams.get('status');
 
 // Fetch page config
 const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
-const response = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
 
-if (!response.ok) {
-  return Astro.redirect('/404');
+let page: any;
+let formFields: string[];
+let buttonText: string;
+let emailLabel: string;
+let emailPlaceholder: string;
+let nameLabel: string;
+let namePlaceholder: string;
+let successMessage: string;
+let pendingTitle: string;
+let pendingMessage: string;
+let confirmedTitle: string;
+let confirmedMessage: string;
+let turnstileSiteKey: string;
+let isPending: boolean;
+let isConfirmed: boolean;
+let isSignupForm: boolean;
+let pageTitle: string;
+let pageDescription: string;
+
+try {
+  const response = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
+
+  if (!response.ok) {
+    return new Response(null, { status: 404 });
+  }
+
+  const { data } = await response.json();
+  page = data.page;
+
+  // Redirect to embed page if page_type is 'embed'
+  if (page.page_type === 'embed') {
+    return Astro.redirect(`/newsletter/embed/${slug}`, 307);
+  }
+
+  // Parse form fields with fallback (supports both CSV and JSON format)
+  const formFieldsRaw = page.form_fields || 'email';
+  formFields = formFieldsRaw.startsWith('[')
+    ? JSON.parse(formFieldsRaw)
+    : formFieldsRaw.split(',').map((f: string) => f.trim());
+
+  // Backward compatibility: provide defaults for new fields
+  buttonText = page.button_text || 'Subscribe';
+  emailLabel = page.email_label || 'Email Address';
+  emailPlaceholder = page.email_placeholder || 'example@email.com';
+  nameLabel = page.name_label || 'Name';
+  namePlaceholder = page.name_placeholder || 'Your Name';
+  successMessage = page.success_message || 'Check your email to confirm subscription';
+  pendingTitle = page.pending_title || 'Check Your Email';
+  pendingMessage = page.pending_message || 'We\'ve sent you a confirmation link. Please check your email and click the link to complete your subscription.';
+  confirmedTitle = page.confirmed_title || 'Subscription Confirmed!';
+  confirmedMessage = page.confirmed_message || 'Thank you for subscribing! You\'ll start receiving updates soon.';
+
+  turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+
+  // Determine which page to render
+  isPending = status === 'pending';
+  isConfirmed = status === 'confirmed';
+  isSignupForm = !isPending && !isConfirmed;
+
+  // Set page metadata based on status
+  pageTitle = isPending ? pendingTitle : isConfirmed ? confirmedTitle : page.title;
+  pageDescription = isPending ? pendingMessage : isConfirmed ? confirmedMessage : page.title;
+
+} catch (error) {
+  console.error('Error loading signup page:', error);
+  return new Response(null, { status: 500 });
 }
-
-const { data } = await response.json();
-const page = data.page;
-
-const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 ---
 
-<BaseLayout title={page.title} description={page.title}>
-  <section class="py-24 px-4 bg-[var(--color-bg-secondary)]">
-    <div class="max-w-2xl mx-auto">
-      <!-- Page Content -->
-      <div class="mb-8 prose prose-lg max-w-none" set:html={page.content} />
-
-      <!-- Signup Form -->
-      <div class="bg-white rounded-lg shadow-lg p-8">
-        <form id="signup-form" class="space-y-4">
-          <!-- Email -->
-          <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
-              メールアドレス <span class="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              required
-              class="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:border-gray-800 focus:ring-1 focus:ring-gray-800"
-              placeholder="example@email.com"
-            />
+<BaseLayout title={pageTitle} description={pageDescription}>
+  {isPending && (
+    <section class="py-24 px-4 bg-[var(--color-bg-secondary)]">
+      <div class="max-w-2xl mx-auto text-center">
+        <div class="bg-white rounded-lg shadow-lg p-12">
+          <div class="mb-6">
+            <svg class="w-16 h-16 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
           </div>
-
-          <!-- Name (if enabled) -->
-          {page.form_fields.includes('name') && (
-            <div>
-              <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
-                お名前 <span class="text-gray-500 text-xs">(任意)</span>
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                class="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:border-gray-800 focus:ring-1 focus:ring-gray-800"
-                placeholder="山田 太郎"
-              />
-            </div>
-          )}
-
-          <!-- Turnstile Widget -->
-          <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="light"></div>
-
-          <!-- Submit Button -->
-          <div>
-            <button
-              type="submit"
-              id="submit-btn"
-              class="w-full bg-gray-800 text-white px-6 py-3 rounded font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <span id="btn-text">{page.button_text}</span>
-              <svg id="btn-spinner" class="hidden animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </button>
-          </div>
-        </form>
-
-        <!-- Status Messages -->
-        <div id="status" class="mt-4 hidden">
-          <div id="success" class="hidden p-4 rounded bg-green-50 border border-green-200 text-green-800 text-sm" />
-          <div id="error" class="hidden p-4 rounded bg-red-50 border border-red-200 text-red-800 text-sm" />
+          <h1 class="text-3xl font-bold text-gray-900 mb-4">{pendingTitle}</h1>
+          <p class="text-lg text-gray-600 mb-8">{pendingMessage}</p>
+          <a
+            href="/"
+            class="inline-block bg-gray-800 text-white px-6 py-3 rounded font-medium hover:bg-gray-700 transition-colors"
+          >
+            Return to Home
+          </a>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  )}
+
+  {isConfirmed && (
+    <section class="py-24 px-4 bg-[var(--color-bg-secondary)]">
+      <div class="max-w-2xl mx-auto text-center">
+        <div class="bg-white rounded-lg shadow-lg p-12">
+          <div class="mb-6">
+            <svg class="w-16 h-16 mx-auto text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 class="text-3xl font-bold text-gray-900 mb-4">{confirmedTitle}</h1>
+          <p class="text-lg text-gray-600 mb-8">{confirmedMessage}</p>
+          <a
+            href="/"
+            class="inline-block bg-gray-800 text-white px-6 py-3 rounded font-medium hover:bg-gray-700 transition-colors"
+          >
+            Return to Home
+          </a>
+        </div>
+      </div>
+    </section>
+  )}
+
+  {isSignupForm && (
+    <section class="py-24 px-4 bg-[var(--color-bg-secondary)]">
+      <div class="max-w-2xl mx-auto">
+        <!-- Page Content -->
+        <div class="mb-8 prose prose-lg max-w-none" set:html={page.content} />
+
+        <!-- Signup Form -->
+        <div class="bg-white rounded-lg shadow-lg p-8">
+          <form id="signup-form" class="space-y-4">
+            <!-- Email -->
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">
+                {emailLabel} <span class="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                class="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:border-gray-800 focus:ring-1 focus:ring-gray-800"
+                placeholder={emailPlaceholder}
+              />
+            </div>
+
+            <!-- Name (if enabled) -->
+            {formFields.includes('name') && (
+              <div>
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5">
+                  {nameLabel} <span class="text-gray-500 text-xs">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  class="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:border-gray-800 focus:ring-1 focus:ring-gray-800"
+                  placeholder={namePlaceholder}
+                />
+              </div>
+            )}
+
+            <!-- Turnstile Widget -->
+            <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="light"></div>
+
+            <!-- Submit Button -->
+            <div>
+              <button
+                type="submit"
+                id="submit-btn"
+                class="w-full bg-gray-800 text-white px-6 py-3 rounded font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <span id="btn-text">{buttonText}</span>
+                <svg id="btn-spinner" class="hidden animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </button>
+            </div>
+          </form>
+
+          <!-- Status Messages -->
+          <div id="status" class="mt-4 hidden">
+            <div id="success" class="hidden p-4 rounded bg-green-50 border border-green-200 text-green-800 text-sm" />
+            <div id="error" class="hidden p-4 rounded bg-red-50 border border-red-200 text-red-800 text-sm" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )}
 </BaseLayout>
 
-<!-- Turnstile Script -->
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{isSignupForm && (
+  <>
+    <!-- Turnstile Script -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-<script define:vars={{ slug, sequenceId: page.sequence_id }}>
-  const form = document.getElementById('signup-form');
-  const submitBtn = document.getElementById('submit-btn');
-  const btnText = document.getElementById('btn-text');
-  const btnSpinner = document.getElementById('btn-spinner');
-  const formStatus = document.getElementById('status');
-  const successMessage = document.getElementById('success');
-  const errorMessage = document.getElementById('error');
+    <script define:vars={{ slug, sequenceId: page.sequence_id, successMsg: successMessage, defaultButtonText: buttonText }}>
+      const form = document.getElementById('signup-form');
+      const submitBtn = document.getElementById('submit-btn');
+      const btnText = document.getElementById('btn-text');
+      const btnSpinner = document.getElementById('btn-spinner');
+      const formStatus = document.getElementById('status');
+      const successElement = document.getElementById('success');
+      const errorElement = document.getElementById('error');
 
-  function setLoading(loading) {
-    submitBtn.disabled = loading;
-    btnText.textContent = loading ? '登録中...' : btnText.textContent;
-    btnSpinner.classList.toggle('hidden', !loading);
-  }
-
-  function showStatus(type, message) {
-    formStatus.classList.remove('hidden');
-    successMessage.classList.toggle('hidden', type !== 'success');
-    errorMessage.classList.toggle('hidden', type !== 'error');
-    if (message) {
-      (type === 'success' ? successMessage : errorMessage).textContent = message;
-    }
-  }
-
-  function hideStatus() {
-    formStatus.classList.add('hidden');
-    successMessage.classList.add('hidden');
-    errorMessage.classList.add('hidden');
-  }
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideStatus();
-
-    const turnstileInput = form.querySelector('input[name="cf-turnstile-response"]');
-    const turnstileToken = turnstileInput?.value;
-
-    if (!turnstileToken) {
-      showStatus('error', 'セキュリティ検証を完了してください');
-      return;
-    }
-
-    setLoading(true);
-
-    const formData = new FormData(form);
-    const data = {
-      email: formData.get('email'),
-      name: formData.get('name') || undefined,
-      turnstileToken,
-      sequenceId: sequenceId || undefined,
-      signupPageSlug: slug,
-    };
-
-    try {
-      const response = await fetch('/api/newsletter/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        window.location.href = `/newsletter/signup/${slug}/pending`;
-      } else {
-        showStatus('error', result.error || '登録に失敗しました');
+      function setLoading(loading) {
+        submitBtn.disabled = loading;
+        btnText.textContent = loading ? 'Submitting...' : defaultButtonText;
+        btnSpinner.classList.toggle('hidden', !loading);
       }
-    } catch (error) {
-      console.error('Signup error:', error);
-      showStatus('error', '通信エラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
-  });
-</script>
+
+      function showStatus(type, message) {
+        formStatus.classList.remove('hidden');
+        successElement.classList.toggle('hidden', type !== 'success');
+        errorElement.classList.toggle('hidden', type !== 'error');
+        if (message) {
+          (type === 'success' ? successElement : errorElement).textContent = message;
+        }
+      }
+
+      function hideStatus() {
+        formStatus.classList.add('hidden');
+        successElement.classList.add('hidden');
+        errorElement.classList.add('hidden');
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideStatus();
+
+        const turnstileInput = form.querySelector('input[name="cf-turnstile-response"]');
+        const turnstileToken = turnstileInput?.value;
+
+        if (!turnstileToken) {
+          showStatus('error', 'Please complete the security verification');
+          return;
+        }
+
+        setLoading(true);
+
+        const formData = new FormData(form);
+        const data = {
+          email: formData.get('email'),
+          name: formData.get('name') || undefined,
+          turnstileToken,
+          sequenceId: sequenceId || undefined,
+          signupPageSlug: slug,
+        };
+
+        try {
+          const response = await fetch('/api/newsletter/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            window.location.href = `/newsletter/signup/${slug}?status=pending`;
+          } else {
+            showStatus('error', result.error || 'Subscription failed');
+          }
+        } catch (error) {
+          console.error('Signup error:', error);
+          showStatus('error', 'Network error occurred');
+        } finally {
+          setLoading(false);
+        }
+      });
+    </script>
+  </>
+)}

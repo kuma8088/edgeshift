@@ -1,0 +1,414 @@
+---
+const { slug } = Astro.params;
+
+// Read query params for theme/size override
+const themeParam = Astro.url.searchParams.get('theme');
+const sizeParam = Astro.url.searchParams.get('size');
+
+// Fetch page config
+const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
+
+let page;
+
+try {
+  const response = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
+
+  if (!response.ok) {
+    return Astro.redirect('/404');
+  }
+
+  const { data } = await response.json();
+  page = data.page;
+
+  // Redirect if not an embed page
+  if (page.page_type !== 'embed') {
+    return Astro.redirect(`/newsletter/signup/${slug}`);
+  }
+} catch (error) {
+  console.error('Failed to fetch signup page:', error);
+  return Astro.redirect('/404');
+}
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+
+// Parse form fields (supports both CSV and JSON format)
+const formFieldsRaw = page.form_fields || 'email';
+const formFields = Array.isArray(formFieldsRaw)
+  ? formFieldsRaw
+  : formFieldsRaw.startsWith('[')
+    ? JSON.parse(formFieldsRaw)
+    : formFieldsRaw.split(',').map((f: string) => f.trim());
+
+// Theme and size (query params override DB values)
+const embedTheme = themeParam === 'dark' || themeParam === 'light'
+  ? themeParam
+  : page.embed_theme || 'light';
+const embedSize = sizeParam === 'compact' || sizeParam === 'full'
+  ? sizeParam
+  : page.embed_size || 'full';
+
+// Theme and size classes
+const themeClass = embedTheme === 'dark'
+  ? 'dark bg-gray-900 text-white'
+  : 'bg-white text-gray-900';
+
+const sizeClass = embedSize === 'compact'
+  ? 'embed-compact'
+  : 'embed-full';
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{page.title}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+    }
+
+    .embed-container {
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+    }
+
+    .embed-compact {
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+    .embed-full {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .dark {
+      color: #ffffff;
+    }
+
+    .content {
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .content h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .content h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .content h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .content p {
+      margin-bottom: 0.75rem;
+    }
+
+    .content ul, .content ol {
+      margin-left: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.375rem;
+    }
+
+    .required {
+      color: #ef4444;
+    }
+
+    .optional {
+      color: #6b7280;
+      font-size: 0.75rem;
+      font-weight: 400;
+    }
+
+    input[type="email"],
+    input[type="text"] {
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.875rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="email"]:focus,
+    input[type="text"]:focus {
+      border-color: #1f2937;
+      box-shadow: 0 0 0 1px #1f2937;
+    }
+
+    .dark input[type="email"],
+    .dark input[type="text"] {
+      background-color: #374151;
+      border-color: #4b5563;
+      color: #ffffff;
+    }
+
+    .dark input[type="email"]:focus,
+    .dark input[type="text"]:focus {
+      border-color: #9ca3af;
+      box-shadow: 0 0 0 1px #9ca3af;
+    }
+
+    .submit-btn {
+      width: 100%;
+      background-color: #1f2937;
+      color: #ffffff;
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      background-color: #374151;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .dark .submit-btn {
+      background-color: #4b5563;
+    }
+
+    .dark .submit-btn:hover:not(:disabled) {
+      background-color: #6b7280;
+    }
+
+    .spinner {
+      width: 1.25rem;
+      height: 1.25rem;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .status-message {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+    }
+
+    .success {
+      background-color: #d1fae5;
+      border: 1px solid #6ee7b7;
+      color: #065f46;
+    }
+
+    .error {
+      background-color: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+    }
+
+    .dark .success {
+      background-color: #064e3b;
+      border-color: #059669;
+      color: #d1fae5;
+    }
+
+    .dark .error {
+      background-color: #7f1d1d;
+      border-color: #dc2626;
+      color: #fee2e2;
+    }
+
+    .turnstile-container {
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class:list={['embed-container', themeClass, sizeClass]}>
+    <!-- Content -->
+    {page.content && (
+      <div class="content" set:html={page.content} />
+    )}
+
+    <!-- Signup Form -->
+    <form id="signup-form">
+      <!-- Email -->
+      <div class="form-group">
+        <label for="email">
+          {page.email_label || 'メールアドレス'} <span class="required">*</span>
+        </label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          placeholder={page.email_placeholder || 'example@email.com'}
+        />
+      </div>
+
+      <!-- Name (if enabled) -->
+      {formFields.includes('name') && (
+        <div class="form-group">
+          <label for="name">
+            {page.name_label || 'お名前'} <span class="optional">(任意)</span>
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            placeholder={page.name_placeholder || '山田 太郎'}
+          />
+        </div>
+      )}
+
+      <!-- Turnstile Widget -->
+      <div class="turnstile-container">
+        <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme={embedTheme}></div>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" id="submit-btn" class="submit-btn">
+        <span id="btn-text">{page.button_text || '登録する'}</span>
+        <div id="btn-spinner" class="spinner hidden"></div>
+      </button>
+    </form>
+
+    <!-- Status Messages -->
+    <div id="status" class="hidden">
+      <div id="success" class="status-message success hidden"></div>
+      <div id="error" class="status-message error hidden"></div>
+    </div>
+  </div>
+
+  <!-- Turnstile Script -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+  <script define:vars={{ slug, sequenceId: page.sequence_id, successMessage: page.success_message }}>
+    const form = document.getElementById('signup-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnSpinner = document.getElementById('btn-spinner');
+    const formStatus = document.getElementById('status');
+    const successEl = document.getElementById('success');
+    const errorEl = document.getElementById('error');
+
+    function setLoading(loading) {
+      submitBtn.disabled = loading;
+      btnText.textContent = loading ? '登録中...' : (submitBtn.getAttribute('data-original-text') || '登録する');
+      btnSpinner.classList.toggle('hidden', !loading);
+    }
+
+    function showStatus(type, message) {
+      formStatus.classList.remove('hidden');
+      successEl.classList.toggle('hidden', type !== 'success');
+      errorEl.classList.toggle('hidden', type !== 'error');
+      if (message) {
+        (type === 'success' ? successEl : errorEl).textContent = message;
+      }
+    }
+
+    function hideStatus() {
+      formStatus.classList.add('hidden');
+      successEl.classList.add('hidden');
+      errorEl.classList.add('hidden');
+    }
+
+    // Store original button text
+    submitBtn.setAttribute('data-original-text', btnText.textContent);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideStatus();
+
+      const turnstileInput = form.querySelector('input[name="cf-turnstile-response"]');
+      const turnstileToken = turnstileInput?.value;
+
+      if (!turnstileToken) {
+        showStatus('error', 'セキュリティ検証を完了してください');
+        return;
+      }
+
+      setLoading(true);
+
+      const formData = new FormData(form);
+      const data = {
+        email: formData.get('email'),
+        name: formData.get('name') || undefined,
+        turnstileToken,
+        sequenceId: sequenceId || undefined,
+        signupPageSlug: slug,
+      };
+
+      try {
+        const response = await fetch('/api/newsletter/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Show success message inline for embed
+          showStatus('success', successMessage || '登録が完了しました。確認メールをご確認ください。');
+          form.reset();
+
+          // Reset Turnstile
+          if (typeof window.turnstile !== 'undefined') {
+            window.turnstile.reset();
+          }
+        } else {
+          showStatus('error', result.error || '登録に失敗しました');
+        }
+      } catch (error) {
+        console.error('Signup error:', error);
+        showStatus('error', '通信エラーが発生しました');
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>
