@@ -44,6 +44,7 @@ export interface Campaign {
   last_sent_at: number | null;
   sent_at: number | null;
   recipient_count: number | null;
+  contact_list_id: string | null;
   created_at: number;
 }
 
@@ -92,6 +93,7 @@ export interface CreateCampaignRequest {
   scheduled_at?: number;
   schedule_type?: ScheduleType;
   schedule_config?: ScheduleConfig;
+  contact_list_id?: string;
 }
 
 export interface UpdateCampaignRequest {
@@ -129,6 +131,35 @@ export interface SubscriberSequence {
   started_at: number | null;
   completed_at: number | null;
   created_at: number;
+}
+
+export interface ContactList {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface ContactListMember {
+  id: string;
+  contact_list_id: string;
+  subscriber_id: string;
+  added_at: number;
+}
+
+export interface CreateContactListRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateContactListRequest {
+  name?: string;
+  description?: string;
+}
+
+export interface AddMembersRequest {
+  subscriber_ids: string[];
 }
 
 export interface CreateSequenceRequest {
@@ -202,6 +233,7 @@ export interface SignupPage {
   id: string;
   slug: string;
   sequence_id: string | null;
+  contact_list_id: string | null;
   title: string;
   content: string;
   button_text: string;
@@ -219,6 +251,7 @@ export interface SignupPage {
 export interface CreateSignupPageRequest {
   slug: string;
   sequence_id?: string;
+  contact_list_id?: string;
   title: string;
   content: string;
   button_text?: string;
@@ -233,6 +266,7 @@ export interface CreateSignupPageRequest {
 export interface UpdateSignupPageRequest {
   slug?: string;
   sequence_id?: string;
+  contact_list_id?: string;
   title?: string;
   content?: string;
   button_text?: string;
