@@ -233,6 +233,8 @@ export interface SignupPage {
   name_label: string;
   name_placeholder: string;
   success_message: string;
+  meta_title: string;
+  meta_description: string;
   is_active: number;
   created_at: number;
   updated_at: number;
@@ -259,6 +261,8 @@ export interface CreateSignupPageData {
   name_label?: string;
   name_placeholder?: string;
   success_message?: string;
+  meta_title?: string;
+  meta_description?: string;
 }
 
 export interface UpdateSignupPageData {
@@ -282,6 +286,8 @@ export interface UpdateSignupPageData {
   name_label?: string;
   name_placeholder?: string;
   success_message?: string;
+  meta_title?: string;
+  meta_description?: string;
 }
 
 export async function getSignupPages() {
@@ -290,6 +296,10 @@ export async function getSignupPages() {
 
 export async function getSignupPage(id: string) {
   return apiRequest<{ page: SignupPage }>(`/signup-pages/${id}`);
+}
+
+export async function getSignupPageBySlug(slug: string) {
+  return apiRequest<{ page: SignupPage }>(`/signup-pages/by-slug/${slug}`);
 }
 
 export async function createSignupPage(pageData: CreateSignupPageData) {
