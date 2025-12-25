@@ -235,7 +235,11 @@ export interface ResendWebhookEvent {
   };
 }
 
-// Signup Page (Batch 4A)
+// Signup Page (Batch 4A + 4B)
+export type PageType = 'landing' | 'embed';
+export type EmbedTheme = 'light' | 'dark';
+export type EmbedSize = 'compact' | 'full';
+
 export interface SignupPage {
   id: string;
   slug: string;
@@ -243,13 +247,31 @@ export interface SignupPage {
   contact_list_id: string | null;
   title: string;
   content: string;
+  meta_title: string | null;
+  meta_description: string | null;
+
+  // Page type (Batch 4B)
+  page_type: PageType;
+
+  // Form customization (shared)
   button_text: string;
   form_fields: string;
-  theme: string;
+  email_label: string;
+  email_placeholder: string;
+  name_label: string;
+  name_placeholder: string;
+  success_message: string;
+
+  // Landing page only
   pending_title: string;
   pending_message: string;
   confirmed_title: string;
   confirmed_message: string;
+
+  // Embed page only
+  embed_theme: EmbedTheme;
+  embed_size: EmbedSize;
+
   is_active: number;
   created_at: number;
   updated_at: number;
@@ -261,13 +283,22 @@ export interface CreateSignupPageRequest {
   contact_list_id?: string;
   title: string;
   content: string;
+  meta_title?: string;
+  meta_description?: string;
+  page_type?: PageType;
   button_text?: string;
   form_fields?: string;
-  theme?: string;
+  email_label?: string;
+  email_placeholder?: string;
+  name_label?: string;
+  name_placeholder?: string;
+  success_message?: string;
   pending_title?: string;
   pending_message?: string;
   confirmed_title?: string;
   confirmed_message?: string;
+  embed_theme?: EmbedTheme;
+  embed_size?: EmbedSize;
 }
 
 export interface UpdateSignupPageRequest {
@@ -276,11 +307,20 @@ export interface UpdateSignupPageRequest {
   contact_list_id?: string;
   title?: string;
   content?: string;
+  meta_title?: string;
+  meta_description?: string;
+  page_type?: PageType;
   button_text?: string;
   form_fields?: string;
-  theme?: string;
+  email_label?: string;
+  email_placeholder?: string;
+  name_label?: string;
+  name_placeholder?: string;
+  success_message?: string;
   pending_title?: string;
   pending_message?: string;
   confirmed_title?: string;
   confirmed_message?: string;
+  embed_theme?: EmbedTheme;
+  embed_size?: EmbedSize;
 }
