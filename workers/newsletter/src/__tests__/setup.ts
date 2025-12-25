@@ -117,6 +117,13 @@ export async function setupTestDb() {
       created_at INTEGER DEFAULT (unixepoch()),
       updated_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (sequence_id) REFERENCES sequences(id)
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS contact_lists (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at INTEGER DEFAULT (unixepoch()),
+      updated_at INTEGER DEFAULT (unixepoch())
     )`)
   ]);
 }
@@ -133,7 +140,8 @@ export async function cleanupTestDb() {
       env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
       env.DB.prepare('DELETE FROM subscribers WHERE 1=1'),
-      env.DB.prepare('DELETE FROM signup_pages WHERE 1=1')
+      env.DB.prepare('DELETE FROM signup_pages WHERE 1=1'),
+      env.DB.prepare('DELETE FROM contact_lists WHERE 1=1')
     ]);
   } catch (error) {
     // Ignore errors during cleanup - tables might not exist yet
