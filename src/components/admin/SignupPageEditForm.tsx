@@ -10,6 +10,7 @@ import {
 } from '../../utils/admin-api';
 import { RichTextEditor } from './RichTextEditor';
 import { SignupPagePreview } from './SignupPagePreview';
+import { ListSelector } from './ListSelector';
 
 interface SignupPageEditFormProps {
   pageId?: string;
@@ -21,6 +22,7 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
   // Form state
   const [slug, setSlug] = useState('');
   const [sequenceId, setSequenceId] = useState<string>('');
+  const [contactListId, setContactListId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('<p></p>');
   const [buttonText, setButtonText] = useState('登録する');
@@ -76,6 +78,7 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
         const data = result.data.page;
         setSlug(data.slug);
         setSequenceId(data.sequence_id || '');
+        setContactListId(data.contact_list_id || null);
         setTitle(data.title);
         setContent(data.content);
         setButtonText(data.button_text);
@@ -105,6 +108,7 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
       const pageData = {
         slug,
         sequence_id: sequenceId || undefined,
+        contact_list_id: contactListId || undefined,
         title,
         content,
         button_text: buttonText,
@@ -192,6 +196,13 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
                 ))}
               </select>
             </div>
+
+            <ListSelector
+              value={contactListId}
+              onChange={setContactListId}
+              label="自動割り当てリスト（オプション）"
+              allowNull
+            />
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">

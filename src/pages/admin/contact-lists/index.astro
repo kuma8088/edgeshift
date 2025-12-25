@@ -1,0 +1,8 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { ContactListList } from '../../../components/admin/ContactListList';
+---
+
+<AdminLayout title="Contact Lists">
+  <ContactListList client:load />
+</AdminLayout>

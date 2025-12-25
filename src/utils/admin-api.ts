@@ -213,6 +213,7 @@ export interface SignupPage {
   id: string;
   slug: string;
   sequence_id: string | null;
+  contact_list_id: string | null;
   title: string;
   content: string;
   button_text: string;
