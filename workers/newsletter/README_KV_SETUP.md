@@ -58,13 +58,13 @@ npm run deploy
 ## What This Enables
 
 **Rate Limiting for `/api/newsletter/subscribe`:**
-- 5 requests per 10 minutes per email address
+- 5 requests per 10 minutes per IP address
 - Prevents spam and abuse
 - Automatic cleanup via KV TTL
 
 **Key Format:**
 ```
-ratelimit:subscribe:<email>
+rate:subscribe:<ip>
 ```
 
 **Example Value:**
@@ -87,25 +87,25 @@ npm test src/__tests__/rate-limiter.test.ts
 ✓ Rate limit state storage
 ✓ Request blocking after limit
 ✓ Window reset
-✓ Email normalization (case-insensitive)
+✓ IP-based rate limiting (per client IP)
 
 ## Management
 
-### Unblock an Email
+### Unblock an IP Address
 ```bash
-wrangler kv:key delete "ratelimit:subscribe:user@example.com" \
+wrangler kv:key delete "rate:subscribe:192.168.1.100" \
   --namespace-id=<production-id>
 ```
 
-### View All Rate Limited Emails
+### View All Rate Limited IP Addresses
 ```bash
 wrangler kv:key list --namespace-id=<production-id> \
-  --prefix="ratelimit:subscribe:"
+  --prefix="rate:subscribe:"
 ```
 
 ### Check Rate Limit Status
 ```bash
-wrangler kv:key get "ratelimit:subscribe:user@example.com" \
+wrangler kv:key get "rate:subscribe:192.168.1.100" \
   --namespace-id=<production-id>
 ```
 

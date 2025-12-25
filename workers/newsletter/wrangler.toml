@@ -71,8 +71,8 @@ database_id = "4ca2faf7-7486-4a66-b153-278acfa10d17"
 # RATE LIMIT CONFIGURATION:
 # The rate limit settings are defined in src/routes/subscribe.ts:
 # - Window: 10 minutes (600 seconds)
-# - Max attempts: 5 per email address
-# - Key format: "ratelimit:subscribe:<email>"
+# - Max attempts: 5 per IP address
+# - Key format: "rate:subscribe:<ip>"
 # To change limits, modify the constants in subscribe.ts
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"

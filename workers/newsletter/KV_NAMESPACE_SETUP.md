@@ -8,8 +8,8 @@ This document describes how to set up the Cloudflare KV namespace for rate limit
 
 **Default Configuration:**
 - Window: 10 minutes (600 seconds)
-- Max attempts: 5 per email address
-- Key format: `ratelimit:subscribe:<email>`
+- Max attempts: 5 per IP address
+- Key format: `rate:subscribe:<ip>`
 
 ## Prerequisites
 
@@ -95,21 +95,21 @@ wrangler kv:key list --namespace-id=<preview-id>
 ### Get a Specific Key
 
 ```bash
-wrangler kv:key get "ratelimit:subscribe:user@example.com" --namespace-id=<id>
+wrangler kv:key get "rate:subscribe:192.168.1.100" --namespace-id=<id>
 ```
 
-### Delete a Specific Key (Unblock an Email)
+### Delete a Specific Key (Unblock an IP Address)
 
 ```bash
-wrangler kv:key delete "ratelimit:subscribe:user@example.com" --namespace-id=<id>
+wrangler kv:key delete "rate:subscribe:192.168.1.100" --namespace-id=<id>
 ```
 
 ### Bulk Delete
 
 ```bash
 wrangler kv:bulk delete \
-  "ratelimit:subscribe:user1@example.com" \
-  "ratelimit:subscribe:user2@example.com" \
+  "rate:subscribe:192.168.1.100" \
+  "rate:subscribe:203.0.113.45" \
   --namespace-id=<id>
 ```
 
@@ -131,10 +131,10 @@ To change these values:
 
 ## Monitoring
 
-### Check Rate Limit Status for an Email
+### Check Rate Limit Status for an IP Address
 
 ```bash
-wrangler kv:key get "ratelimit:subscribe:test@example.com" --namespace-id=<id>
+wrangler kv:key get "rate:subscribe:192.168.1.100" --namespace-id=<id>
 ```
 
 **Example output:**
@@ -148,10 +148,10 @@ wrangler kv:key get "ratelimit:subscribe:test@example.com" --namespace-id=<id>
 - `count`: Number of attempts in current window
 - `resetAt`: Unix timestamp (ms) when the window resets
 
-### List All Rate Limited Emails
+### List All Rate Limited IP Addresses
 
 ```bash
-wrangler kv:key list --namespace-id=<id> --prefix="ratelimit:subscribe:"
+wrangler kv:key list --namespace-id=<id> --prefix="rate:subscribe:"
 ```
 
 ## Troubleshooting
@@ -170,12 +170,12 @@ npm run dev
 # Make requests to http://localhost:8787/api/newsletter/subscribe
 ```
 
-### Issue: Need to unblock an email immediately
+### Issue: Need to unblock an IP address immediately
 
 **Solution:**
 ```bash
 # Get the namespace ID from wrangler.toml
-wrangler kv:key delete "ratelimit:subscribe:<email>" --namespace-id=<id>
+wrangler kv:key delete "rate:subscribe:<ip>" --namespace-id=<id>
 ```
 
 ### Issue: KV keys not expiring
@@ -194,8 +194,8 @@ The key should automatically expire after 600 seconds (10 minutes).
 
 ## Security Considerations
 
-1. **Key Format:** Always use consistent prefix `ratelimit:subscribe:` for easy management
-2. **Email Normalization:** Emails are lowercased before use as keys to prevent bypass via case variation
+1. **Key Format:** Always use consistent prefix `rate:subscribe:` for easy management
+2. **IP-Based Limiting:** Rate limits are applied per IP address to prevent abuse from multiple email addresses from the same source
 3. **Window Reset:** The window resets automatically via KV TTL, no manual cleanup needed
 4. **Abuse Prevention:** 5 attempts per 10 minutes is a reasonable limit for legitimate users while preventing abuse
 
@@ -211,7 +211,7 @@ Tests verify:
 - Rate limit state is correctly stored in KV
 - Requests are blocked after exceeding the limit
 - Window reset works correctly
-- Email normalization (case-insensitive)
+- IP-based rate limiting (per client IP)
 
 ## Integration with Turnstile
 
