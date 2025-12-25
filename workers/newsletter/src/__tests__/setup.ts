@@ -15,6 +15,7 @@ export function getTestEnv() {
     SENDER_NAME: 'Test Newsletter',
     SITE_URL: 'http://localhost:4321',
     RESEND_WEBHOOK_SECRET: webhookSecret,
+    RATE_LIMIT_KV: env.RATE_LIMIT_KV,
   };
 }
 

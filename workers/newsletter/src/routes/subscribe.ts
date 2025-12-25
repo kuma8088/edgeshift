@@ -1,6 +1,8 @@
 import type { Env, SubscribeRequest, ApiResponse, Subscriber } from '../types';
 import { verifyTurnstileToken } from '../lib/turnstile';
 import { sendEmail } from '../lib/email';
+import { checkRateLimit } from '../lib/rate-limiter';
+import { isDisposableEmail } from '../lib/disposable-emails';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -91,6 +93,34 @@ export async function handleSubscribe(
     if (!turnstileResult.success) {
       return jsonResponse<ApiResponse>(
         { success: false, error: 'Security verification failed' },
+        400
+      );
+    }
+
+    // Rate limiting check
+    if (ip) {
+      const rateLimitResult = await checkRateLimit(env.RATE_LIMIT_KV, ip);
+      if (!rateLimitResult.allowed) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Too many requests. Please try again later.',
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': '600', // 10 minutes in seconds
+            },
+          }
+        );
+      }
+    }
+
+    // Disposable email check
+    if (isDisposableEmail(email)) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'Please use a permanent email address' },
         400
       );
     }
