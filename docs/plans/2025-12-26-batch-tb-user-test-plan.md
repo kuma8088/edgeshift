@@ -1,278 +1,276 @@
-# Batch TB: User Test Plan
+# Batch TB: ユーザーテスト計画
 
 > Newsletter System MVP のユーザーテスト計画
 
-*Created: 2025-12-26*
-*Status: Ready for Execution*
+*作成日: 2025-12-26*
+*ステータス: 実行準備完了*
 
 ---
 
-## Overview
+## 概要
 
-### Purpose
+### 目的
 
 Newsletter System MVP の実装が「実用的で使いやすいか」を検証するセルフテスト。
 
-### Test Scope
+### テスト範囲
 
-| Task | Content | Status |
+| タスク | 内容 | ステータス |
 |------|---------|--------|
-| TB-1 | Test Scenario Creation | This document |
-| TB-2 | Subscriber Perspective Flow | Sequence + Embed Form |
-| TB-3 | Admin Perspective Operations | Campaign + Contact List + Analytics |
-| TB-4 | Mobile Support | **Out of Scope** |
-| TB-5 | Feedback Collection & Improvement | Hybrid Approach |
-| Extra | mail-tester.com Evaluation | Email Deliverability Check |
+| TB-1 | テストシナリオ作成 | このドキュメント |
+| TB-2 | 購読者視点のフロー | シーケンス + 埋め込みフォーム |
+| TB-3 | 管理者視点の操作 | キャンペーン + コンタクトリスト + 分析 |
+| TB-4 | モバイル対応 | **対象外** |
+| TB-5 | フィードバック収集と改善 | ハイブリッドアプローチ |
+| Extra | mail-tester.com 評価 | 配信性チェック |
 
-### Test Conditions
+### テスト条件
 
-| Item | Value |
+| 項目 | 値 |
 |------|-------|
-| Tester | Self (Owner) |
-| Environment | Production (edgeshift.tech) |
-| Email | Personal email address |
-| Timing | Start registration at 08:00 JST |
+| テスター | 自身（オーナー） |
+| 環境 | 本番環境 (edgeshift.tech) |
+| メールアドレス | 個人メールアドレス |
+| タイミング | 08:00 JST に登録開始 |
 
 ---
 
-## Test Scenarios
+## テストシナリオ
 
-### TB-2: Subscriber Perspective Flow
+### TB-2: 購読者視点のフロー
 
-#### 2-1: Sequence Email Test (5 Steps)
+#### 2-1: シーケンスメールテスト（5ステップ）
 
-**Purpose:** Verify delay_days/delay_time scheduling and click tracking.
+**目的:** delay_days/delay_time スケジューリングと Click Tracking の検証。
 
-**Test Sequence Configuration:**
+**テスト用シーケンス設定:**
 
-| Step | delay_days | delay_time | Expected Send Time |
+| ステップ | delay_days | delay_time | 送信予定時刻 |
 |------|-----------|------------|-------------------|
-| 1 | 0 | 09:00 | Registration day JST 09:00 |
-| 2 | 0 | 09:15 | Registration day JST 09:15 |
-| 3 | 0 | 09:30 | Registration day JST 09:30 |
-| 4 | 1 | NULL | Next day default time (09:00) |
-| 5 | 1 | 14:00 | Next day JST 14:00 |
+| 1 | 0 | 09:00 | 登録日 JST 09:00 |
+| 2 | 0 | 09:15 | 登録日 JST 09:15 |
+| 3 | 0 | 09:30 | 登録日 JST 09:30 |
+| 4 | 1 | NULL | 翌日デフォルト時刻 (09:00) |
+| 5 | 1 | 14:00 | 翌日 JST 14:00 |
 
-**Test Email Content:**
+**テストメール本文:**
 
 ```
-[Step 1] Subject: "Step 1: Welcome"
+[ステップ 1] 件名: "ステップ 1: ウェルカム"
 ---
-This is Step 1 (scheduled for 09:00).
+ステップ 1 のメールです（09:00 配信予定）。
 
-Article A: https://edgeshift.tech/articles/a (Link A)
-Article B: https://edgeshift.tech/articles/b (Link B)
----
-
-[Step 2] Subject: "Step 2: Sample"
----
-This is Step 2 (scheduled for 09:15).
-
-Page C: https://edgeshift.tech/page-c (Link C)
+記事 A: https://edgeshift.tech/articles/a (リンク A)
+記事 B: https://edgeshift.tech/articles/b (リンク B)
 ---
 
-[Step 3] Subject: "Step 3: Check"
+[ステップ 2] 件名: "ステップ 2: サンプル"
 ---
-This is Step 3 (scheduled for 09:30).
+ステップ 2 のメールです（09:15 配信予定）。
 
-Page D: https://edgeshift.tech/page-d (Link D)
----
-
-[Step 4] Subject: "Step 4: Default Time"
----
-This is Step 4. Sent at default time (09:00) the next day.
-
-Link: https://edgeshift.tech/step4 (Link E)
+ページ C: https://edgeshift.tech/page-c (リンク C)
 ---
 
-[Step 5] Subject: "Step 5: Specified Time"
+[ステップ 3] 件名: "ステップ 3: チェック"
 ---
-This is Step 5. Sent at specified time (14:00) the next day.
+ステップ 3 のメールです（09:30 配信予定）。
 
-Link: https://edgeshift.tech/step5 (Link F)
+ページ D: https://edgeshift.tech/page-d (リンク D)
+---
+
+[ステップ 4] 件名: "ステップ 4: デフォルト時刻"
+---
+ステップ 4 のメールです。翌日のデフォルト時刻 (09:00) に配信されます。
+
+リンク: https://edgeshift.tech/step4 (リンク E)
+---
+
+[ステップ 5] 件名: "ステップ 5: 指定時刻"
+---
+ステップ 5 のメールです。翌日の指定時刻 (14:00) に配信されます。
+
+リンク: https://edgeshift.tech/step5 (リンク F)
 ---
 ```
 
-**Test Procedure:**
+**テスト手順:**
 
-1. Create sequence in admin panel with above configuration
-2. Add formatting (bold, links) using Tiptap editor
-3. Register at 08:00 JST using personal email
-4. Confirm Steps 1-3 arrive at 09:00, 09:15, 09:30 same day
-5. Confirm Step 4 arrives at 09:00 next day
-6. Confirm Step 5 arrives at 14:00 next day
-7. Click all links (A-F) and verify in analytics UI
+1. 管理画面で上記設定のシーケンスを作成
+2. Tiptap エディタで装飾（太字、リンク）を追加
+3. 08:00 JST に個人メールで登録
+4. ステップ 1-3 が同日 09:00, 09:15, 09:30 に届くことを確認
+5. ステップ 4 が翌日 09:00 に届くことを確認
+6. ステップ 5 が翌日 14:00 に届くことを確認
+7. 全リンク (A-F) をクリックし、分析UIで確認
 
-**Verification Points:**
+**検証ポイント:**
 
-- [ ] delay_days=0 sends multiple emails on same JST date
-- [ ] delay_time creates time differences between steps
-- [ ] delay_days=1 sends correctly on next day
-- [ ] Default time vs specified time works correctly
-- [ ] Click tracking records each link separately
-- [ ] Batch 3D scheduling features are not disabled
+- [ ] delay_days=0 で同一JST日付内に複数配信される
+- [ ] delay_time でステップ間の時刻差が生じる
+- [ ] delay_days=1 で翌日に正しく配信される
+- [ ] デフォルト時刻 vs 指定時刻が正しく動作する
+- [ ] Click Tracking が各リンクを個別に記録する
+- [ ] Batch 3D のスケジュール機能が無効化されていない
 
-#### 2-2: Embed Form Test
+#### 2-2: 埋め込みフォームテスト
 
-**Purpose:** Verify embed form functionality and theme/size options.
+**目的:** 埋め込みフォーム機能と theme/size オプションの検証。
 
-**Test Page Configuration:**
+**テスト用ページ設定:**
 
 ```
 Page Type: embed
 Slug: test-embed
-Theme: light / dark (test both)
-Size: compact / full (test both)
+Theme: light / dark (両方テスト)
+Size: compact / full (両方テスト)
 ```
 
-**Test Procedure:**
+**テスト手順:**
 
-1. Create embed page at `/admin/signup-pages/new` with `page_type: embed`
-2. Customize form labels, placeholders, button text
-3. Access `/newsletter/embed/test-embed` directly
-4. Test query parameter combinations:
+1. `/admin/signup-pages/new` で `page_type: embed` のページを作成
+2. フォームラベル、プレースホルダー、ボタンテキストをカスタマイズ
+3. `/newsletter/embed/test-embed` に直接アクセス
+4. クエリパラメータの組み合わせをテスト:
    - `?theme=light&size=full`
    - `?theme=dark&size=compact`
-5. Submit subscription through embed form
-6. Verify Double Opt-in email received and confirmation works
-7. Check embed code generator in admin panel
+5. 埋め込みフォームから購読を送信
+6. Double Opt-in メールを受信し、確認が機能することを検証
+7. 管理画面で埋め込みコード生成機能を確認
 
-**Verification Points:**
+**検証ポイント:**
 
-- [ ] page_type branching (landing/embed) works correctly
-- [ ] Theme switching (light/dark) reflects properly
-- [ ] Size switching (compact/full) reflects properly
-- [ ] Subscription via embed form completes successfully
-- [ ] Embed code generator UI works correctly
-
----
-
-### TB-3: Admin Perspective Operations
-
-#### 3-1: Campaign Delivery Test
-
-**Purpose:** Verify campaign creation, delivery, and tracking.
-
-**Test Campaign Content:**
-
-```
-Subject: "Test Campaign: Click Tracking Verification"
-
-Body:
----
-Hello,
-
-This is a test email for campaign delivery.
-
-Please click the following links to verify tracking functionality:
-
-1. Top Page: https://edgeshift.tech/ (Link A)
-2. Projects: https://edgeshift.tech/projects (Link B)
-3. Contact: https://edgeshift.tech/contact (Link C)
-4. External Link: https://github.com/kuma8088 (Link D)
-
-After testing, verify the following in admin panel:
-- Delivery logs are recorded
-- Open tracking works
-- Click counts are accurate for each link
-
-Thank you.
----
-```
-
-**Test Procedure:**
-
-1. Create campaign in admin panel with above content
-2. Add formatting using Tiptap editor (bold, links)
-3. Select Contact List (or all subscribers)
-4. Use preview function to verify display
-5. Execute immediate delivery or schedule 5 minutes ahead
-6. Receive email and click multiple links (A-D)
-7. Click same link multiple times (verify duplicate count handling)
-8. Check statistics at `/admin/campaigns/detail?id=xxx`
-
-**Verification Points:**
-
-- [ ] Tiptap editor allows editing
-- [ ] Preview function works
-- [ ] Immediate/scheduled delivery works
-- [ ] Open tracking is recorded
-- [ ] Click tracking records each link separately
-- [ ] Analytics UI displays statistics accurately
-
-#### 3-2: Contact List Test
-
-**Purpose:** Verify Contact List CRUD and list-based delivery.
-
-**Test List Configuration:**
-
-```
-List Name: "Test Subscriber List"
-Description: "Test list for user testing"
-```
-
-**Test Procedure:**
-
-1. Create new list at `/admin/contact-lists`
-2. Enter name and description
-3. Add personal email (subscriber) to the list
-4. Verify member display in list detail
-5. Create campaign with "Test Subscriber List" selected
-6. Execute delivery and confirm only list members receive it
-7. Check member count in list detail
-8. Verify list-based delivery results in campaign statistics
-
-**Verification Points:**
-
-- [ ] List create/edit/delete works
-- [ ] Member add/remove works
-- [ ] List-based delivery reaches correct recipients
-- [ ] List detail screen displays accurately
+- [ ] page_type 分岐（landing/embed）が正しく動作する
+- [ ] テーマ切り替え（light/dark）が正しく反映される
+- [ ] サイズ切り替え（compact/full）が正しく反映される
+- [ ] 埋め込みフォーム経由の購読が正常に完了する
+- [ ] 埋め込みコード生成UIが正しく動作する
 
 ---
 
-### Extra: mail-tester.com Evaluation
+### TB-3: 管理者視点の操作
 
-**Purpose:** Evaluate email deliverability and spam score.
+#### 3-1: キャンペーン配信テスト
 
-**Test Procedure:**
+**目的:** キャンペーンの作成、配信、トラッキングの検証。
 
-1. Access mail-tester.com and obtain temporary test email address
-2. Create dedicated campaign with realistic newsletter content (see below)
-3. Send to mail-tester address
-4. Check evaluation results
-
-**Test Email Content (Realistic Newsletter Format):**
+**テスト用キャンペーン内容:**
 
 ```
-Subject: "EdgeShift Newsletter: Building Serverless APIs with Cloudflare Workers"
+件名: "テストキャンペーン: Click Tracking 検証"
 
-Body:
+本文:
 ---
-Hello,
+こんにちは、
 
-Thank you for subscribing to the EdgeShift Newsletter.
+キャンペーン配信のテストメールです。
 
-In this issue, we explore how to build scalable, cost-effective APIs using Cloudflare Workers. As edge computing continues to reshape the landscape of web development, understanding serverless architecture has become essential for modern developers.
+以下のリンクをクリックして、トラッキング機能を検証してください:
 
-Cloudflare Workers provide a unique approach to serverless computing by running your code at the edge, closer to your users. This results in significantly reduced latency and improved user experience, especially for globally distributed applications.
+1. トップページ: https://edgeshift.tech/ (リンク A)
+2. プロジェクト: https://edgeshift.tech/projects (リンク B)
+3. お問い合わせ: https://edgeshift.tech/contact (リンク C)
+4. 外部リンク: https://github.com/kuma8088 (リンク D)
 
-In this article, we will cover:
+テスト後、管理画面で以下を確認してください:
+- 配信ログが記録されている
+- 開封トラッキングが動作している
+- 各リンクのクリック数が正確である
 
-1. Setting up your first Cloudflare Worker
-2. Connecting to Cloudflare D1 for database operations
-3. Implementing authentication and rate limiting
-4. Best practices for production deployment
+よろしくお願いいたします。
+---
+```
 
-The combination of Workers, D1, and KV storage creates a powerful platform for building full-stack applications without managing traditional server infrastructure.
+**テスト手順:**
 
-Read the full article here:
+1. 管理画面で上記内容のキャンペーンを作成
+2. Tiptap エディタで装飾（太字、リンク）を追加
+3. コンタクトリストを選択（または全購読者）
+4. プレビュー機能で表示を確認
+5. 即時配信または5分後配信を実行
+6. メールを受信し、複数のリンク (A-D) をクリック
+7. 同じリンクを複数回クリック（重複カウント処理の確認）
+8. `/admin/campaigns/detail?id=xxx` で統計を確認
+
+**検証ポイント:**
+
+- [ ] Tiptap エディタで編集可能
+- [ ] プレビュー機能が動作する
+- [ ] 即時/予約配信が動作する
+- [ ] 開封トラッキングが記録される
+- [ ] Click Tracking が各リンクを個別に記録する
+- [ ] 分析UIが統計を正確に表示する
+
+#### 3-2: コンタクトリストテスト
+
+**目的:** コンタクトリストのCRUDとリスト指定配信の検証。
+
+**テスト用リスト設定:**
+
+```
+リスト名: "テスト購読者リスト"
+説明: "ユーザーテスト用のリスト"
+```
+
+**テスト手順:**
+
+1. `/admin/contact-lists` で新規リストを作成
+2. 名前と説明を入力
+3. 個人メール（購読者）をリストに追加
+4. リスト詳細でメンバー表示を確認
+5. 「テスト購読者リスト」を選択してキャンペーンを作成
+6. 配信実行し、リストメンバーのみが受信することを確認
+7. リスト詳細でメンバー数を確認
+8. キャンペーン統計でリスト指定配信の結果を確認
+
+**検証ポイント:**
+
+- [ ] リストの作成/編集/削除が動作する
+- [ ] メンバーの追加/削除が動作する
+- [ ] リスト指定配信が正しい宛先に届く
+- [ ] リスト詳細画面が正確に表示される
+
+---
+
+### Extra: mail-tester.com 評価
+
+**目的:** メール配信性とスパムスコアの評価。
+
+**テスト手順:**
+
+1. mail-tester.com にアクセスし、一時的なテストメールアドレスを取得
+2. 実際のニュースレター形式のコンテンツで専用キャンペーンを作成（下記参照）
+3. mail-tester アドレス宛に送信
+4. 評価結果を確認
+
+**テストメール本文（実際のニュースレター形式）:**
+
+```
+件名: "EdgeShift Newsletter: Cloudflare Workers でサーバーレス API を構築する"
+
+本文:
+---
+EdgeShift Newsletter をご購読いただき、ありがとうございます。
+
+今回は、Cloudflare Workers を使用してスケーラブルかつコスト効率の高い API を構築する方法についてご紹介します。エッジコンピューティングが Web 開発の領域を変革し続ける中、サーバーレスアーキテクチャの理解は現代の開発者にとって不可欠なスキルとなっています。
+
+Cloudflare Workers は、ユーザーにより近いエッジでコードを実行することで、サーバーレスコンピューティングへの独自のアプローチを提供します。これにより、特にグローバルに分散したアプリケーションにおいて、レイテンシが大幅に削減され、ユーザーエクスペリエンスが向上します。
+
+本記事では、以下の内容を取り上げます:
+
+1. 最初の Cloudflare Worker のセットアップ
+2. データベース操作のための Cloudflare D1 への接続
+3. 認証とレート制限の実装
+4. 本番デプロイのベストプラクティス
+
+Workers、D1、KV ストレージの組み合わせにより、従来のサーバーインフラストラクチャを管理することなく、フルスタックアプリケーションを構築するための強力なプラットフォームが実現します。
+
+詳細な記事はこちらからお読みいただけます:
 https://edgeshift.tech/articles/cloudflare-workers-guide
 
-If you have any questions or feedback, feel free to reach out. I would love to hear about your experiences with serverless architecture.
+ご質問やフィードバックがございましたら、お気軽にお問い合わせください。サーバーレスアーキテクチャに関するご経験をぜひお聞かせください。
 
-Best regards,
-EdgeShift Team
+よろしくお願いいたします。
+EdgeShift チーム
 
 ---
 EdgeShift - Building at the Edge
@@ -280,111 +278,111 @@ https://edgeshift.tech
 ---
 ```
 
-**Verification Points:**
+**検証ポイント:**
 
-- [ ] Spam score (target: 8+ out of 10)
-- [ ] SPF / DKIM / DMARC configured correctly
-- [ ] HTML structure has no issues
-- [ ] Not on any blacklists
-- [ ] If issues found, record for TB-5 improvement
+- [ ] スパムスコア（目標: 10点満点中8点以上）
+- [ ] SPF / DKIM / DMARC が正しく設定されている
+- [ ] HTML 構造に問題がない
+- [ ] ブラックリストに登録されていない
+- [ ] 問題が見つかった場合、TB-5 の改善項目として記録
 
 ---
 
-### TB-5: Feedback Collection & Improvement
+### TB-5: フィードバック収集と改善
 
-**Purpose:** Collect UX feedback and address issues.
+**目的:** UX フィードバックを収集し、問題に対処する。
 
-**Approach:** Hybrid
+**アプローチ:** ハイブリッド
 
-| Issue Size | Action |
+| 問題の規模 | アクション |
 |------------|--------|
-| Minor (< 15 min fix) | Fix immediately, note in log |
-| Major (> 15 min fix) | Record only, create separate task |
+| 小規模（< 15分で修正可能） | 即座に修正し、ログに記録 |
+| 大規模（> 15分かかる） | 記録のみ、別タスクとして作成 |
 
-**Evaluation Criteria:**
+**評価基準:**
 
-1. **Edit UX (Tiptap, Forms)**
-   - Is the toolbar intuitive?
-   - Are there too many settings?
-   - Is preview functionality sufficient?
+1. **編集UX（Tiptap、フォーム）**
+   - ツールバーは直感的か？
+   - 設定項目が多すぎないか？
+   - プレビュー機能は十分か？
 
-2. **View Content (Analytics, Statistics)**
-   - Are the displayed metrics useful for decision-making?
-   - Is the granularity of click details appropriate?
-   - Are sequence statistics practical?
+2. **閲覧コンテンツ（分析、統計）**
+   - 表示される指標は意思決定に役立つか？
+   - クリック詳細の粒度は適切か？
+   - シーケンス統計は実用的か？
 
-**Recording Method:**
+**記録方法:**
 
-1. Note findings immediately in Obsidian daily note
-   - Issue description
-   - Why it bothered me
-   - Improvement idea
-   - Screenshot if applicable
+1. 気づいた点を Obsidian のデイリーノートに即座に記録
+   - 問題の説明
+   - なぜ気になったか
+   - 改善のアイデア
+   - 該当する場合はスクリーンショット
 
-2. Mark as "Fixed" if addressed immediately
+2. 即座に対処した場合は「修正済み」とマーク
 
-3. At end of TB-5, review notes and:
-   - Create GitHub Issues for remaining items
-   - Or document in newsletter_system_expansion.md
-
----
-
-## Known Limitations
-
-### Immediate Send After Registration
-
-**Current Status:** Not implemented
-
-**Behavior:**
-- `delay_days=0` means "specified time on the same JST date", not "immediately after registration"
-- If registered at 14:00 JST with `delay_days=0, delay_time="09:00"`, the email will NOT be sent (09:00 has passed)
-
-**Workaround for Testing:**
-- Register before the first step's delay_time (e.g., register at 08:00 for 09:00 send)
-
-**Future Development:**
-- Add `delay_minutes` column or `send_immediately` flag
-- Recorded in newsletter_system_mvp.md as MVP enhancement
+3. TB-5 終了時にノートをレビューし:
+   - 残っている項目については GitHub Issue を作成
+   - または newsletter_system_expansion.md に記録
 
 ---
 
-## Test Schedule
+## 既知の制限事項
 
-| Day | Time | Activity |
+### 登録直後の即時送信
+
+**現状:** 未実装
+
+**動作:**
+- `delay_days=0` は「登録直後」ではなく「同一JST日付の指定時刻」を意味する
+- 14:00 JST に登録し、`delay_days=0, delay_time="09:00"` の場合、メールは送信されない（09:00 は既に過ぎている）
+
+**テスト時の回避策:**
+- 最初のステップの delay_time より前に登録する（例: 09:00 送信のために 08:00 に登録）
+
+**今後の開発:**
+- `delay_minutes` カラムまたは `send_immediately` フラグを追加
+- newsletter_system_mvp.md に MVP 拡張として記録済み
+
+---
+
+## テストスケジュール
+
+| 日 | 時刻 | アクティビティ |
 |-----|------|----------|
-| Day 1 | 07:30 | Prepare test sequence and campaign in admin |
-| Day 1 | 08:00 | Register with personal email |
-| Day 1 | 09:00-09:30 | Receive Steps 1-3, click links |
-| Day 1 | 10:00 | Verify analytics, test embed form |
-| Day 1 | 11:00 | Test Contact List and campaign delivery |
-| Day 1 | 14:00 | mail-tester.com evaluation |
-| Day 2 | 09:00 | Receive Step 4, verify default time |
-| Day 2 | 14:00 | Receive Step 5, verify specified time |
-| Day 2 | 15:00 | TB-5: Review findings, address issues |
+| 1日目 | 07:30 | 管理画面でテスト用シーケンスとキャンペーンを準備 |
+| 1日目 | 08:00 | 個人メールで登録 |
+| 1日目 | 09:00-09:30 | ステップ 1-3 を受信、リンクをクリック |
+| 1日目 | 10:00 | 分析を確認、埋め込みフォームをテスト |
+| 1日目 | 11:00 | コンタクトリストとキャンペーン配信をテスト |
+| 1日目 | 14:00 | mail-tester.com 評価 |
+| 2日目 | 09:00 | ステップ 4 を受信、デフォルト時刻を確認 |
+| 2日目 | 14:00 | ステップ 5 を受信、指定時刻を確認 |
+| 2日目 | 15:00 | TB-5: 発見事項のレビュー、問題対処 |
 
 ---
 
-## Success Criteria
+## 成功基準
 
-- [ ] All sequence steps delivered at correct times
-- [ ] Click tracking accurately records all link clicks
-- [ ] Campaign delivery works with Contact List selection
-- [ ] Embed form functions with all theme/size combinations
-- [ ] mail-tester.com score >= 8/10
-- [ ] No critical bugs discovered
-- [ ] UX issues documented for future improvement
-
----
-
-## References
-
-- [newsletter_system_mvp.md](../portfolio_site/newsletter_system/newsletter_system_mvp.md) - MVP specification
-- [newsletter_system_expansion.md](../portfolio_site/newsletter_system/newsletter_system_expansion.md) - Future phases
+- [ ] 全シーケンスステップが正しい時刻に配信される
+- [ ] Click Tracking が全リンククリックを正確に記録する
+- [ ] コンタクトリスト選択でキャンペーン配信が動作する
+- [ ] 埋め込みフォームが全 theme/size の組み合わせで機能する
+- [ ] mail-tester.com スコアが 8/10 以上
+- [ ] 重大なバグが発見されない
+- [ ] UX 問題が将来の改善のために文書化される
 
 ---
 
-## Changelog
+## 参考資料
 
-| Date | Version | Changes |
+- [newsletter_system_mvp.md](../portfolio_site/newsletter_system/newsletter_system_mvp.md) - MVP 仕様
+- [newsletter_system_expansion.md](../portfolio_site/newsletter_system/newsletter_system_expansion.md) - 今後のフェーズ
+
+---
+
+## 変更履歴
+
+| 日付 | バージョン | 変更内容 |
 |------|---------|---------|
-| 2025-12-26 | v1.0 | Initial test plan created |
+| 2025-12-26 | v1.0 | 初版テスト計画を作成 |
