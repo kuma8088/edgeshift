@@ -107,6 +107,22 @@ export async function getCampaignStats(id: string) {
 }
 
 // Sequences
+export interface Sequence {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: number;
+  default_send_time?: string;
+  steps: {
+    delay_days: number;
+    delay_time?: string;
+    subject: string;
+    content: string;
+  }[];
+  created_at: number;
+  updated_at?: number;
+}
+
 interface CreateSequenceData {
   name: string;
   description?: string;
@@ -120,7 +136,11 @@ interface CreateSequenceData {
 }
 
 export async function listSequences() {
-  return apiRequest('/sequences');
+  return apiRequest<{ sequences: Sequence[] }>('/sequences');
+}
+
+export async function getSequences() {
+  return listSequences();
 }
 
 export async function getSequence(id: string) {
@@ -179,4 +199,71 @@ export async function getSubscriberEngagement(id: string) {
 // Analytics
 export async function getAnalyticsOverview() {
   return apiRequest('/analytics/overview');
+}
+
+// Signup Pages API
+export interface SignupPage {
+  id: string;
+  slug: string;
+  sequence_id: string | null;
+  title: string;
+  content: string;
+  button_text: string;
+  form_fields: string;
+  theme: string;
+  pending_title: string;
+  pending_message: string;
+  confirmed_title: string;
+  confirmed_message: string;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateSignupPageData {
+  slug: string;
+  sequence_id?: string;
+  title: string;
+  content: string;
+  button_text?: string;
+  form_fields?: string;
+  theme?: string;
+  pending_title?: string;
+  pending_message?: string;
+  confirmed_title?: string;
+  confirmed_message?: string;
+}
+
+export interface UpdateSignupPageData {
+  slug?: string;
+  sequence_id?: string;
+  title?: string;
+  content?: string;
+  button_text?: string;
+  form_fields?: string;
+  theme?: string;
+  pending_title?: string;
+  pending_message?: string;
+  confirmed_title?: string;
+  confirmed_message?: string;
+}
+
+export async function getSignupPages() {
+  return apiRequest<{ pages: SignupPage[] }>('/signup-pages');
+}
+
+export async function getSignupPage(id: string) {
+  return apiRequest<{ page: SignupPage }>(`/signup-pages/${id}`);
+}
+
+export async function createSignupPage(pageData: CreateSignupPageData) {
+  return apiRequest<SignupPage>('/signup-pages', { method: 'POST', body: pageData });
+}
+
+export async function updateSignupPage(id: string, pageData: UpdateSignupPageData) {
+  return apiRequest<{ page: SignupPage }>(`/signup-pages/${id}`, { method: 'PUT', body: pageData });
+}
+
+export async function deleteSignupPage(id: string) {
+  return apiRequest<{ message: string }>(`/signup-pages/${id}`, { method: 'DELETE' });
 }

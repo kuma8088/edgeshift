@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+
+const { slug } = Astro.params;
+
+// Fetch page config
+const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
+const response = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
+
+if (!response.ok) {
+  return Astro.redirect('/404');
+}
+
+const { data } = await response.json();
+const page = data.page;
+---
+
+<BaseLayout title={page.pending_title} description={page.pending_message}>
+  <section class="py-24 px-4 bg-[var(--color-bg-secondary)]">
+    <div class="max-w-lg mx-auto text-center">
+      <!-- Icon -->
+      <div class="mb-8">
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100">
+          <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">
+        {page.pending_title}
+      </h1>
+
+      <!-- Message -->
+      <p class="text-gray-700 mb-8 leading-relaxed">
+        {page.pending_message}
+      </p>
+
+      <!-- Back to Home -->
+      <a
+        href="/"
+        class="inline-block bg-gray-800 text-white px-6 py-3 rounded font-medium hover:bg-gray-700 transition-colors"
+      >
+        トップページへ戻る
+      </a>
+    </div>
+  </section>
+</BaseLayout>

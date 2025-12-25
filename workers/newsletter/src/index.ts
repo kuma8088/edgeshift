@@ -31,6 +31,14 @@ import {
   handleGetSequenceStats,
 } from './routes/tracking';
 import { handleGetAnalyticsOverview } from './routes/analytics';
+import {
+  handleGetSignupPages,
+  handleGetSignupPage,
+  handleGetSignupPageBySlug,
+  handleCreateSignupPage,
+  handleUpdateSignupPage,
+  handleDeleteSignupPage,
+} from './routes/signup-pages';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -129,6 +137,24 @@ export default {
         response = await getDashboardStats(request, env);
       } else if (path === '/api/analytics/overview' && request.method === 'GET') {
         response = await handleGetAnalyticsOverview(request, env);
+      }
+      // Signup Pages routes (Batch 4A)
+      else if (path === '/api/signup-pages' && request.method === 'GET') {
+        response = await handleGetSignupPages(request, env);
+      } else if (path.match(/^\/api\/signup-pages\/by-slug\/[^\/]+$/) && request.method === 'GET') {
+        const slug = path.replace('/api/signup-pages/by-slug/', '');
+        response = await handleGetSignupPageBySlug(request, env, slug);
+      } else if (path.match(/^\/api\/signup-pages\/[^\/]+$/) && request.method === 'GET') {
+        const id = path.replace('/api/signup-pages/', '');
+        response = await handleGetSignupPage(request, env, id);
+      } else if (path === '/api/signup-pages' && request.method === 'POST') {
+        response = await handleCreateSignupPage(request, env);
+      } else if (path.match(/^\/api\/signup-pages\/[^\/]+$/) && request.method === 'PUT') {
+        const id = path.replace('/api/signup-pages/', '');
+        response = await handleUpdateSignupPage(request, env, id);
+      } else if (path.match(/^\/api\/signup-pages\/[^\/]+$/) && request.method === 'DELETE') {
+        const id = path.replace('/api/signup-pages/', '');
+        response = await handleDeleteSignupPage(request, env, id);
       } else {
         response = new Response(
           JSON.stringify({ success: false, error: 'Not found' }),
