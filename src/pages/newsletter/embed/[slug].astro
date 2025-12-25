@@ -1,4 +1,7 @@
 ---
+// Enable static pre-rendering for this dynamic route
+export const prerender = true;
+
 // Generate static paths at build time
 export async function getStaticPaths() {
   const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
@@ -13,13 +16,30 @@ export async function getStaticPaths() {
 
     const { data } = await response.json();
 
-    // data.pages contains the array of pages
-    // Only generate paths for active embed pages
-    return data.pages
-      .filter((page: any) => page.page_type === 'embed')
-      .map((page: any) => ({
-        params: { slug: page.slug },
-      }));
+    // Fetch full page data for each slug
+    const paths = await Promise.all(
+      data.pages
+        .filter((page: any) => page.page_type === 'embed')
+        .map(async (page: any) => {
+          try {
+            const pageResponse = await fetch(`${apiUrl}/api/signup-pages/by-slug/${page.slug}`);
+            if (!pageResponse.ok) {
+              console.error(`Failed to fetch page ${page.slug}:`, pageResponse.status);
+              return null;
+            }
+            const pageData = await pageResponse.json();
+            return {
+              params: { slug: page.slug },
+              props: { pageData: pageData.data.page },
+            };
+          } catch (error) {
+            console.error(`Error fetching page ${page.slug}:`, error);
+            return null;
+          }
+        })
+    );
+
+    return paths.filter((path) => path !== null);
   } catch (error) {
     console.error('Error fetching signup pages:', error);
     return [];
@@ -27,33 +47,18 @@ export async function getStaticPaths() {
 }
 
 const { slug } = Astro.params;
+const { pageData } = Astro.props;
 
 // Read query params for theme/size override
 const themeParam = Astro.url.searchParams.get('theme');
 const sizeParam = Astro.url.searchParams.get('size');
 
-// Fetch page config
-const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
+// Use page data from props (fetched at build time)
+const page = pageData;
 
-let page;
-
-try {
-  const response = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
-
-  if (!response.ok) {
-    return Astro.redirect('/404');
-  }
-
-  const { data } = await response.json();
-  page = data.page;
-
-  // Redirect if not an embed page
-  if (page.page_type !== 'embed') {
-    return Astro.redirect(`/newsletter/signup/${slug}`);
-  }
-} catch (error) {
-  console.error('Failed to fetch signup page:', error);
-  return Astro.redirect('/404');
+// Redirect if not an embed page
+if (page.page_type !== 'embed') {
+  return Astro.redirect(`/newsletter/signup/${slug}`);
 }
 
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';

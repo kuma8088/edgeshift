@@ -1,6 +1,9 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 
+// Enable static pre-rendering for this dynamic route
+export const prerender = true;
+
 // Generate static paths at build time
 export async function getStaticPaths() {
   const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
@@ -15,13 +18,30 @@ export async function getStaticPaths() {
 
     const { data } = await response.json();
 
-    // data.pages contains the array of pages
-    // Only generate paths for active landing pages (exclude embed type)
-    return data.pages
-      .filter((page: any) => page.page_type === 'landing')
-      .map((page: any) => ({
-        params: { slug: page.slug },
-      }));
+    // Fetch full page data for each slug
+    const paths = await Promise.all(
+      data.pages
+        .filter((page: any) => page.page_type === 'landing')
+        .map(async (page: any) => {
+          try {
+            const pageResponse = await fetch(`${apiUrl}/api/signup-pages/by-slug/${page.slug}`);
+            if (!pageResponse.ok) {
+              console.error(`Failed to fetch page ${page.slug}:`, pageResponse.status);
+              return null;
+            }
+            const pageData = await pageResponse.json();
+            return {
+              params: { slug: page.slug },
+              props: { pageData: pageData.data.page },
+            };
+          } catch (error) {
+            console.error(`Error fetching page ${page.slug}:`, error);
+            return null;
+          }
+        })
+    );
+
+    return paths.filter((path) => path !== null);
   } catch (error) {
     console.error('Error fetching signup pages:', error);
     return [];
@@ -29,78 +49,45 @@ export async function getStaticPaths() {
 }
 
 const { slug } = Astro.params;
+const { pageData } = Astro.props;
 const status = Astro.url.searchParams.get('status');
 
-// Fetch page config
-const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
+// Use page data from props (fetched at build time)
+const page = pageData;
 
-let page: any;
-let formFields: string[];
-let buttonText: string;
-let emailLabel: string;
-let emailPlaceholder: string;
-let nameLabel: string;
-let namePlaceholder: string;
-let successMessage: string;
-let pendingTitle: string;
-let pendingMessage: string;
-let confirmedTitle: string;
-let confirmedMessage: string;
-let turnstileSiteKey: string;
-let isPending: boolean;
-let isConfirmed: boolean;
-let isSignupForm: boolean;
-let pageTitle: string;
-let pageDescription: string;
-
-try {
-  const response = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
-
-  if (!response.ok) {
-    return new Response(null, { status: 404 });
-  }
-
-  const { data } = await response.json();
-  page = data.page;
-
-  // Redirect to embed page if page_type is 'embed'
-  if (page.page_type === 'embed') {
-    return Astro.redirect(`/newsletter/embed/${slug}`, 307);
-  }
-
-  // Parse form fields with fallback (supports both CSV and JSON format)
-  const formFieldsRaw = page.form_fields || 'email';
-  formFields = formFieldsRaw.startsWith('[')
-    ? JSON.parse(formFieldsRaw)
-    : formFieldsRaw.split(',').map((f: string) => f.trim());
-
-  // Backward compatibility: provide defaults for new fields
-  buttonText = page.button_text || 'Subscribe';
-  emailLabel = page.email_label || 'Email Address';
-  emailPlaceholder = page.email_placeholder || 'example@email.com';
-  nameLabel = page.name_label || 'Name';
-  namePlaceholder = page.name_placeholder || 'Your Name';
-  successMessage = page.success_message || 'Check your email to confirm subscription';
-  pendingTitle = page.pending_title || 'Check Your Email';
-  pendingMessage = page.pending_message || 'We\'ve sent you a confirmation link. Please check your email and click the link to complete your subscription.';
-  confirmedTitle = page.confirmed_title || 'Subscription Confirmed!';
-  confirmedMessage = page.confirmed_message || 'Thank you for subscribing! You\'ll start receiving updates soon.';
-
-  turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
-
-  // Determine which page to render
-  isPending = status === 'pending';
-  isConfirmed = status === 'confirmed';
-  isSignupForm = !isPending && !isConfirmed;
-
-  // Set page metadata based on status
-  pageTitle = isPending ? pendingTitle : isConfirmed ? confirmedTitle : page.title;
-  pageDescription = isPending ? pendingMessage : isConfirmed ? confirmedMessage : page.title;
-
-} catch (error) {
-  console.error('Error loading signup page:', error);
-  return new Response(null, { status: 500 });
+// Redirect to embed page if page_type is 'embed'
+if (page.page_type === 'embed') {
+  return Astro.redirect(`/newsletter/embed/${slug}`, 307);
 }
+
+// Parse form fields with fallback (supports both CSV and JSON format)
+const formFieldsRaw = page.form_fields || 'email';
+const formFields = formFieldsRaw.startsWith('[')
+  ? JSON.parse(formFieldsRaw)
+  : formFieldsRaw.split(',').map((f: string) => f.trim());
+
+// Backward compatibility: provide defaults for new fields
+const buttonText = page.button_text || 'Subscribe';
+const emailLabel = page.email_label || 'Email Address';
+const emailPlaceholder = page.email_placeholder || 'example@email.com';
+const nameLabel = page.name_label || 'Name';
+const namePlaceholder = page.name_placeholder || 'Your Name';
+const successMessage = page.success_message || 'Check your email to confirm subscription';
+const pendingTitle = page.pending_title || 'Check Your Email';
+const pendingMessage = page.pending_message || 'We\'ve sent you a confirmation link. Please check your email and click the link to complete your subscription.';
+const confirmedTitle = page.confirmed_title || 'Subscription Confirmed!';
+const confirmedMessage = page.confirmed_message || 'Thank you for subscribing! You\'ll start receiving updates soon.';
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+
+// Determine which page to render
+const isPending = status === 'pending';
+const isConfirmed = status === 'confirmed';
+const isSignupForm = !isPending && !isConfirmed;
+
+// Set page metadata based on status
+const pageTitle = isPending ? pendingTitle : isConfirmed ? confirmedTitle : page.title;
+const pageDescription = isPending ? pendingMessage : isConfirmed ? confirmedMessage : page.title;
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
