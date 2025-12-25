@@ -123,3 +123,30 @@ CREATE TABLE IF NOT EXISTS click_events (
 CREATE INDEX IF NOT EXISTS idx_click_events_delivery_log ON click_events(delivery_log_id);
 CREATE INDEX IF NOT EXISTS idx_click_events_subscriber ON click_events(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_click_events_clicked_at ON click_events(clicked_at);
+
+-- Signup Page Generation (Batch 4A)
+CREATE TABLE IF NOT EXISTS signup_pages (
+  id TEXT PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  sequence_id TEXT,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  button_text TEXT DEFAULT '登録する',
+  form_fields TEXT DEFAULT 'email,name',
+  theme TEXT DEFAULT 'default',
+
+  pending_title TEXT DEFAULT '確認メールを送信しました',
+  pending_message TEXT DEFAULT 'メール内のリンクをクリックして登録を完了してください。',
+
+  confirmed_title TEXT DEFAULT '登録が完了しました',
+  confirmed_message TEXT DEFAULT 'ニュースレターへのご登録ありがとうございます。',
+
+  is_active INTEGER DEFAULT 1,
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch()),
+
+  FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_signup_pages_slug ON signup_pages(slug);
+CREATE INDEX IF NOT EXISTS idx_signup_pages_sequence ON signup_pages(sequence_id);
