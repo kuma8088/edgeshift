@@ -104,6 +104,19 @@ export async function setupTestDb() {
       created_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (delivery_log_id) REFERENCES delivery_logs(id),
       FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS signup_pages (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      meta_title TEXT,
+      meta_description TEXT,
+      sequence_id TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at INTEGER DEFAULT (unixepoch()),
+      updated_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (sequence_id) REFERENCES sequences(id)
     )`)
   ]);
 }
@@ -119,7 +132,8 @@ export async function cleanupTestDb() {
       env.DB.prepare('DELETE FROM sequence_steps WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
-      env.DB.prepare('DELETE FROM subscribers WHERE 1=1')
+      env.DB.prepare('DELETE FROM subscribers WHERE 1=1'),
+      env.DB.prepare('DELETE FROM signup_pages WHERE 1=1')
     ]);
   } catch (error) {
     // Ignore errors during cleanup - tables might not exist yet
