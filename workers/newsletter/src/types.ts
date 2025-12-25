@@ -102,6 +102,7 @@ export interface UpdateCampaignRequest {
   subject?: string;
   content?: string;
   status?: CampaignStatus;
+  contact_list_id?: string;
 }
 
 export interface Sequence {

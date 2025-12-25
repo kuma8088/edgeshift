@@ -12,7 +12,7 @@ export async function createCampaign(
 
   try {
     const body = await request.json<CreateCampaignRequest>();
-    const { subject, content, scheduled_at, schedule_type, schedule_config } = body;
+    const { subject, content, scheduled_at, schedule_type, schedule_config, contact_list_id } = body;
 
     if (!subject || !content) {
       return errorResponse('Subject and content are required', 400);
@@ -22,8 +22,8 @@ export async function createCampaign(
     const status = scheduled_at ? 'scheduled' : 'draft';
 
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -34,7 +34,8 @@ export async function createCampaign(
       schedule_config ? JSON.stringify(schedule_config) : null,
       null,  // last_sent_at
       null,  // sent_at
-      null   // recipient_count
+      null,  // recipient_count
+      contact_list_id || null
     ).run();
 
     const campaign = await env.DB.prepare(
@@ -160,6 +161,10 @@ export async function updateCampaign(
     if (body.status !== undefined && body.status !== 'sent') {
       updates.push('status = ?');
       bindings.push(body.status);
+    }
+    if (body.contact_list_id !== undefined) {
+      updates.push('contact_list_id = ?');
+      bindings.push(body.contact_list_id || null);
     }
 
     if (updates.length === 0) {
