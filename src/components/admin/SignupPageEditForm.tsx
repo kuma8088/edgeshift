@@ -6,10 +6,10 @@ import {
   createSignupPage,
   updateSignupPage,
   getSequences,
-  type SignupPage,
   type Sequence,
 } from '../../utils/admin-api';
 import { RichTextEditor } from './RichTextEditor';
+import { SignupPagePreview } from './SignupPagePreview';
 
 interface SignupPageEditFormProps {
   pageId?: string;
@@ -40,6 +40,7 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Load sequences
   useEffect(() => {
@@ -370,6 +371,13 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
           >
             {saving ? '保存中...' : '保存'}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            プレビュー
+          </button>
           <a
             href="/admin/signup-pages"
             className="px-6 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
@@ -378,6 +386,25 @@ export function SignupPageEditForm({ pageId }: SignupPageEditFormProps) {
           </a>
         </div>
       </form>
+
+      {/* Preview Modal */}
+      <SignupPagePreview
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        page={{
+          slug,
+          sequence_id: sequenceId || null,
+          title,
+          content,
+          button_text: buttonText,
+          form_fields: formFields,
+          theme,
+          pending_title: pendingTitle,
+          pending_message: pendingMessage,
+          confirmed_title: confirmedTitle,
+          confirmed_message: confirmedMessage,
+        }}
+      />
     </div>
   );
 }
