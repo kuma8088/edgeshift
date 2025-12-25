@@ -1,59 +1,22 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 
-// Enable static pre-rendering for this dynamic route
-export const prerender = true;
-
-// Generate static paths at build time
-export async function getStaticPaths() {
-  const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
-
-  try {
-    const response = await fetch(`${apiUrl}/api/signup-pages/public`);
-
-    if (!response.ok) {
-      console.error('Failed to fetch signup pages:', response.status);
-      return [];
-    }
-
-    const { data } = await response.json();
-
-    // Fetch full page data for each slug
-    const paths = await Promise.all(
-      data.pages
-        .filter((page: any) => page.page_type === 'landing')
-        .map(async (page: any) => {
-          try {
-            const pageResponse = await fetch(`${apiUrl}/api/signup-pages/by-slug/${page.slug}`);
-            if (!pageResponse.ok) {
-              console.error(`Failed to fetch page ${page.slug}:`, pageResponse.status);
-              return null;
-            }
-            const pageData = await pageResponse.json();
-            return {
-              params: { slug: page.slug },
-              props: { pageData: pageData.data.page },
-            };
-          } catch (error) {
-            console.error(`Error fetching page ${page.slug}:`, error);
-            return null;
-          }
-        })
-    );
-
-    return paths.filter((path) => path !== null);
-  } catch (error) {
-    console.error('Error fetching signup pages:', error);
-    return [];
-  }
-}
+// Server-side rendering for dynamic content
+export const prerender = false;
 
 const { slug } = Astro.params;
-const { pageData } = Astro.props;
 const status = Astro.url.searchParams.get('status');
 
-// Use page data from props (fetched at build time)
-const page = pageData;
+// Fetch page data at request time
+const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
+const pageResponse = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
+
+if (!pageResponse.ok) {
+  return Astro.redirect('/404');
+}
+
+const pageData = await pageResponse.json();
+const page = pageData.data.page;
 
 // Redirect to embed page if page_type is 'embed'
 if (page.page_type === 'embed') {

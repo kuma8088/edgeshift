@@ -16,6 +16,7 @@
     "test:e2e:cleanup": "tsx tests/e2e/helpers/cleanup.ts"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^12.6.12",
     "@astrojs/react": "^4.4.2",
     "@astrojs/sitemap": "^3.6.0",
     "@dnd-kit/core": "^6.3.1",

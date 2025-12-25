@@ -1,6 +1,9 @@
 ---
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 
+// Server-side rendering for dynamic content
+export const prerender = false;
+
 const { slug } = Astro.params;
 
 // Fetch page config
