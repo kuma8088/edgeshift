@@ -180,3 +180,112 @@ export async function getSubscriberEngagement(id: string) {
 export async function getAnalyticsOverview() {
   return apiRequest('/analytics/overview');
 }
+
+// Signup Pages API
+export interface SignupPage {
+  id: string;
+  slug: string;
+  sequence_id: string | null;
+  title: string;
+  content: string;
+  button_text: string;
+  form_fields: string;
+  theme: string;
+  pending_title: string;
+  pending_message: string;
+  confirmed_title: string;
+  confirmed_message: string;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateSignupPageData {
+  slug: string;
+  sequence_id?: string;
+  title: string;
+  content: string;
+  button_text?: string;
+  form_fields?: string;
+  theme?: string;
+  pending_title?: string;
+  pending_message?: string;
+  confirmed_title?: string;
+  confirmed_message?: string;
+}
+
+export interface UpdateSignupPageData {
+  slug?: string;
+  sequence_id?: string;
+  title?: string;
+  content?: string;
+  button_text?: string;
+  form_fields?: string;
+  theme?: string;
+  pending_title?: string;
+  pending_message?: string;
+  confirmed_title?: string;
+  confirmed_message?: string;
+}
+
+export async function getSignupPages(apiKey: string): Promise<SignupPage[]> {
+  const response = await fetch('/api/signup-pages', {
+    headers: { 'x-api-key': apiKey },
+  });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function getSignupPage(apiKey: string, id: string): Promise<SignupPage> {
+  const response = await fetch(`/api/signup-pages/${id}`, {
+    headers: { 'x-api-key': apiKey },
+  });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function createSignupPage(
+  apiKey: string,
+  pageData: CreateSignupPageData
+): Promise<SignupPage> {
+  const response = await fetch('/api/signup-pages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(pageData),
+  });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function updateSignupPage(
+  apiKey: string,
+  id: string,
+  pageData: UpdateSignupPageData
+): Promise<SignupPage> {
+  const response = await fetch(`/api/signup-pages/${id}`, {
+    method: 'PUT',
+    headers: {
+      'x-api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(pageData),
+  });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
+export async function deleteSignupPage(apiKey: string, id: string): Promise<void> {
+  const response = await fetch(`/api/signup-pages/${id}`, {
+    method: 'DELETE',
+    headers: { 'x-api-key': apiKey },
+  });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+}
