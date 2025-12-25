@@ -34,16 +34,18 @@ try {
   }
 
   const { data } = await response.json();
-  page = data;
+  page = data.page;
 
   // Redirect to embed page if page_type is 'embed'
   if (page.page_type === 'embed') {
     return Astro.redirect(`/newsletter/embed/${slug}`, 307);
   }
 
-  // Parse form fields with fallback
-  const formFieldsRaw = page.form_fields || '["email"]';
-  formFields = JSON.parse(formFieldsRaw);
+  // Parse form fields with fallback (supports both CSV and JSON format)
+  const formFieldsRaw = page.form_fields || 'email';
+  formFields = formFieldsRaw.startsWith('[')
+    ? JSON.parse(formFieldsRaw)
+    : formFieldsRaw.split(',').map((f: string) => f.trim());
 
   // Backward compatibility: provide defaults for new fields
   buttonText = page.button_text || 'Subscribe';
@@ -244,6 +246,7 @@ try {
           name: formData.get('name') || undefined,
           turnstileToken,
           sequenceId: sequenceId || undefined,
+          signupPageSlug: slug,
         };
 
         try {

@@ -11,13 +11,11 @@ export interface EmbedCodeGeneratorProps {
 }
 
 export function EmbedCodeGenerator({
-  pageId,
   slug,
   embedTheme,
   embedSize,
   baseUrl = 'https://edgeshift.tech',
 }: EmbedCodeGeneratorProps) {
-  const [activeTab, setActiveTab] = useState<'iframe' | 'form'>('iframe');
   const [copied, setCopied] = useState(false);
   const [previewTheme, setPreviewTheme] = useState(embedTheme);
   const [previewSize, setPreviewSize] = useState(embedSize);
@@ -38,28 +36,6 @@ export function EmbedCodeGenerator({
   style="border: none; border-radius: 8px;"
   title="Newsletter Signup"
 ></iframe>`;
-
-  // Generate form code (optional, for advanced users)
-  const formCode = `<form action="${baseUrl}/api/newsletter/subscribe" method="POST" style="max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-  <div style="margin-bottom: 16px;">
-    <label for="email" style="display: block; margin-bottom: 8px; font-weight: 500;">メールアドレス</label>
-    <input
-      type="email"
-      id="email"
-      name="email"
-      required
-      placeholder="your@email.com"
-      style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px;"
-    >
-  </div>
-  <input type="hidden" name="pageId" value="${pageId}">
-  <button
-    type="submit"
-    style="width: 100%; padding: 10px; background-color: #1f2937; color: white; border: none; border-radius: 4px; font-weight: 500; cursor: pointer;"
-  >
-    登録する
-  </button>
-</form>`;
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -82,96 +58,25 @@ export function EmbedCodeGenerator({
         </ul>
       </div>
 
-      {/* Tab navigation */}
-      <div className="flex gap-2 mb-4 border-b border-gray-200">
-        <button
-          type="button"
-          onClick={() => setActiveTab('iframe')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'iframe'
-              ? 'text-gray-900 border-b-2 border-gray-900'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-          aria-selected={activeTab === 'iframe'}
-          role="tab"
-        >
-          iframe 埋め込み
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('form')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'form'
-              ? 'text-gray-900 border-b-2 border-gray-900'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-          aria-selected={activeTab === 'form'}
-          role="tab"
-        >
-          HTML フォーム（上級者向け）
-        </button>
+      {/* Embed code */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          埋め込みコード
+        </label>
+        <div className="relative">
+          <pre className="p-4 bg-gray-50 border border-gray-300 rounded overflow-x-auto text-sm">
+            <code>{iframeCode}</code>
+          </pre>
+          <button
+            type="button"
+            onClick={() => handleCopy(iframeCode)}
+            className="absolute top-2 right-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+            aria-live="polite"
+          >
+            {copied ? 'コピーしました！' : 'コピー'}
+          </button>
+        </div>
       </div>
-
-      {/* iframe tab */}
-      {activeTab === 'iframe' && (
-        <div role="tabpanel">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              埋め込みコード
-            </label>
-            <div className="relative">
-              <pre className="p-4 bg-gray-50 border border-gray-300 rounded overflow-x-auto text-sm">
-                <code>{iframeCode}</code>
-              </pre>
-              <button
-                type="button"
-                onClick={() => handleCopy(iframeCode)}
-                className="absolute top-2 right-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 transition-colors"
-                aria-live="polite"
-              >
-                {copied ? 'コピーしました！' : 'コピー'}
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded">
-            <p className="text-sm text-gray-600">
-              <strong>推奨:</strong> iframe 方式が最もシンプルで、デザインの一貫性も保たれます。
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* form tab */}
-      {activeTab === 'form' && (
-        <div role="tabpanel">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              HTML フォームコード
-            </label>
-            <div className="relative">
-              <pre className="p-4 bg-gray-50 border border-gray-300 rounded overflow-x-auto text-sm">
-                <code>{formCode}</code>
-              </pre>
-              <button
-                type="button"
-                onClick={() => handleCopy(formCode)}
-                className="absolute top-2 right-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 transition-colors"
-                aria-live="polite"
-              >
-                {copied ? 'コピーしました！' : 'コピー'}
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-            <p className="text-sm text-yellow-800">
-              <strong>注意:</strong> HTML フォームは上級者向けです。独自のスタイルを適用したい場合に使用してください。
-              CORS の設定が必要な場合があります。
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Preview section */}
       <div className="mt-6 border-t border-gray-200 pt-6">

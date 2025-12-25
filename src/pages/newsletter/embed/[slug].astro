@@ -1,6 +1,10 @@
 ---
 const { slug } = Astro.params;
 
+// Read query params for theme/size override
+const themeParam = Astro.url.searchParams.get('theme');
+const sizeParam = Astro.url.searchParams.get('size');
+
 // Fetch page config
 const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
 
@@ -27,17 +31,28 @@ try {
 
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 
-// Parse form fields
-const formFields = Array.isArray(page.form_fields)
-  ? page.form_fields
-  : JSON.parse(page.form_fields || '["email"]');
+// Parse form fields (supports both CSV and JSON format)
+const formFieldsRaw = page.form_fields || 'email';
+const formFields = Array.isArray(formFieldsRaw)
+  ? formFieldsRaw
+  : formFieldsRaw.startsWith('[')
+    ? JSON.parse(formFieldsRaw)
+    : formFieldsRaw.split(',').map((f: string) => f.trim());
+
+// Theme and size (query params override DB values)
+const embedTheme = themeParam === 'dark' || themeParam === 'light'
+  ? themeParam
+  : page.embed_theme || 'light';
+const embedSize = sizeParam === 'compact' || sizeParam === 'full'
+  ? sizeParam
+  : page.embed_size || 'full';
 
 // Theme and size classes
-const themeClass = page.embed_theme === 'dark'
+const themeClass = embedTheme === 'dark'
   ? 'dark bg-gray-900 text-white'
   : 'bg-white text-gray-900';
 
-const sizeClass = page.embed_size === 'compact'
+const sizeClass = embedSize === 'compact'
   ? 'embed-compact'
   : 'embed-full';
 ---
@@ -363,6 +378,7 @@ const sizeClass = page.embed_size === 'compact'
         name: formData.get('name') || undefined,
         turnstileToken,
         sequenceId: sequenceId || undefined,
+        signupPageSlug: slug,
       };
 
       try {
