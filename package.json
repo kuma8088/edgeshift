@@ -10,9 +10,9 @@
     "check": "astro check",
     "lint": "eslint src --ext .ts,.astro",
     "format": "prettier --write .",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
+    "test:e2e": "playwright test --config=tests/e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --ui --config=tests/e2e/playwright.config.ts",
+    "test:e2e:debug": "playwright test --debug --config=tests/e2e/playwright.config.ts",
     "test:e2e:cleanup": "tsx tests/e2e/helpers/cleanup.ts"
   },
   "dependencies": {
