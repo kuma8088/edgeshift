@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { RichTextEditor } from './RichTextEditor';
 
 interface Campaign {
   id?: string;
@@ -81,14 +82,10 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
         <label htmlFor="content" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
           本文 <span className="text-red-500">*</span>
         </label>
-        <textarea
-          id="content"
+        <RichTextEditor
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="メール本文を入力"
-          rows={12}
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all font-mono text-sm"
-          required
+          onChange={setContent}
+          placeholder="メール本文を入力..."
         />
       </div>
 

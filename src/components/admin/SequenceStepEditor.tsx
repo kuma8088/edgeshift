@@ -18,6 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { RichTextEditor } from './RichTextEditor';
 
 interface SequenceStep {
   id?: string;
@@ -152,14 +153,10 @@ function SortableStep({ step, index, onUpdate, onRemove }: SortableStepProps) {
         >
           本文 <span className="text-red-500">*</span>
         </label>
-        <textarea
-          id={`content_${index}`}
+        <RichTextEditor
           value={step.content}
-          onChange={(e) => onUpdate(index, 'content', e.target.value)}
-          placeholder="メール本文を入力"
-          rows={6}
-          className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all font-mono text-sm"
-          required
+          onChange={(html) => onUpdate(index, 'content', html)}
+          placeholder="メール本文を入力..."
         />
       </div>
     </div>
