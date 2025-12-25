@@ -1,90 +1,90 @@
-# Session Notes: Batch_4C - Contact List Management
+# Session Notes: Batch TB - ユーザーテスト計画
 
 ## 現在の状態
 
-**フェーズ:** 要件定義（Brainstorming）
+**フェーズ:** 要件定義・ドキュメント作成完了
 
 **進捗:**
-- ✅ Batch 4A, 4B, 4C の依存関係調査完了
-- ✅ Batch 4C が独立実装可能であることを確認
-- 🔄 `superpowers:brainstorming` スキルで要件定義中
+- ✅ superpowers:brainstorming で要件定義完了
+- ✅ 実装仕様の確認（delay_days/delay_time の動作）
+- ✅ テスト計画ドキュメント作成
+- ✅ 日本語化完了
+- ✅ コミット・プッシュ完了
 
 **完了タスク:**
-- Batch 4B の依存関係調査（4A に依存なし → 既存フォーム埋め込み可能）
-- Batch 4C の依存関係調査（4A, 4B に依存なし → 独立実装可能）
-- 現在のスキーマとコード実装の確認
+- TB-1: テストシナリオ作成（ドキュメント化）
+- 実装確認: delay_days=0 は「JST 当日の指定時刻」（直後送信ではない）
+- worktree 作成・セットアップ
 
 **未完了タスク:**
-- Batch 4C の要件定義（進行中）
-- 設計ドキュメント作成
-- 実装計画作成
-- 実装
+- TB-2: 購読者視点でのフロー確認（テスト実施待ち）
+- TB-3: 管理者視点での操作確認（テスト実施待ち）
+- TB-5: フィードバック収集・改善（テスト実施待ち）
+- mail-tester.com 評価（テスト実施待ち）
 
 ---
 
 ## 直近の問題・解決
 
-**問題:** Batch 4A, 4B, 4C の依存関係が不明確
-**解決:** Explore サブエージェントで調査し、すべて独立実装可能と確認
+**問題:** delay_days=0 の動作が不明確（直後送信？当日送信？）
+**解決:** sequence-processor.ts を確認し、「JST 当日の指定時刻」であることを確認
+- 登録直後に即時送信する機能は未実装
+- MVP 追加開発要件として newsletter_system_mvp.md に記録済み
 
-**発見事項:**
-- Contact List 関連テーブルは未実装（contact_lists, contact_list_members）
-- campaigns テーブルに contact_list_id カラムなし
-- campaign-send.ts は全 active 購読者への配信のみサポート
+**問題:** テストシーケンスの設計
+**解決:** 5 ステップ構成で delay_days/delay_time の動作を網羅的に確認
+- ステップ 1-3: delay_days=0, delay_time で 09:00, 09:15, 09:30
+- ステップ 4: delay_days=1, delay_time=NULL（デフォルト時刻）
+- ステップ 5: delay_days=1, delay_time=14:00（個別指定）
 
 ---
 
 ## 次にやること
 
-### 1. 要件定義完了（優先度：最高）
-- [ ] リストメンバーシップモデルの決定（重複可能 vs 排他的）
-- [ ] キャンペーンのリスト選択方式（単一 vs 複数）
-- [ ] 既存キャンペーンの互換性戦略
-- [ ] デフォルトリストの扱い
-- [ ] インポート/エクスポート仕様
+### 1. テスト実施（優先度：最高）
+朝 08:00 JST に登録開始
+- [ ] テストシーケンス作成（管理画面で）
+- [ ] テストキャンペーン作成
+- [ ] Contact List 作成・メンバー追加
+- [ ] 埋め込みフォーム作成
 
-### 2. 設計ドキュメント作成
-- [ ] `docs/plans/YYYY-MM-DD-contact-list-design.md` 作成
-- [ ] スキーマ設計
-- [ ] API エンドポイント設計
-- [ ] UI 設計
+### 2. メール受信確認
+- [ ] ステップ 1-3 受信（09:00, 09:15, 09:30）
+- [ ] クリックトラッキング確認
+- [ ] 翌日ステップ 4-5 受信（09:00, 14:00）
 
-### 3. 実装計画作成
-- [ ] `superpowers:writing-plans` で詳細実装計画作成
-- [ ] タスク分割（4C-1 〜 4C-5）
+### 3. mail-tester.com 評価
+- [ ] テストメール送信
+- [ ] スパムスコア確認（目標 8+/10）
 
-### 4. 実装
-- [ ] スキーマ変更（contact_lists, contact_list_members テーブル追加）
-- [ ] CRUD API 実装
-- [ ] キャンペーン配信ロジック拡張
-- [ ] 管理 UI 実装
-- [ ] インポート/エクスポート機能
+### 4. TB-5 フィードバック
+- [ ] 発見した問題を記録
+- [ ] 軽微な問題（15分以内）は即時修正
+- [ ] 大きな問題は別タスク化
 
 ---
 
 ## 判断メモ
 
-### 設計判断（要確認）
+### 設計判断
 
-**リストメンバーシップ:**
-- 推奨: 重複可能（多対多）
-- 理由: 柔軟性が高く、一般的なニュースレターサービスのパターン
-- ユーザー確認待ち
+**テスト実施方法:**
+- セルフテスト（自分で実施）
+- 本番環境（edgeshift.tech）
+- 自分の実メールアドレス使用
 
-**キャンペーン配信:**
-- 候補1: 単一リスト選択（シンプル）
-- 候補2: 複数リスト選択（柔軟）
-- 候補3: リスト + 追加フィルタ（高度）
-- ユーザー確認待ち
+**モバイルテスト:**
+- スコープ外（現状必要性を感じない）
+- 必要になったら追加開発で対応
 
-**既存キャンペーン互換性:**
-- contact_list_id を NULL 許可
-- NULL = 全 active 購読者（現在の動作を維持）
+**TB-5 フィードバック方式:**
+- ハイブリッド方式を採用
+- 軽微（15分以内）→ 即時修正
+- 大きい（15分超）→ 記録のみ、別タスク化
 
-**デフォルトリスト:**
-- 候補1: 自動作成しない（管理者が明示的に作成）
-- 候補2: "All Subscribers" リストを自動作成
-- ユーザー確認待ち
+### 無視した指摘
+
+なし
 
 ---
 
@@ -94,48 +94,20 @@
 
 ---
 
-## 技術メモ
+## 作成したドキュメント
 
-### スキーマ変更の影響範囲
-
-**新規テーブル:**
-```sql
-CREATE TABLE contact_lists (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  subscriber_count INTEGER DEFAULT 0,
-  created_at INTEGER DEFAULT (unixepoch())
-);
-
-CREATE TABLE contact_list_members (
-  id TEXT PRIMARY KEY,
-  contact_list_id TEXT NOT NULL,
-  subscriber_id TEXT NOT NULL,
-  created_at INTEGER DEFAULT (unixepoch()),
-  UNIQUE(contact_list_id, subscriber_id),
-  FOREIGN KEY (contact_list_id) REFERENCES contact_lists(id),
-  FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)
-);
+**テスト計画:**
+```
+docs/plans/2025-12-26-batch-tb-user-test-plan.md
 ```
 
-**既存テーブル拡張:**
-```sql
-ALTER TABLE campaigns ADD COLUMN contact_list_id TEXT;
+**ブランチ:**
 ```
-
-**変更が必要なファイル:**
-- `workers/newsletter/schema.sql`
-- `workers/newsletter/src/routes/campaign-send.ts`
-- `workers/newsletter/src/types.ts`
-
-**新規作成が必要なファイル:**
-- `workers/newsletter/src/routes/contact-lists.ts`
-- `src/components/admin/ContactListForm.tsx`
-- `src/pages/admin/contact-lists/index.astro`
+docs/batch-tb-user-test-plan
+```
 
 ---
 
-**Last Updated:** 2025-12-25
-**Session:** Batch_4B
-**Model:** Sonnet 4.5
+**Last Updated:** 2025-12-26
+**Session:** Batch TB
+**Model:** Opus 4.5
