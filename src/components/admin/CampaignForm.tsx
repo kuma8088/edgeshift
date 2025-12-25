@@ -2,18 +2,20 @@
 
 import { useState, type FormEvent } from 'react';
 import { RichTextEditor } from './RichTextEditor';
+import { ListSelector } from './ListSelector';
 
 interface Campaign {
   id?: string;
   subject: string;
   content: string;
+  contact_list_id?: string | null;
   scheduled_at?: number;
   status?: string;
 }
 
 interface CampaignFormProps {
   campaign?: Campaign;
-  onSubmit: (data: { subject: string; content: string; scheduled_at?: number }) => Promise<void>;
+  onSubmit: (data: { subject: string; content: string; contact_list_id?: string; scheduled_at?: number }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -21,6 +23,7 @@ interface CampaignFormProps {
 export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: CampaignFormProps) {
   const [subject, setSubject] = useState(campaign?.subject || '');
   const [content, setContent] = useState(campaign?.content || '');
+  const [contactListId, setContactListId] = useState<string | null>(campaign?.contact_list_id || null);
   const [scheduledAt, setScheduledAt] = useState(
     campaign?.scheduled_at
       ? new Date(campaign.scheduled_at * 1000).toISOString().slice(0, 16)
@@ -42,9 +45,10 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
       return;
     }
 
-    const data: { subject: string; content: string; scheduled_at?: number } = {
+    const data: { subject: string; content: string; contact_list_id?: string; scheduled_at?: number } = {
       subject: subject.trim(),
       content: content.trim(),
+      contact_list_id: contactListId || undefined,
     };
 
     if (scheduledAt) {
@@ -88,6 +92,13 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
           placeholder="メール本文を入力..."
         />
       </div>
+
+      <ListSelector
+        value={contactListId}
+        onChange={setContactListId}
+        label="配信対象リスト（オプション）"
+        allowNull
+      />
 
       <div>
         <label htmlFor="scheduledAt" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">

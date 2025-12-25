@@ -39,6 +39,19 @@ import {
   handleUpdateSignupPage,
   handleDeleteSignupPage,
 } from './routes/signup-pages';
+import {
+  handleGetContactLists,
+  handleGetContactList,
+  handleCreateContactList,
+  handleUpdateContactList,
+  handleDeleteContactList,
+  handleGetListMembers,
+  handleAddMembers,
+  handleRemoveMember,
+  handleGetSubscriberLists,
+  handleAddSubscriberToList,
+  handleRemoveSubscriberFromList,
+} from './routes/contact-lists';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -61,8 +74,55 @@ export default {
       let response: Response;
 
       // Route matching
+      // Contact Lists routes (Batch 4C)
+      if (path === '/api/contact-lists' && request.method === 'GET') {
+        response = await handleGetContactLists(request, env);
+      } else if (path === '/api/contact-lists' && request.method === 'POST') {
+        response = await handleCreateContactList(request, env);
+      } else if (path.match(/^\/api\/contact-lists\/[^\/]+\/members$/)) {
+        const listId = path.replace('/api/contact-lists/', '').replace('/members', '');
+
+        if (request.method === 'GET') {
+          response = await handleGetListMembers(request, env, listId);
+        } else if (request.method === 'POST') {
+          response = await handleAddMembers(request, env, listId);
+        }
+      } else if (path.match(/^\/api\/contact-lists\/[^\/]+\/members\/[^\/]+$/)) {
+        const parts = path.replace('/api/contact-lists/', '').split('/');
+        const listId = parts[0];
+        const subscriberId = parts[2];
+
+        if (request.method === 'DELETE') {
+          response = await handleRemoveMember(request, env, listId, subscriberId);
+        }
+      } else if (path.match(/^\/api\/contact-lists\/[^\/]+$/) && request.method === 'GET') {
+        const id = path.replace('/api/contact-lists/', '');
+        response = await handleGetContactList(request, env, id);
+      } else if (path.match(/^\/api\/contact-lists\/[^\/]+$/) && request.method === 'PUT') {
+        const id = path.replace('/api/contact-lists/', '');
+        response = await handleUpdateContactList(request, env, id);
+      } else if (path.match(/^\/api\/contact-lists\/[^\/]+$/) && request.method === 'DELETE') {
+        const id = path.replace('/api/contact-lists/', '');
+        response = await handleDeleteContactList(request, env, id);
+      } else if (path.match(/^\/api\/subscribers\/[^\/]+\/lists$/)) {
+        const subscriberId = path.replace('/api/subscribers/', '').replace('/lists', '');
+
+        if (request.method === 'GET') {
+          response = await handleGetSubscriberLists(request, env, subscriberId);
+        } else if (request.method === 'POST') {
+          response = await handleAddSubscriberToList(request, env, subscriberId);
+        }
+      } else if (path.match(/^\/api\/subscribers\/[^\/]+\/lists\/[^\/]+$/)) {
+        const parts = path.replace('/api/subscribers/', '').split('/');
+        const subscriberId = parts[0];
+        const listId = parts[2];
+
+        if (request.method === 'DELETE') {
+          response = await handleRemoveSubscriberFromList(request, env, subscriberId, listId);
+        }
+      }
       // Campaign routes
-      if (path === '/api/campaigns' && request.method === 'POST') {
+      else if (path === '/api/campaigns' && request.method === 'POST') {
         response = await createCampaign(request, env);
       } else if (path === '/api/campaigns' && request.method === 'GET') {
         response = await listCampaigns(request, env);

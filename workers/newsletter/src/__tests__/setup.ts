@@ -27,6 +27,7 @@ export async function setupTestDb() {
       status TEXT DEFAULT 'pending',
       confirm_token TEXT,
       unsubscribe_token TEXT,
+      signup_page_slug TEXT,
       subscribed_at INTEGER,
       unsubscribed_at INTEGER,
       created_at INTEGER DEFAULT (unixepoch())
@@ -42,6 +43,7 @@ export async function setupTestDb() {
       last_sent_at INTEGER,
       sent_at INTEGER,
       recipient_count INTEGER,
+      contact_list_id TEXT,
       created_at INTEGER DEFAULT (unixepoch())
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS delivery_logs (
@@ -113,10 +115,27 @@ export async function setupTestDb() {
       meta_title TEXT,
       meta_description TEXT,
       sequence_id TEXT,
+      contact_list_id TEXT,
       is_active INTEGER DEFAULT 1,
       created_at INTEGER DEFAULT (unixepoch()),
       updated_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (sequence_id) REFERENCES sequences(id)
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS contact_lists (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at INTEGER DEFAULT (unixepoch()),
+      updated_at INTEGER DEFAULT (unixepoch())
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS contact_list_members (
+      id TEXT PRIMARY KEY,
+      contact_list_id TEXT NOT NULL,
+      subscriber_id TEXT NOT NULL,
+      added_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (contact_list_id) REFERENCES contact_lists(id) ON DELETE CASCADE,
+      FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+      UNIQUE(contact_list_id, subscriber_id)
     )`)
   ]);
 }
@@ -132,8 +151,10 @@ export async function cleanupTestDb() {
       env.DB.prepare('DELETE FROM sequence_steps WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
+      env.DB.prepare('DELETE FROM contact_list_members WHERE 1=1'),
       env.DB.prepare('DELETE FROM subscribers WHERE 1=1'),
-      env.DB.prepare('DELETE FROM signup_pages WHERE 1=1')
+      env.DB.prepare('DELETE FROM signup_pages WHERE 1=1'),
+      env.DB.prepare('DELETE FROM contact_lists WHERE 1=1')
     ]);
   } catch (error) {
     // Ignore errors during cleanup - tables might not exist yet

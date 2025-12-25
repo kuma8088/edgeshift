@@ -1,0 +1,15 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { ContactListDetail } from '../../../components/admin/ContactListDetail';
+
+const { searchParams } = Astro.url;
+const listId = searchParams.get('id');
+
+if (!listId) {
+  return Astro.redirect('/admin/contact-lists');
+}
+---
+
+<AdminLayout title="List Detail">
+  <ContactListDetail listId={listId} client:load />
+</AdminLayout>

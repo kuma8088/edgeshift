@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'unsubscribed')),
   confirm_token TEXT,
   unsubscribe_token TEXT,
+  signup_page_slug TEXT,
   subscribed_at INTEGER,
   unsubscribed_at INTEGER,
   created_at INTEGER DEFAULT (unixepoch())
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   -- Delivery results
   sent_at INTEGER,
   recipient_count INTEGER,
+  contact_list_id TEXT REFERENCES contact_lists(id) ON DELETE SET NULL,
   created_at INTEGER DEFAULT (unixepoch())
 );
 
@@ -124,6 +126,29 @@ CREATE INDEX IF NOT EXISTS idx_click_events_delivery_log ON click_events(deliver
 CREATE INDEX IF NOT EXISTS idx_click_events_subscriber ON click_events(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_click_events_clicked_at ON click_events(clicked_at);
 
+-- Contact Lists table (Batch 4C)
+CREATE TABLE IF NOT EXISTS contact_lists (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch())
+);
+
+-- Contact List Members table (many-to-many join)
+CREATE TABLE IF NOT EXISTS contact_list_members (
+  id TEXT PRIMARY KEY,
+  contact_list_id TEXT NOT NULL,
+  subscriber_id TEXT NOT NULL,
+  added_at INTEGER DEFAULT (unixepoch()),
+  UNIQUE(contact_list_id, subscriber_id),
+  FOREIGN KEY (contact_list_id) REFERENCES contact_lists(id) ON DELETE CASCADE,
+  FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_clm_list ON contact_list_members(contact_list_id);
+CREATE INDEX IF NOT EXISTS idx_clm_subscriber ON contact_list_members(subscriber_id);
+
 -- Signup Page Generation (Batch 4A)
 CREATE TABLE IF NOT EXISTS signup_pages (
   id TEXT PRIMARY KEY,
@@ -133,11 +158,13 @@ CREATE TABLE IF NOT EXISTS signup_pages (
   meta_title TEXT,
   meta_description TEXT,
   sequence_id TEXT,
+  contact_list_id TEXT,
   is_active INTEGER DEFAULT 1,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),
 
-  FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE SET NULL
+  FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE SET NULL,
+  FOREIGN KEY (contact_list_id) REFERENCES contact_lists(id) ON DELETE SET NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_signup_pages_slug ON signup_pages(slug);

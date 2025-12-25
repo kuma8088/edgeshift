@@ -37,6 +37,21 @@ export async function handleConfirm(
     // Enroll in all active sequences
     await enrollSubscriberInSequences(env, subscriber.id);
 
+    // Contact List auto-assignment (Batch 4C)
+    if (subscriber.signup_page_slug) {
+      const signupPage = await env.DB.prepare(
+        'SELECT * FROM signup_pages WHERE slug = ?'
+      ).bind(subscriber.signup_page_slug).first();
+
+      if (signupPage?.contact_list_id) {
+        const memberId = crypto.randomUUID();
+        await env.DB.prepare(
+          `INSERT OR IGNORE INTO contact_list_members (id, contact_list_id, subscriber_id, added_at)
+           VALUES (?, ?, ?, ?)`
+        ).bind(memberId, signupPage.contact_list_id, subscriber.id, Math.floor(Date.now() / 1000)).run();
+      }
+    }
+
     // Redirect to confirmation page
     return Response.redirect(`${env.SITE_URL}/newsletter/confirmed`, 302);
   } catch (error) {

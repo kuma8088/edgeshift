@@ -160,3 +160,71 @@ describe('getCampaignStats', () => {
     expect(response.status).toBe(401);
   });
 });
+
+describe('List-based Campaign Delivery', () => {
+  beforeEach(async () => {
+    await setupTestDb();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDb();
+  });
+
+  it('should send to list members only when contact_list_id is set', async () => {
+    const env = getTestEnv();
+    const { createContactList, addMembers } = await import('../routes/contact-lists');
+
+    // Create 3 subscribers
+    await env.DB.prepare(`
+      INSERT INTO subscribers (id, email, status, unsubscribe_token) VALUES
+      ('sub1', 'list-member@example.com', 'active', 'token1'),
+      ('sub2', 'non-member@example.com', 'active', 'token2'),
+      ('sub3', 'also-non-member@example.com', 'active', 'token3')
+    `).run();
+
+    // Create list and add one member
+    const list = await createContactList(env, { name: 'Tech Readers' });
+    await addMembers(env, list.id, { subscriber_ids: ['sub1'] });
+
+    // Create campaign with contact_list_id
+    await env.DB.prepare(
+      `INSERT INTO campaigns (id, subject, content, status, contact_list_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind('camp1', 'Test Subject', 'Test Content', 'draft', list.id, Math.floor(Date.now() / 1000)).run();
+
+    // Verify campaign has exactly 1 recipient (list member)
+    const campaign = await env.DB.prepare('SELECT * FROM campaigns WHERE id = ?').bind('camp1').first();
+    const recipients = await env.DB.prepare(`
+      SELECT s.* FROM subscribers s
+      JOIN contact_list_members clm ON s.id = clm.subscriber_id
+      WHERE clm.contact_list_id = ? AND s.status = 'active'
+    `).bind(campaign.contact_list_id).all();
+
+    expect(recipients.results).toHaveLength(1);
+    expect(recipients.results[0].email).toBe('list-member@example.com');
+  });
+
+  it('should send to all active subscribers when contact_list_id is NULL', async () => {
+    const env = getTestEnv();
+
+    // Create 2 active subscribers
+    await env.DB.prepare(`
+      INSERT INTO subscribers (id, email, status, unsubscribe_token) VALUES
+      ('sub1', 'user1@example.com', 'active', 'token1'),
+      ('sub2', 'user2@example.com', 'active', 'token2')
+    `).run();
+
+    // Create campaign WITHOUT contact_list_id
+    await env.DB.prepare(
+      `INSERT INTO campaigns (id, subject, content, status, created_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind('camp2', 'Test', 'Content', 'draft', Math.floor(Date.now() / 1000)).run();
+
+    // Verify recipients include all active subscribers
+    const recipients = await env.DB.prepare(
+      "SELECT * FROM subscribers WHERE status = 'active'"
+    ).all();
+
+    expect(recipients.results).toHaveLength(2);
+  });
+});

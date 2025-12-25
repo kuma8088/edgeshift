@@ -62,7 +62,7 @@ export async function handleSubscribe(
 ): Promise<Response> {
   try {
     const body = await request.json<SubscribeRequest>();
-    const { email, name, turnstileToken, sequenceId } = body;
+    const { email, name, turnstileToken, sequenceId, signupPageSlug } = body;
 
     // Validate required fields
     if (!email || !turnstileToken) {
@@ -114,8 +114,8 @@ export async function handleSubscribe(
         const confirmUrl = `${env.SITE_URL}/api/newsletter/confirm/${confirmToken}`;
 
         await env.DB.prepare(
-          'UPDATE subscribers SET confirm_token = ? WHERE id = ?'
-        ).bind(confirmToken, existing.id).run();
+          'UPDATE subscribers SET confirm_token = ?, signup_page_slug = ? WHERE id = ?'
+        ).bind(confirmToken, signupPageSlug || null, existing.id).run();
 
         // Enroll in sequence if provided and not already enrolled
         if (sequenceId) {
@@ -161,9 +161,10 @@ export async function handleSubscribe(
               name = ?,
               confirm_token = ?,
               unsubscribe_token = ?,
-              unsubscribed_at = NULL
+              unsubscribed_at = NULL,
+              signup_page_slug = ?
           WHERE id = ?
-        `).bind(name || null, confirmToken, unsubscribeToken, existing.id).run();
+        `).bind(name || null, confirmToken, unsubscribeToken, signupPageSlug || null, existing.id).run();
 
         // Enroll in sequence if provided and not already enrolled
         if (sequenceId) {
@@ -205,9 +206,9 @@ export async function handleSubscribe(
     const confirmUrl = `${env.SITE_URL}/api/newsletter/confirm/${confirmToken}`;
 
     await env.DB.prepare(`
-      INSERT INTO subscribers (id, email, name, status, confirm_token, unsubscribe_token)
-      VALUES (?, ?, ?, 'pending', ?, ?)
-    `).bind(id, email, name || null, confirmToken, unsubscribeToken).run();
+      INSERT INTO subscribers (id, email, name, status, confirm_token, unsubscribe_token, signup_page_slug)
+      VALUES (?, ?, ?, 'pending', ?, ?, ?)
+    `).bind(id, email, name || null, confirmToken, unsubscribeToken, signupPageSlug || null).run();
 
     // Enroll in sequence if provided
     if (sequenceId) {
