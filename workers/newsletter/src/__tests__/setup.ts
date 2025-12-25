@@ -124,6 +124,15 @@ export async function setupTestDb() {
       description TEXT,
       created_at INTEGER DEFAULT (unixepoch()),
       updated_at INTEGER DEFAULT (unixepoch())
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS contact_list_members (
+      id TEXT PRIMARY KEY,
+      contact_list_id TEXT NOT NULL,
+      subscriber_id TEXT NOT NULL,
+      added_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (contact_list_id) REFERENCES contact_lists(id) ON DELETE CASCADE,
+      FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+      UNIQUE(contact_list_id, subscriber_id)
     )`)
   ]);
 }
@@ -139,6 +148,7 @@ export async function cleanupTestDb() {
       env.DB.prepare('DELETE FROM sequence_steps WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
+      env.DB.prepare('DELETE FROM contact_list_members WHERE 1=1'),
       env.DB.prepare('DELETE FROM subscribers WHERE 1=1'),
       env.DB.prepare('DELETE FROM signup_pages WHERE 1=1'),
       env.DB.prepare('DELETE FROM contact_lists WHERE 1=1')

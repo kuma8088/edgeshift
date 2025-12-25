@@ -148,6 +148,10 @@ export interface ContactListMember {
   added_at: number;
 }
 
+export interface AddMembersRequest {
+  subscriber_ids: string[];
+}
+
 export interface CreateContactListRequest {
   name: string;
   description?: string;

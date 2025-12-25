@@ -173,4 +173,135 @@ describe('Contact Lists API', () => {
       expect(data.data.name).toBe('Test List');
     });
   });
+
+  describe('Member Management (List Perspective)', () => {
+    it('should add subscribers to list', async () => {
+      const env = getTestEnv();
+      const { createContactList, addMembers, getListMembers } = await import('../routes/contact-lists');
+
+      const list = await createContactList(env, { name: 'Test List' });
+
+      await env.DB.prepare(
+        'INSERT INTO subscribers (id, email, status, created_at) VALUES (?, ?, ?, ?), (?, ?, ?, ?)'
+      ).bind('sub1', 'user1@example.com', 'active', Math.floor(Date.now() / 1000), 'sub2', 'user2@example.com', 'active', Math.floor(Date.now() / 1000)).run();
+
+      await addMembers(env, list.id, { subscriber_ids: ['sub1', 'sub2'] });
+
+      const members = await getListMembers(env, list.id);
+      expect(members).toHaveLength(2);
+      expect(members.map(m => m.subscriber_id)).toEqual(expect.arrayContaining(['sub1', 'sub2']));
+    });
+
+    it('should handle adding duplicate members idempotently', async () => {
+      const env = getTestEnv();
+      const { createContactList, addMembers, getListMembers } = await import('../routes/contact-lists');
+
+      const list = await createContactList(env, { name: 'Test List' });
+      await env.DB.prepare(
+        'INSERT INTO subscribers (id, email, status, created_at) VALUES (?, ?, ?, ?)'
+      ).bind('sub1', 'user1@example.com', 'active', Math.floor(Date.now() / 1000)).run();
+
+      await addMembers(env, list.id, { subscriber_ids: ['sub1'] });
+      await addMembers(env, list.id, { subscriber_ids: ['sub1'] }); // Add again - should not error
+
+      const members = await getListMembers(env, list.id);
+      expect(members).toHaveLength(1); // Still only 1 member due to UNIQUE constraint
+    });
+
+    it('should remove member from list', async () => {
+      const env = getTestEnv();
+      const { createContactList, addMembers, removeMember, getListMembers } = await import('../routes/contact-lists');
+
+      const list = await createContactList(env, { name: 'Test List' });
+      await env.DB.prepare(
+        'INSERT INTO subscribers (id, email, status, created_at) VALUES (?, ?, ?, ?)'
+      ).bind('sub1', 'user1@example.com', 'active', Math.floor(Date.now() / 1000)).run();
+
+      await addMembers(env, list.id, { subscriber_ids: ['sub1'] });
+      await removeMember(env, list.id, 'sub1');
+
+      const members = await getListMembers(env, list.id);
+      expect(members).toHaveLength(0);
+    });
+
+    it('should throw when adding to non-existent list', async () => {
+      const env = getTestEnv();
+      const { addMembers } = await import('../routes/contact-lists');
+
+      await expect(
+        addMembers(env, 'non-existent', { subscriber_ids: ['sub1'] })
+      ).rejects.toThrow('Contact list not found');
+    });
+
+    it('should throw when removing non-existent member', async () => {
+      const env = getTestEnv();
+      const { createContactList, removeMember } = await import('../routes/contact-lists');
+
+      const list = await createContactList(env, { name: 'Test List' });
+
+      await expect(
+        removeMember(env, list.id, 'non-existent')
+      ).rejects.toThrow('Member not found in list');
+    });
+  });
+
+  describe('Member Management (Subscriber Perspective)', () => {
+    it('should get subscriber lists', async () => {
+      const env = getTestEnv();
+      const { createContactList, addMembers, getSubscriberLists } = await import('../routes/contact-lists');
+
+      await env.DB.prepare(
+        'INSERT INTO subscribers (id, email, status, created_at) VALUES (?, ?, ?, ?)'
+      ).bind('sub1', 'user@example.com', 'active', Math.floor(Date.now() / 1000)).run();
+
+      const list1 = await createContactList(env, { name: 'List 1' });
+      const list2 = await createContactList(env, { name: 'List 2' });
+
+      await addMembers(env, list1.id, { subscriber_ids: ['sub1'] });
+      await addMembers(env, list2.id, { subscriber_ids: ['sub1'] });
+
+      const lists = await getSubscriberLists(env, 'sub1');
+      expect(lists).toHaveLength(2);
+      expect(lists.map(l => l.name)).toEqual(expect.arrayContaining(['List 1', 'List 2']));
+    });
+
+    it('should add and remove subscriber from list', async () => {
+      const env = getTestEnv();
+      const { createContactList, addSubscriberToList, removeSubscriberFromList, getSubscriberLists } = await import('../routes/contact-lists');
+
+      await env.DB.prepare(
+        'INSERT INTO subscribers (id, email, status, created_at) VALUES (?, ?, ?, ?)'
+      ).bind('sub1', 'user@example.com', 'active', Math.floor(Date.now() / 1000)).run();
+
+      const list = await createContactList(env, { name: 'Test' });
+
+      await addSubscriberToList(env, 'sub1', list.id);
+      let lists = await getSubscriberLists(env, 'sub1');
+      expect(lists).toHaveLength(1);
+
+      await removeSubscriberFromList(env, 'sub1', list.id);
+      lists = await getSubscriberLists(env, 'sub1');
+      expect(lists).toHaveLength(0);
+    });
+
+    it('should throw when adding subscriber to non-existent list', async () => {
+      const env = getTestEnv();
+      const { addSubscriberToList } = await import('../routes/contact-lists');
+
+      await expect(
+        addSubscriberToList(env, 'sub1', 'non-existent')
+      ).rejects.toThrow('Contact list not found');
+    });
+
+    it('should throw when removing subscriber from list they are not in', async () => {
+      const env = getTestEnv();
+      const { createContactList, removeSubscriberFromList } = await import('../routes/contact-lists');
+
+      const list = await createContactList(env, { name: 'Test' });
+
+      await expect(
+        removeSubscriberFromList(env, 'sub1', list.id)
+      ).rejects.toThrow('Subscriber not in list');
+    });
+  });
 });
