@@ -228,64 +228,22 @@ export interface UpdateSignupPageData {
   confirmed_message?: string;
 }
 
-export async function getSignupPages(apiKey: string): Promise<SignupPage[]> {
-  const response = await fetch('/api/signup-pages', {
-    headers: { 'x-api-key': apiKey },
-  });
-  const data = await response.json();
-  if (!data.success) throw new Error(data.error);
-  return data.data;
+export async function getSignupPages() {
+  return apiRequest<SignupPage[]>('/signup-pages');
 }
 
-export async function getSignupPage(apiKey: string, id: string): Promise<SignupPage> {
-  const response = await fetch(`/api/signup-pages/${id}`, {
-    headers: { 'x-api-key': apiKey },
-  });
-  const data = await response.json();
-  if (!data.success) throw new Error(data.error);
-  return data.data;
+export async function getSignupPage(id: string) {
+  return apiRequest<SignupPage>(`/signup-pages/${id}`);
 }
 
-export async function createSignupPage(
-  apiKey: string,
-  pageData: CreateSignupPageData
-): Promise<SignupPage> {
-  const response = await fetch('/api/signup-pages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(pageData),
-  });
-  const data = await response.json();
-  if (!data.success) throw new Error(data.error);
-  return data.data;
+export async function createSignupPage(pageData: CreateSignupPageData) {
+  return apiRequest<SignupPage>('/signup-pages', { method: 'POST', body: pageData });
 }
 
-export async function updateSignupPage(
-  apiKey: string,
-  id: string,
-  pageData: UpdateSignupPageData
-): Promise<SignupPage> {
-  const response = await fetch(`/api/signup-pages/${id}`, {
-    method: 'PUT',
-    headers: {
-      'x-api-key': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(pageData),
-  });
-  const data = await response.json();
-  if (!data.success) throw new Error(data.error);
-  return data.data;
+export async function updateSignupPage(id: string, pageData: UpdateSignupPageData) {
+  return apiRequest<SignupPage>(`/signup-pages/${id}`, { method: 'PUT', body: pageData });
 }
 
-export async function deleteSignupPage(apiKey: string, id: string): Promise<void> {
-  const response = await fetch(`/api/signup-pages/${id}`, {
-    method: 'DELETE',
-    headers: { 'x-api-key': apiKey },
-  });
-  const data = await response.json();
-  if (!data.success) throw new Error(data.error);
+export async function deleteSignupPage(id: string) {
+  return apiRequest<void>(`/signup-pages/${id}`, { method: 'DELETE' });
 }
