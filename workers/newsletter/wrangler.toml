@@ -94,10 +94,11 @@ database_id = "4ca2faf7-7486-4a66-b153-278acfa10d17"
 # - Max attempts: 5 per IP address
 # - Key format: "rate:subscribe:<ip>"
 # To change limits, modify the constants in subscribe.ts
-[[kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "placeholder_for_prod"
-preview_id = "placeholder_for_preview"
+# Temporarily commented out until KV namespace is created
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT_KV"
+# id = "placeholder_for_prod"
+# preview_id = "placeholder_for_preview"
 
 # Cron trigger for scheduled campaigns (every 15 minutes)
 [triggers]

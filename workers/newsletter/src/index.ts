@@ -35,6 +35,7 @@ import {
   handleGetSignupPages,
   handleGetSignupPage,
   handleGetSignupPageBySlug,
+  handleGetPublicSignupPages,
   handleCreateSignupPage,
   handleUpdateSignupPage,
   handleDeleteSignupPage,
@@ -200,7 +201,9 @@ export default {
         response = await handleGetAnalyticsOverview(request, env);
       }
       // Signup Pages routes (Batch 4A)
-      else if (path === '/api/signup-pages' && request.method === 'GET') {
+      else if (path === '/api/signup-pages/public' && request.method === 'GET') {
+        response = await handleGetPublicSignupPages(request, env);
+      } else if (path === '/api/signup-pages' && request.method === 'GET') {
         response = await handleGetSignupPages(request, env);
       } else if (path.match(/^\/api\/signup-pages\/by-slug\/[^\/]+$/) && request.method === 'GET') {
         const slug = path.replace('/api/signup-pages/by-slug/', '');

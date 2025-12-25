@@ -85,9 +85,11 @@ export async function handleSubscribe(
     // テストモード: test+* メールアドレスはTurnstileスキップ
     const isTestEmail = email.startsWith('test+') && email.endsWith('@edgeshift.tech');
 
+    // Get IP address for rate limiting and Turnstile verification
+    const ip = request.headers.get('CF-Connecting-IP') || undefined;
+
     if (!isTestEmail) {
       // Verify Turnstile token
-      const ip = request.headers.get('CF-Connecting-IP') || undefined;
       const turnstileResult = await verifyTurnstileToken(
         turnstileToken,
         env.TURNSTILE_SECRET_KEY,
@@ -102,8 +104,8 @@ export async function handleSubscribe(
       }
     }
 
-    // Rate limiting check
-    if (ip) {
+    // Rate limiting check (only if KV namespace is configured)
+    if (ip && env.RATE_LIMIT_KV) {
       const rateLimitResult = await checkRateLimit(env.RATE_LIMIT_KV, ip);
       if (!rateLimitResult.allowed) {
         return new Response(

@@ -285,6 +285,36 @@ describe('Subscribe Security Features', () => {
       const data = await response.json();
       expect(data.error).toBe('Too many requests. Please try again later.');
     });
+
+    it('should allow requests when RATE_LIMIT_KV is not configured', async () => {
+      const env = {
+        ...getTestEnv(),
+        // Explicitly omit RATE_LIMIT_KV
+      };
+      delete (env as any).RATE_LIMIT_KV; // Ensure it's undefined
+
+      const response = await handleSubscribe(
+        new Request('http://localhost/api/newsletter/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'CF-Connecting-IP': '192.168.1.1',
+          },
+          body: JSON.stringify({
+            email: 'test-no-kv@example.com',
+            name: 'No KV Test',
+            turnstileToken: 'test-token',
+          }),
+        }),
+        env
+      );
+
+      // Should succeed (200 or 201) despite no rate limiting
+      expect([200, 201]).toContain(response.status);
+
+      const data = await response.json();
+      expect(data.success).toBe(true);
+    });
   });
 
   describe('Disposable Email Detection', () => {

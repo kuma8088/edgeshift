@@ -498,6 +498,31 @@ export async function handleGetSignupPageBySlug(
 }
 
 /**
+ * GET /api/signup-pages/public (Public)
+ * Returns minimal signup page info for SSG build (no auth required)
+ */
+export async function handleGetPublicSignupPages(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  // Public endpoint - no auth required
+  // Only returns minimal fields needed for getStaticPaths
+
+  try {
+    const result = await env.DB.prepare(
+      'SELECT slug, page_type FROM signup_pages WHERE is_active = 1 ORDER BY slug'
+    ).all();
+
+    const pages = result.results as { slug: string; page_type: string }[];
+
+    return successResponse({ pages });
+  } catch (error) {
+    console.error('Get public signup pages error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+/**
  * POST /api/signup-pages
  */
 export async function handleCreateSignupPage(
