@@ -229,11 +229,11 @@ export interface UpdateSignupPageData {
 }
 
 export async function getSignupPages() {
-  return apiRequest<SignupPage[]>('/signup-pages');
+  return apiRequest<{ pages: SignupPage[] }>('/signup-pages');
 }
 
 export async function getSignupPage(id: string) {
-  return apiRequest<SignupPage>(`/signup-pages/${id}`);
+  return apiRequest<{ page: SignupPage }>(`/signup-pages/${id}`);
 }
 
 export async function createSignupPage(pageData: CreateSignupPageData) {
@@ -241,9 +241,9 @@ export async function createSignupPage(pageData: CreateSignupPageData) {
 }
 
 export async function updateSignupPage(id: string, pageData: UpdateSignupPageData) {
-  return apiRequest<SignupPage>(`/signup-pages/${id}`, { method: 'PUT', body: pageData });
+  return apiRequest<{ page: SignupPage }>(`/signup-pages/${id}`, { method: 'PUT', body: pageData });
 }
 
 export async function deleteSignupPage(id: string) {
-  return apiRequest<void>(`/signup-pages/${id}`, { method: 'DELETE' });
+  return apiRequest<{ message: string }>(`/signup-pages/${id}`, { method: 'DELETE' });
 }
