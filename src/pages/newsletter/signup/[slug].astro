@@ -139,6 +139,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
       name: formData.get('name') || undefined,
       turnstileToken,
       sequenceId: sequenceId || undefined,
+      signupPageSlug: slug,
     };
 
     try {
