@@ -52,6 +52,7 @@ import {
   handleAddSubscriberToList,
   handleRemoveSubscriberFromList,
 } from './routes/contact-lists';
+import { isAuthorized } from './lib/auth';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -215,6 +216,36 @@ export default {
       } else if (path.match(/^\/api\/signup-pages\/[^\/]+$/) && request.method === 'DELETE') {
         const id = path.replace('/api/signup-pages/', '');
         response = await handleDeleteSignupPage(request, env, id);
+      }
+      // Manual cron trigger endpoint for E2E testing
+      else if (path === '/api/admin/trigger-cron' && request.method === 'POST') {
+        if (!isAuthorized(request, env)) {
+          response = new Response(
+            JSON.stringify({ success: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        } else {
+          try {
+            const result = await processScheduledCampaigns(env);
+            response = new Response(
+              JSON.stringify({
+                success: true,
+                data: {
+                  processed: result.processed,
+                  sent: result.sent,
+                  failed: result.failed
+                }
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+          } catch (error) {
+            console.error('Manual cron trigger error:', error);
+            response = new Response(
+              JSON.stringify({ success: false, error: 'Internal server error' }),
+              { status: 500, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+        }
       } else {
         response = new Response(
           JSON.stringify({ success: false, error: 'Not found' }),
