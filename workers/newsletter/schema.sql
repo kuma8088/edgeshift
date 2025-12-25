@@ -128,19 +128,11 @@ CREATE INDEX IF NOT EXISTS idx_click_events_clicked_at ON click_events(clicked_a
 CREATE TABLE IF NOT EXISTS signup_pages (
   id TEXT PRIMARY KEY,
   slug TEXT UNIQUE NOT NULL,
-  sequence_id TEXT,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
-  button_text TEXT DEFAULT '登録する',
-  form_fields TEXT DEFAULT 'email,name',
-  theme TEXT DEFAULT 'default',
-
-  pending_title TEXT DEFAULT '確認メールを送信しました',
-  pending_message TEXT DEFAULT 'メール内のリンクをクリックして登録を完了してください。',
-
-  confirmed_title TEXT DEFAULT '登録が完了しました',
-  confirmed_message TEXT DEFAULT 'ニュースレターへのご登録ありがとうございます。',
-
+  meta_title TEXT,
+  meta_description TEXT,
+  sequence_id TEXT,
   is_active INTEGER DEFAULT 1,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),
