@@ -13,18 +13,23 @@ interface SequenceStepEditProps {
 interface StepData {
   delay_days: number;
   delay_time?: string;
+  delay_minutes?: number | null;
   subject: string;
   content: string;
 }
+
+type TimingMode = 'days' | 'minutes';
 
 export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditProps) {
   const [sequence, setSequence] = useState<Sequence | null>(null);
   const [stepData, setStepData] = useState<StepData>({
     delay_days: 0,
     delay_time: '',
+    delay_minutes: null,
     subject: '',
     content: '',
   });
+  const [timingMode, setTimingMode] = useState<TimingMode>('days');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,9 +56,16 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
         setStepData({
           delay_days: step.delay_days,
           delay_time: step.delay_time || '',
+          delay_minutes: step.delay_minutes ?? null,
           subject: step.subject,
           content: step.content,
         });
+        // Set timing mode based on whether delay_minutes is set (step 1 only)
+        if (stepNumber === 1 && step.delay_minutes !== null && step.delay_minutes !== undefined) {
+          setTimingMode('minutes');
+        } else {
+          setTimingMode('days');
+        }
       } else {
         // Redirect to step list if step doesn't exist
         setLoading(false);
@@ -82,9 +94,25 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
       return;
     }
 
+    // Prepare step data based on timing mode
+    const preparedStepData: StepData = { ...stepData };
+    if (stepNumber === 1) {
+      if (timingMode === 'minutes') {
+        // Clear delay_days/delay_time when using minutes mode
+        preparedStepData.delay_days = 0;
+        preparedStepData.delay_time = '';
+      } else {
+        // Clear delay_minutes when using days mode
+        preparedStepData.delay_minutes = null;
+      }
+    } else {
+      // Step 2+ always use days mode
+      preparedStepData.delay_minutes = null;
+    }
+
     // Update the specific step
     const updatedSteps = [...sequence.steps];
-    updatedSteps[stepNumber - 1] = stepData;
+    updatedSteps[stepNumber - 1] = preparedStepData;
 
     // Create indexed steps for tracking position after sort
     const indexedSteps = updatedSteps.map((step, idx) => ({ step, originalIndex: idx }));
@@ -267,50 +295,177 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
 
         {/* Form */}
         <form onSubmit={handleSave} className="space-y-6">
-          {/* Delay Days */}
-          <div>
-            <label
-              htmlFor="delay_days"
-              className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2"
-            >
-              送信までの日数 <span className="text-red-500">*</span>
+          {/* Timing Section */}
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
+              配信タイミング <span className="text-red-500">*</span>
             </label>
-            <input
-              type="number"
-              id="delay_days"
-              value={stepData.delay_days}
-              onChange={(e) =>
-                setStepData({ ...stepData, delay_days: parseInt(e.target.value) || 0 })
-              }
-              min="0"
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
-              required
-            />
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              購読登録後、何日後に送信するか（0 = 即時送信）
-            </p>
-          </div>
 
-          {/* Delay Time */}
-          <div>
-            <label
-              htmlFor="delay_time"
-              className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2"
-            >
-              送信時刻（オプション）
-            </label>
-            <input
-              type="time"
-              id="delay_time"
-              value={stepData.delay_time || ''}
-              onChange={(e) =>
-                setStepData({ ...stepData, delay_time: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
-            />
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              空欄の場合、デフォルト時刻を使用
-            </p>
+            {/* Step 1: Show timing mode selector */}
+            {stepNumber === 1 ? (
+              <div className="space-y-4">
+                {/* Days mode */}
+                <div
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    timingMode === 'days'
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
+                      : 'border-[var(--color-border)] hover:border-[var(--color-text-muted)]'
+                  }`}
+                  onClick={() => setTimingMode('days')}
+                >
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timing_mode"
+                      value="days"
+                      checked={timingMode === 'days'}
+                      onChange={() => setTimingMode('days')}
+                      className="w-4 h-4 text-[var(--color-accent)]"
+                    />
+                    <span className="text-sm font-medium text-[var(--color-text)]">日時指定</span>
+                  </label>
+                  {timingMode === 'days' && (
+                    <div className="mt-4 ml-7 flex gap-4">
+                      <div className="flex-1">
+                        <label
+                          htmlFor="delay_days"
+                          className="block text-xs text-[var(--color-text-muted)] mb-1"
+                        >
+                          日数
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-[var(--color-text-muted)]">+</span>
+                          <input
+                            type="number"
+                            id="delay_days"
+                            value={stepData.delay_days}
+                            onChange={(e) =>
+                              setStepData({ ...stepData, delay_days: parseInt(e.target.value) || 0 })
+                            }
+                            min="0"
+                            className="w-20 px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all text-center"
+                          />
+                          <span className="text-sm text-[var(--color-text-muted)]">日</span>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <label
+                          htmlFor="delay_time"
+                          className="block text-xs text-[var(--color-text-muted)] mb-1"
+                        >
+                          時刻
+                        </label>
+                        <input
+                          type="time"
+                          id="delay_time"
+                          value={stepData.delay_time || ''}
+                          onChange={(e) =>
+                            setStepData({ ...stepData, delay_time: e.target.value })
+                          }
+                          className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                          placeholder={sequence?.default_send_time || '10:00'}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Minutes mode */}
+                <div
+                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    timingMode === 'minutes'
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
+                      : 'border-[var(--color-border)] hover:border-[var(--color-text-muted)]'
+                  }`}
+                  onClick={() => setTimingMode('minutes')}
+                >
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="timing_mode"
+                      value="minutes"
+                      checked={timingMode === 'minutes'}
+                      onChange={() => setTimingMode('minutes')}
+                      className="w-4 h-4 text-[var(--color-accent)]"
+                    />
+                    <span className="text-sm font-medium text-[var(--color-text)]">分指定（ステップ1専用）</span>
+                  </label>
+                  {timingMode === 'minutes' && (
+                    <div className="mt-4 ml-7">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          id="delay_minutes"
+                          value={stepData.delay_minutes ?? 0}
+                          onChange={(e) =>
+                            setStepData({ ...stepData, delay_minutes: parseInt(e.target.value) || 0 })
+                          }
+                          min="0"
+                          className="w-24 px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all text-center"
+                        />
+                        <span className="text-sm text-[var(--color-text-muted)]">分後</span>
+                        {(stepData.delay_minutes === 0 || stepData.delay_minutes === null) && (
+                          <span className="text-xs text-green-600 ml-2">（即時送信）</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                        0 = 即時送信、1以上 = 指定分数後に送信
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Step 2+: Days mode only */
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label
+                      htmlFor="delay_days"
+                      className="block text-xs text-[var(--color-text-muted)] mb-1"
+                    >
+                      送信までの日数
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-[var(--color-text-muted)]">+</span>
+                      <input
+                        type="number"
+                        id="delay_days"
+                        value={stepData.delay_days}
+                        onChange={(e) =>
+                          setStepData({ ...stepData, delay_days: parseInt(e.target.value) || 0 })
+                        }
+                        min="0"
+                        className="w-20 px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all text-center"
+                        required
+                      />
+                      <span className="text-sm text-[var(--color-text-muted)]">日</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <label
+                      htmlFor="delay_time"
+                      className="block text-xs text-[var(--color-text-muted)] mb-1"
+                    >
+                      送信時刻（オプション）
+                    </label>
+                    <input
+                      type="time"
+                      id="delay_time"
+                      value={stepData.delay_time || ''}
+                      onChange={(e) =>
+                        setStepData({ ...stepData, delay_time: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                      placeholder={sequence?.default_send_time || '10:00'}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  購読登録後、何日後に送信するか。時刻が空欄の場合、デフォルト時刻（{sequence?.default_send_time || '10:00'}）を使用
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Subject */}

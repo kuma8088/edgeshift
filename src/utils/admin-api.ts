@@ -115,18 +115,21 @@ export async function getCampaignStats(id: string) {
 }
 
 // Sequences
+export interface SequenceStep {
+  delay_days: number;
+  delay_time?: string;
+  delay_minutes?: number | null;
+  subject: string;
+  content: string;
+}
+
 export interface Sequence {
   id: string;
   name: string;
   description?: string;
   is_active: number;
   default_send_time?: string;
-  steps: {
-    delay_days: number;
-    delay_time?: string;
-    subject: string;
-    content: string;
-  }[];
+  steps: SequenceStep[];
   created_at: number;
   updated_at?: number;
 }
@@ -135,12 +138,7 @@ interface CreateSequenceData {
   name: string;
   description?: string;
   default_send_time: string;
-  steps: {
-    delay_days: number;
-    delay_time?: string;
-    subject: string;
-    content: string;
-  }[];
+  steps: SequenceStep[];
 }
 
 export async function listSequences() {
@@ -164,7 +162,7 @@ export async function updateSequence(id: string, data: {
   description?: string;
   is_active?: number;
   default_send_time?: string;
-  steps?: { delay_days: number; delay_time?: string; subject: string; content: string }[];
+  steps?: SequenceStep[];
 }) {
   return apiRequest(`/sequences/${id}`, { method: 'PUT', body: data });
 }

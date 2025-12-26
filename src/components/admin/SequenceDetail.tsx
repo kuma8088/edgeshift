@@ -7,6 +7,7 @@ import { ProgressBar } from './ProgressBar';
 interface SequenceStep {
   delay_days: number;
   delay_time?: string;
+  delay_minutes?: number | null;
   subject: string;
   content: string;
 }
@@ -239,9 +240,19 @@ export function SequenceDetail({ sequenceId }: SequenceDetailProps) {
                     const sequenceStep = sequence.steps?.[step.step_number - 1];
                     const delayDays = sequenceStep?.delay_days ?? 0;
                     const delayTime = sequenceStep?.delay_time || sequence.default_send_time;
-                    const timing = delayDays === 0
-                      ? `当日 ${delayTime}`
-                      : `+${delayDays}日 ${delayTime}`;
+                    const delayMinutes = sequenceStep?.delay_minutes;
+
+                    // Determine timing display
+                    let timing: string;
+                    if (delayMinutes !== null && delayMinutes !== undefined) {
+                      // Minutes mode (step 1 only)
+                      timing = delayMinutes === 0 ? '即時送信' : `+${delayMinutes}分`;
+                    } else {
+                      // Days mode
+                      timing = delayDays === 0
+                        ? `当日 ${delayTime}`
+                        : `+${delayDays}日 ${delayTime}`;
+                    }
 
                     return (
                     <tr key={step.step_number} className="hover:bg-[var(--color-bg-tertiary)]">

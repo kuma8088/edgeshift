@@ -81,6 +81,7 @@ export async function setupTestDb() {
       step_number INTEGER NOT NULL,
       delay_days INTEGER NOT NULL,
       delay_time TEXT,
+      delay_minutes INTEGER DEFAULT NULL,
       subject TEXT NOT NULL,
       content TEXT NOT NULL,
       is_enabled INTEGER DEFAULT 1,

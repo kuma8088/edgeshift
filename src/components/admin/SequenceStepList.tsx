@@ -28,6 +28,7 @@ interface Step {
   id: string;
   delay_days: number;
   delay_time?: string;
+  delay_minutes?: number | null;
   subject: string;
   content: string;
 }
@@ -85,12 +86,17 @@ function SortableStepCard({ step, index, sequenceId, onDelete }: SortableStepCar
             <span className="text-sm font-semibold text-[var(--color-text)]">
               ステップ {index + 1}
             </span>
-            {step.delay_days > 0 && (
+            {/* Show delay_minutes for step 1 if set, otherwise show delay_days */}
+            {step.delay_minutes !== null && step.delay_minutes !== undefined ? (
+              <span className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-secondary)] px-2 py-1 rounded">
+                {step.delay_minutes === 0 ? '即時送信' : `+${step.delay_minutes}m`}
+              </span>
+            ) : step.delay_days > 0 ? (
               <span className="text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-secondary)] px-2 py-1 rounded">
                 +{step.delay_days}日
                 {step.delay_time && ` ${step.delay_time}`}
               </span>
-            )}
+            ) : null}
           </div>
 
           <h4 className="text-base font-medium text-[var(--color-text)] mb-1 truncate">

@@ -17,12 +17,13 @@ interface PendingSequenceEmail {
   started_at: number;
   default_send_time: string;
   delay_time: string | null;
+  delay_minutes: number | null;
 }
 
 const JST_OFFSET_SECONDS = 9 * 60 * 60; // +9 hours in seconds
 
 /**
- * Calculate the scheduled send time in Unix timestamp
+ * Calculate the scheduled send time in Unix timestamp using delay_days logic
  * @param startedAt - When the subscriber enrolled (Unix timestamp)
  * @param delayDays - Days to wait
  * @param sendTime - Time to send in "HH:MM" format (JST)
@@ -55,6 +56,19 @@ function calculateScheduledTime(
 }
 
 /**
+ * Calculate the scheduled send time using delay_minutes logic
+ * @param baseTime - Base timestamp (started_at for step 1, previous step's sent_at for step 2+)
+ * @param delayMinutes - Minutes to wait from base time
+ * @returns Unix timestamp of scheduled send time
+ */
+function calculateScheduledTimeByMinutes(
+  baseTime: number,
+  delayMinutes: number
+): number {
+  return baseTime + delayMinutes * 60;
+}
+
+/**
  * Process all due sequence emails
  * This function is called by the scheduled handler
  */
@@ -67,7 +81,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
     // 1. Not completed (completed_at IS NULL)
     // 2. Active subscribers
     // 3. In active sequences
-    // 4. Due for next step (based on started_at + delay_days)
+    // 4. Due for next step (based on started_at + delay_days or delay_minutes)
     const pendingEmails = await env.DB.prepare(`
       SELECT
         ss.id as subscriber_sequence_id,
@@ -84,6 +98,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
         step.sequence_id,
         step.delay_days,
         step.delay_time,
+        step.delay_minutes,
         seq.default_send_time
       FROM subscriber_sequences ss
       JOIN subscribers s ON s.id = ss.subscriber_id
@@ -99,13 +114,45 @@ export async function processSequenceEmails(env: Env): Promise<void> {
     console.log(`Found ${pending.length} potential sequence email(s), checking scheduled times...`);
 
     for (const email of pending) {
-      // Calculate scheduled send time
-      const sendTime = email.delay_time ?? email.default_send_time;
-      const scheduledAt = calculateScheduledTime(
-        email.started_at,
-        email.delay_days,
-        sendTime
-      );
+      let scheduledAt: number;
+
+      // Check if delay_minutes is set (including 0 for immediate)
+      if (email.delay_minutes !== null && email.delay_minutes !== undefined) {
+        // delay_minutes mode: calculate based on minutes from base time
+        if (email.step_number === 1) {
+          // Step 1: base time is started_at
+          scheduledAt = calculateScheduledTimeByMinutes(email.started_at, email.delay_minutes);
+        } else {
+          // Step 2+: base time is previous step's sent_at from delivery_logs
+          const prevStepLog = await env.DB.prepare(`
+            SELECT sent_at FROM delivery_logs
+            WHERE subscriber_id = ? AND sequence_id = ? AND sequence_step_id IN (
+              SELECT id FROM sequence_steps WHERE sequence_id = ? AND step_number = ?
+            )
+            ORDER BY sent_at DESC LIMIT 1
+          `).bind(
+            email.subscriber_id,
+            email.sequence_id,
+            email.sequence_id,
+            email.step_number - 1
+          ).first<{ sent_at: number }>();
+
+          if (!prevStepLog?.sent_at) {
+            // Previous step not sent yet, skip
+            console.log(`Skipping ${email.email} step ${email.step_number}: previous step not sent yet`);
+            continue;
+          }
+          scheduledAt = calculateScheduledTimeByMinutes(prevStepLog.sent_at, email.delay_minutes);
+        }
+      } else {
+        // Traditional delay_days mode
+        const sendTime = email.delay_time ?? email.default_send_time;
+        scheduledAt = calculateScheduledTime(
+          email.started_at,
+          email.delay_days,
+          sendTime
+        );
+      }
 
       // Skip if not yet time to send
       if (now < scheduledAt) {
