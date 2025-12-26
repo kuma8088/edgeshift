@@ -176,7 +176,7 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
       const reorderedSteps = arrayMove(steps, oldIndex, newIndex);
 
       // Apply auto-sort logic to DnD reordered steps
-      const defaultTime = sequence?.default_send_time || '09:00';
+      const defaultTime = sequence?.default_send_time || '10:00';
       const sortedSteps = [...reorderedSteps].sort((a, b) => {
         if (a.delay_days !== b.delay_days) {
           return a.delay_days - b.delay_days;
@@ -210,7 +210,7 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
     const newSteps = [...steps, newStep];
 
     // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
-    const defaultTime = sequence?.default_send_time || '09:00';
+    const defaultTime = sequence?.default_send_time || '10:00';
     const sortedSteps = [...newSteps].sort((a, b) => {
       if (a.delay_days !== b.delay_days) {
         return a.delay_days - b.delay_days;

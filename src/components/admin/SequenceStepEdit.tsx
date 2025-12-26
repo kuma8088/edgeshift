@@ -88,7 +88,7 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
 
     // Create indexed steps for tracking position after sort
     const indexedSteps = updatedSteps.map((step, idx) => ({ step, originalIndex: idx }));
-    const defaultTime = sequence.default_send_time || '09:00';
+    const defaultTime = sequence.default_send_time || '10:00';
 
     // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
     indexedSteps.sort((a, b) => {
@@ -143,7 +143,7 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
 
     // Create indexed steps for tracking position after sort
     const indexedSteps = updatedSteps.map((step, idx) => ({ step, originalIndex: idx }));
-    const defaultTime = sequence.default_send_time || '09:00';
+    const defaultTime = sequence.default_send_time || '10:00';
 
     // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
     indexedSteps.sort((a, b) => {
