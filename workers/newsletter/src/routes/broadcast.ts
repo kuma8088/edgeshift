@@ -173,6 +173,44 @@ export async function handleGetSubscribers(
   }
 }
 
+export async function handleGetSubscriber(
+  request: Request,
+  env: Env,
+  id: string
+): Promise<Response> {
+  // Check authorization
+  if (!isAuthorized(request, env)) {
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Unauthorized' },
+      401
+    );
+  }
+
+  try {
+    const result = await env.DB.prepare(
+      'SELECT id, email, name, status, subscribed_at, unsubscribed_at, created_at FROM subscribers WHERE id = ?'
+    ).bind(id).first<Subscriber>();
+
+    if (!result) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'Subscriber not found' },
+        404
+      );
+    }
+
+    return jsonResponse<ApiResponse>({
+      success: true,
+      data: { subscriber: result },
+    });
+  } catch (error) {
+    console.error('Get subscriber error:', error);
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Internal server error' },
+      500
+    );
+  }
+}
+
 function jsonResponse<T>(data: T, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,

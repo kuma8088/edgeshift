@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react';
 import { listCampaigns, deleteCampaign, sendCampaign } from '../../utils/admin-api';
 import { ConfirmModal } from './ConfirmModal';
 
+interface CampaignStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  bounced: number;
+  openRate: number;
+  clickRate: number;
+}
+
 interface Campaign {
   id: string;
   subject: string;
@@ -12,6 +22,7 @@ interface Campaign {
   scheduled_at?: number;
   sent_at?: number;
   created_at: number;
+  stats?: CampaignStats;
 }
 
 const statusColors = {
@@ -177,9 +188,23 @@ export function CampaignList() {
                     </a>
                   )}
                 </div>
-                <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2 mb-2">
-                  {campaign.content}
-                </p>
+                {campaign.status === 'sent' && campaign.stats && (
+                  <div className="flex gap-4 text-sm mb-2">
+                    <span className="text-[var(--color-text-secondary)]">
+                      開封: <span className="font-medium text-[var(--color-text)]">{campaign.stats.opened}</span>
+                      <span className="text-[var(--color-text-muted)]"> ({campaign.stats.openRate}%)</span>
+                    </span>
+                    <span className="text-[var(--color-text-secondary)]">
+                      クリック: <span className="font-medium text-[var(--color-text)]">{campaign.stats.clicked}</span>
+                      <span className="text-[var(--color-text-muted)]"> ({campaign.stats.clickRate}%)</span>
+                    </span>
+                    {campaign.stats.bounced > 0 && (
+                      <span className="text-red-500">
+                        バウンス: {campaign.stats.bounced}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-4 text-xs text-[var(--color-text-muted)]">
                   <span>作成: {new Date(campaign.created_at * 1000).toLocaleString('ja-JP')}</span>
                   {campaign.scheduled_at && (

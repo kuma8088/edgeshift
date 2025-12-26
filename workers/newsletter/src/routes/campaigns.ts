@@ -77,6 +77,18 @@ export async function getCampaign(
   }
 }
 
+interface CampaignWithStats extends Campaign {
+  stats?: {
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+    openRate: number;
+    clickRate: number;
+  };
+}
+
 export async function listCampaigns(
   request: Request,
   env: Env
@@ -111,8 +123,51 @@ export async function listCampaigns(
       .bind(...bindings.slice(0, status ? 1 : 0))
       .first<{ count: number }>();
 
+    // Fetch stats for sent campaigns
+    const campaignsWithStats: CampaignWithStats[] = await Promise.all(
+      (campaigns.results || []).map(async (campaign) => {
+        if (campaign.status !== 'sent') {
+          return campaign;
+        }
+
+        const statsResult = await env.DB.prepare(`
+          SELECT
+            COUNT(*) as sent,
+            SUM(CASE WHEN status = 'delivered' OR status = 'opened' OR status = 'clicked' THEN 1 ELSE 0 END) as delivered,
+            SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+            SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked,
+            SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced
+          FROM delivery_logs
+          WHERE campaign_id = ?
+        `).bind(campaign.id).first<{
+          sent: number;
+          delivered: number;
+          opened: number;
+          clicked: number;
+          bounced: number;
+        }>();
+
+        const sent = statsResult?.sent || 0;
+        const opened = statsResult?.opened || 0;
+        const clicked = statsResult?.clicked || 0;
+
+        return {
+          ...campaign,
+          stats: {
+            sent,
+            delivered: statsResult?.delivered || 0,
+            opened,
+            clicked,
+            bounced: statsResult?.bounced || 0,
+            openRate: sent > 0 ? Math.round((opened / sent) * 100) : 0,
+            clickRate: sent > 0 ? Math.round((clicked / sent) * 100) : 0,
+          },
+        };
+      })
+    );
+
     return successResponse({
-      campaigns: campaigns.results || [],
+      campaigns: campaignsWithStats,
       total: total?.count || 0,
       limit,
       offset,

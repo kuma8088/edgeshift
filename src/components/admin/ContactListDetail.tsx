@@ -124,7 +124,14 @@ export function ContactListDetail({ listId }: Props) {
               <tbody>
                 {members.map((member) => (
                   <tr key={member.subscriber_id} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">{member.email}</td>
+                    <td className="py-3 px-4">
+                      <a
+                        href={`/admin/subscribers/detail?id=${member.subscriber_id}`}
+                        className="text-[var(--color-accent)] hover:underline"
+                      >
+                        {member.email}
+                      </a>
+                    </td>
                     <td className="py-3 px-4">{member.name || '-'}</td>
                     <td className="py-3 px-4">
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
