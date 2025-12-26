@@ -1,0 +1,14 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { SubscriberDetail } from '../../../components/admin/SubscriberDetail';
+
+const subscriberId = Astro.url.searchParams.get('id');
+
+if (!subscriberId) {
+  return Astro.redirect('/admin/contact-lists');
+}
+---
+
+<AdminLayout title="購読者詳細">
+  <SubscriberDetail client:load subscriberId={subscriberId} />
+</AdminLayout>

@@ -173,6 +173,16 @@ export async function deleteSequence(id: string) {
 }
 
 // Subscribers
+export interface Subscriber {
+  id: string;
+  email: string;
+  name?: string;
+  status: string;
+  subscribed_at?: number;
+  unsubscribed_at?: number;
+  created_at: number;
+}
+
 export async function listSubscribers(params?: { status?: string; limit?: number; offset?: number }) {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
@@ -180,6 +190,10 @@ export async function listSubscribers(params?: { status?: string; limit?: number
   if (params?.offset) query.set('offset', params.offset.toString());
   const queryString = query.toString();
   return apiRequest(`/newsletter/subscribers${queryString ? `?${queryString}` : ''}`);
+}
+
+export async function getSubscriber(id: string) {
+  return apiRequest<{ subscriber: Subscriber }>(`/subscribers/${id}`);
 }
 
 // Tracking
