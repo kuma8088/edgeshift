@@ -43,134 +43,54 @@ Newsletter System MVP の実装が「実用的で使いやすいか」を検証�
 
 **目的:** delay_days/delay_time スケジューリングと Click Tracking の検証。
 
-**シーケンス基本設定:**
+**テスト用シーケンス設定:**
+
+| ステップ | delay_days | delay_time | 送信予定時刻 |
+|------|-----------|------------|-------------------|
+| 1 | 0 | 09:00 | 登録日 JST 09:00 |
+| 2 | 0 | 09:15 | 登録日 JST 09:15 |
+| 3 | 0 | 09:30 | 登録日 JST 09:30 |
+| 4 | 1 | NULL | 翌日デフォルト時刻 (09:00) |
+| 5 | 1 | 14:00 | 翌日 JST 14:00 |
+
+**テストメール本文:**
 
 ```
-名前: Test Sequence - Batch TB
-説明: User testing for delay_days/delay_time scheduling verification
-デフォルト送信時刻: 09:00
-ステータス: 有効
-```
+[ステップ 1] 件名: "ステップ 1: ウェルカム"
+---
+ステップ 1 のメールです（09:00 配信予定）。
 
-**ステップ 1 設定:**
-```
-件名: EdgeShiftへようこそ - サーバーレス開発の旅を始めましょう
-Delay Days: 0
-Delay Time: 09:00
-本文:
-EdgeShift Newsletter へのご登録ありがとうございます。
+記事 A: https://edgeshift.tech/articles/a (リンク A)
+記事 B: https://edgeshift.tech/articles/b (リンク B)
+---
 
-このニュースレターでは、Cloudflare Workers、エッジコンピューティング、モダンなサーバーレスアーキテクチャに関する実践的な知見をお届けします。
+[ステップ 2] 件名: "ステップ 2: サンプル"
+---
+ステップ 2 のメールです（09:15 配信予定）。
 
-まずはこちらの記事から始めてみてください：
+ページ C: https://edgeshift.tech/page-c (リンク C)
+---
 
-📖 はじめてのCloudflare Workers
-https://edgeshift.tech/articles/a
+[ステップ 3] 件名: "ステップ 3: チェック"
+---
+ステップ 3 のメールです（09:30 配信予定）。
 
-🚀 エッジでのデータベース活用術
-https://edgeshift.tech/articles/b
+ページ D: https://edgeshift.tech/page-d (リンク D)
+---
 
-次回は、実際のプロジェクト事例をご紹介します。
+[ステップ 4] 件名: "ステップ 4: デフォルト時刻"
+---
+ステップ 4 のメールです。翌日のデフォルト時刻 (09:00) に配信されます。
 
-Best regards,
-EdgeShift チーム
-```
+リンク: https://edgeshift.tech/step4 (リンク E)
+---
 
-**ステップ 2 設定:**
-```
-件名: EdgeShift実践ガイド - プロジェクト事例のご紹介
-Delay Days: 0
-Delay Time: 09:15
-本文:
-EdgeShiftをご購読いただきありがとうございます。
+[ステップ 5] 件名: "ステップ 5: 指定時刻"
+---
+ステップ 5 のメールです。翌日の指定時刻 (14:00) に配信されます。
 
-本日は、実際にCloudflare Workersで構築されたプロジェクト事例をご紹介します。
-
-この事例では、従来のサーバーレスアーキテクチャと比較して、レイテンシを75%削減し、コストを60%削減することに成功しました。
-
-📊 事例詳細はこちら
-https://edgeshift.tech/page-c
-
-次回は、開発効率を上げるためのベストプラクティスをお届けします。
-
-Best regards,
-EdgeShift チーム
-```
-
-**ステップ 3 設定:**
-```
-件名: EdgeShift開発Tips - 生産性を向上させる5つの方法
-Delay Days: 0
-Delay Time: 09:30
-本文:
-EdgeShiftをご購読いただきありがとうございます。
-
-サーバーレス開発で生産性を向上させるための実践的なTipsをまとめました：
-
-1. ローカル開発環境の最適化
-2. テスト駆動開発のアプローチ
-3. CI/CDパイプラインの構築
-4. モニタリングとロギング戦略
-5. パフォーマンス最適化の手法
-
-詳細はこちらの記事をご覧ください：
-https://edgeshift.tech/page-d
-
-次回からは、より高度なトピックをお届けします。
-
-Best regards,
-EdgeShift チーム
-```
-
-**ステップ 4 設定:**
-```
-件名: EdgeShift Weekly - 今週のハイライトとコミュニティ動向
-Delay Days: 1
-Delay Time: (空白のまま - デフォルト09:00を使用)
-本文:
-EdgeShift Newsletter 購読者の皆様へ
-
-今週のサーバーレス・エッジコンピューティング業界のハイライトをお届けします。
-
-🌟 今週の注目トピック:
-- Cloudflare Workers の新機能発表
-- D1データベースのパフォーマンス改善
-- コミュニティで話題のプロジェクト紹介
-
-📰 詳細記事はこちら
-https://edgeshift.tech/step4
-
-来週は、実践的なワークショップのご案内をお送りします。
-
-Best regards,
-EdgeShift チーム
-```
-
-**ステップ 5 設定:**
-```
-件名: EdgeShift特別企画 - 無料ワークショップのご案内
-Delay Days: 1
-Delay Time: 14:00
-本文:
-EdgeShift Newsletter 購読者限定のお知らせです。
-
-来月、Cloudflare Workersを使った実践的なアプリケーション開発ワークショップを開催します。
-
-【ワークショップ内容】
-- リアルタイムAPIの構築
-- D1データベースの活用
-- 認証・認可の実装
-- デプロイとモニタリング
-
-参加費：無料（先着50名様）
-
-📝 詳細・お申し込みはこちら
-https://edgeshift.tech/step5
-
-ご参加お待ちしております。
-
-Best regards,
-EdgeShift チーム
+リンク: https://edgeshift.tech/step5 (リンク F)
+---
 ```
 
 **テスト手順:**
@@ -197,24 +117,13 @@ EdgeShift チーム
 
 **目的:** 埋め込みフォーム機能と theme/size オプションの検証。
 
-**埋め込みフォーム設定:**
+**テスト用ページ設定:**
 
 ```
-ページ名: Test Embed Form
-Slug: test-embed
 Page Type: embed
-Theme: light (デフォルト)
-Size: full (デフォルト)
-Email Label: メールアドレス
-Email Placeholder: example@email.com
-Button Text: 登録する
-Success Message: 登録が完了しました。確認メールをご確認ください。
-```
-
-**テストURL:**
-```
-Light + Full: https://edgeshift.tech/newsletter/embed/test-embed?theme=light&size=full
-Dark + Compact: https://edgeshift.tech/newsletter/embed/test-embed?theme=dark&size=compact
+Slug: test-embed
+Theme: light / dark (両方テスト)
+Size: compact / full (両方テスト)
 ```
 
 **テスト手順:**
@@ -241,13 +150,6 @@ Dark + Compact: https://edgeshift.tech/newsletter/embed/test-embed?theme=dark&si
 
 **目的:** 購読解除後に配信が停止されることを検証。
 
-**Unsubscribe リンク:**
-```
-メール下部の "Unsubscribe" リンクをクリック
-URL形式: https://edgeshift.tech/api/newsletter/unsubscribe/{token}
-確認ページ: https://edgeshift.tech/newsletter/unsubscribed
-```
-
 **テスト手順:**
 
 1. テスト用購読者でメール内の Unsubscribe リンクをクリック
@@ -273,86 +175,30 @@ URL形式: https://edgeshift.tech/api/newsletter/unsubscribe/{token}
 
 **目的:** キャンペーンの作成、配信、トラッキングの検証。
 
-**キャンペーン 1: Click Tracking テスト**
+**テスト用キャンペーン内容:**
 
 ```
-キャンペーン名: Test Campaign - Click Tracking
-件名: EdgeShift月刊レポート - 2025年12月号
-配信先: 全購読者 (または Test Contact List)
-配信方法: 即時配信
+件名: "テストキャンペーン: Click Tracking 検証"
 
 本文:
-EdgeShift Newsletter 購読者の皆様へ
-
-12月の月刊レポートをお届けします。今月は特に、エッジコンピューティングの実践的な活用事例が増加しました。
-
-【今月のハイライト】
-
-🏠 ポートフォリオサイト構築ガイド
-Cloudflare Pagesを使った高速なポートフォリオサイトの構築方法を解説しています。
-→ 記事を読む: https://edgeshift.tech/
-
-🚀 実践プロジェクト集
-実際に運用中のプロジェクト事例をご紹介。設計から運用まで、実践的な知見が詰まっています。
-→ プロジェクト一覧: https://edgeshift.tech/projects
-
-💬 お問い合わせフォーム実装ガイド
-Workers + D1 を使った問い合わせフォームの実装例を公開しました。
-→ 実装ガイド: https://edgeshift.tech/contact
-
-📚 開発リソース
-GitHubリポジトリで実際のコードを公開中。ぜひご活用ください。
-→ GitHubはこちら: https://github.com/kuma8088
-
-【次回予告】
-来月は、パフォーマンス最適化の実践的なテクニックを特集します。
-
-ご質問やフィードバックがございましたら、お気軽にお問い合わせください。
-
-Best regards,
-EdgeShift チーム
-
 ---
-EdgeShift - Building at the Edge
-https://edgeshift.tech
----
-```
+こんにちは、
 
-**キャンペーン 2: mail-tester.com 用**
+キャンペーン配信のテストメールです。
 
-```
-キャンペーン名: Test Campaign - mail-tester
-件名: EdgeShift Newsletter: Cloudflare Workers でサーバーレス API を構築する
-配信先: mail-tester.com の一時アドレス
-配信方法: 即時配信
+以下のリンクをクリックして、トラッキング機能を検証してください:
 
-本文:
-EdgeShift Newsletter をご購読いただき、ありがとうございます。
+1. トップページ: https://edgeshift.tech/ (リンク A)
+2. プロジェクト: https://edgeshift.tech/projects (リンク B)
+3. お問い合わせ: https://edgeshift.tech/contact (リンク C)
+4. 外部リンク: https://github.com/kuma8088 (リンク D)
 
-今回は、Cloudflare Workers を使用してスケーラブルかつコスト効率の高い API を構築する方法についてご紹介します。エッジコンピューティングが Web 開発の領域を変革し続ける中、サーバーレスアーキテクチャの理解は現代の開発者にとって不可欠なスキルとなっています。
-
-Cloudflare Workers は、ユーザーにより近いエッジでコードを実行することで、サーバーレスコンピューティングへの独自のアプローチを提供します。これにより、特にグローバルに分散したアプリケーションにおいて、レイテンシが大幅に削減され、ユーザーエクスペリエンスが向上します。
-
-本記事では、以下の内容を取り上げます:
-
-1. 最初の Cloudflare Worker のセットアップ
-2. データベース操作のための Cloudflare D1 への接続
-3. 認証とレート制限の実装
-4. 本番デプロイのベストプラクティス
-
-Workers、D1、KV ストレージの組み合わせにより、従来のサーバーインフラストラクチャを管理することなく、フルスタックアプリケーションを構築するための強力なプラットフォームが実現します。
-
-詳細な記事はこちらからお読みいただけます:
-https://edgeshift.tech/articles/cloudflare-workers-guide
-
-ご質問やフィードバックがございましたら、お気軽にお問い合わせください。サーバーレスアーキテクチャに関するご経験をぜひお聞かせください。
+テスト後、管理画面で以下を確認してください:
+- 配信ログが記録されている
+- 開封トラッキングが動作している
+- 各リンクのクリック数が正確である
 
 よろしくお願いいたします。
-EdgeShift チーム
-
----
-EdgeShift - Building at the Edge
-https://edgeshift.tech
 ---
 ```
 
@@ -380,16 +226,11 @@ https://edgeshift.tech
 
 **目的:** コンタクトリストのCRUDとリスト指定配信の検証。
 
-**コンタクトリスト設定:**
+**テスト用リスト設定:**
 
 ```
-リスト名: Test Contact List
-説明: ユーザーテスト用のコンタクトリスト（Batch TB）
-```
-
-**追加するメンバー:**
-```
-あなたの個人メールアドレス（登録した購読者）
+リスト名: "テスト購読者リスト"
+説明: "ユーザーテスト用のリスト"
 ```
 
 **テスト手順:**
@@ -419,8 +260,45 @@ https://edgeshift.tech
 **テスト手順:**
 
 1. mail-tester.com にアクセスし、一時的なテストメールアドレスを取得
-2. TB-3-1 の「キャンペーン 2: mail-tester.com 用」を使用して配信
-3. mail-tester.com で評価結果を確認
+2. 実際のニュースレター形式のコンテンツで専用キャンペーンを作成（下記参照）
+3. mail-tester アドレス宛に送信
+4. 評価結果を確認
+
+**テストメール本文（実際のニュースレター形式）:**
+
+```
+件名: "EdgeShift Newsletter: Cloudflare Workers でサーバーレス API を構築する"
+
+本文:
+---
+EdgeShift Newsletter をご購読いただき、ありがとうございます。
+
+今回は、Cloudflare Workers を使用してスケーラブルかつコスト効率の高い API を構築する方法についてご紹介します。エッジコンピューティングが Web 開発の領域を変革し続ける中、サーバーレスアーキテクチャの理解は現代の開発者にとって不可欠なスキルとなっています。
+
+Cloudflare Workers は、ユーザーにより近いエッジでコードを実行することで、サーバーレスコンピューティングへの独自のアプローチを提供します。これにより、特にグローバルに分散したアプリケーションにおいて、レイテンシが大幅に削減され、ユーザーエクスペリエンスが向上します。
+
+本記事では、以下の内容を取り上げます:
+
+1. 最初の Cloudflare Worker のセットアップ
+2. データベース操作のための Cloudflare D1 への接続
+3. 認証とレート制限の実装
+4. 本番デプロイのベストプラクティス
+
+Workers、D1、KV ストレージの組み合わせにより、従来のサーバーインフラストラクチャを管理することなく、フルスタックアプリケーションを構築するための強力なプラットフォームが実現します。
+
+詳細な記事はこちらからお読みいただけます:
+https://edgeshift.tech/articles/cloudflare-workers-guide
+
+ご質問やフィードバックがございましたら、お気軽にお問い合わせください。サーバーレスアーキテクチャに関するご経験をぜひお聞かせください。
+
+よろしくお願いいたします。
+EdgeShift チーム
+
+---
+EdgeShift - Building at the Edge
+https://edgeshift.tech
+---
+```
 
 **検証ポイント:**
 
