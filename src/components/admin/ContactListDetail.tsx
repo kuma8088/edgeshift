@@ -56,8 +56,8 @@ export function ContactListDetail({ listId }: Props) {
         };
         setList(allList);
 
-        // Fetch all subscribers
-        const subscribersResult = await listSubscribers({ status: 'active' });
+        // Fetch all subscribers (all statuses)
+        const subscribersResult = await listSubscribers({});
         if (subscribersResult.success && subscribersResult.data) {
           const subs = (subscribersResult.data as any).subscribers || [];
           setMembers(subs.map((s: any) => ({

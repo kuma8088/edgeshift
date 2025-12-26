@@ -28,7 +28,7 @@ export function ContactListList() {
         const allSubscribersList: ContactList = {
           id: 'all',
           name: '全購読者',
-          description: 'アクティブな購読者一覧',
+          description: 'すべての購読者（全ステータス）',
           created_at: 0,
           updated_at: 0,
         };
