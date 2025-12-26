@@ -225,4 +225,79 @@ describe('tracking API', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('getDashboardStats (with sequences)', () => {
+    it('should return dashboard stats including sequence statistics', async () => {
+      const env = getTestEnv();
+
+      // Setup: Create sequences
+      await env.DB.prepare(`
+        INSERT INTO sequences (id, name, is_active)
+        VALUES
+          ('seq-1', 'Active Sequence 1', 1),
+          ('seq-2', 'Active Sequence 2', 1),
+          ('seq-3', 'Inactive Sequence', 0)
+      `).run();
+
+      // Setup: Create subscribers
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status)
+        VALUES
+          ('sub-1', 'user1@example.com', 'active'),
+          ('sub-2', 'user2@example.com', 'active'),
+          ('sub-3', 'user3@example.com', 'active'),
+          ('sub-4', 'user4@example.com', 'active')
+      `).run();
+
+      // Setup: Create subscriber_sequences (enrollments)
+      await env.DB.prepare(`
+        INSERT INTO subscriber_sequences (id, subscriber_id, sequence_id, current_step, started_at, completed_at)
+        VALUES
+          ('ss-1', 'sub-1', 'seq-1', 1, 1703404800, NULL),
+          ('ss-2', 'sub-2', 'seq-1', 2, 1703404800, NULL),
+          ('ss-3', 'sub-3', 'seq-2', 3, 1703404800, 1703500000),
+          ('ss-4', 'sub-4', 'seq-2', 3, 1703404800, 1703500000)
+      `).run();
+
+      // Import and call the function
+      const { getDashboardStats } = await import('../routes/dashboard');
+      const mockRequest = new Request('http://localhost/api/dashboard/stats', {
+        headers: { 'Authorization': 'Bearer test-admin-key' },
+      });
+      const response = await getDashboardStats(mockRequest, env);
+      const result = await response.json();
+
+      // Expected:
+      // - total: 3 sequences (includes inactive)
+      // - active: 2 sequences (is_active=1)
+      // - totalEnrolled: 2 (ss-1, ss-2 have completed_at=NULL)
+      // - completed: 2 (ss-3, ss-4 have completed_at)
+      expect(result.success).toBe(true);
+      expect(result.data.sequences).toEqual({
+        total: 3,
+        active: 2,
+        totalEnrolled: 2,
+        completed: 2,
+      });
+    });
+
+    it('should return zero stats when no sequences exist', async () => {
+      const env = getTestEnv();
+
+      const { getDashboardStats } = await import('../routes/dashboard');
+      const mockRequest = new Request('http://localhost/api/dashboard/stats', {
+        headers: { 'Authorization': 'Bearer test-admin-key' },
+      });
+      const response = await getDashboardStats(mockRequest, env);
+      const result = await response.json();
+
+      expect(result.success).toBe(true);
+      expect(result.data.sequences).toEqual({
+        total: 0,
+        active: 0,
+        totalEnrolled: 0,
+        completed: 0,
+      });
+    });
+  });
 });

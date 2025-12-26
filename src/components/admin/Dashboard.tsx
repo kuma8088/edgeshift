@@ -8,6 +8,7 @@ interface DashboardStats {
   subscribers: { total: number; active: number; pending: number; unsubscribed: number };
   campaigns: { total: number; draft: number; scheduled: number; sent: number };
   delivery: { total: number; delivered: number; opened: number; clicked: number; openRate: number; clickRate: number };
+  sequences: { total: number; active: number; totalEnrolled: number; completed: number };
 }
 
 export function Dashboard() {
@@ -101,6 +102,17 @@ export function Dashboard() {
             value={`${stats.delivery.clickRate}%`}
             subtitle={`${stats.delivery.clicked} クリック`}
           />
+        </div>
+      </section>
+
+      {/* Sequence Stats */}
+      <section>
+        <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">シーケンス</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard title="総数" value={stats.sequences.total} />
+          <KPICard title="アクティブ" value={stats.sequences.active} color="success" />
+          <KPICard title="登録中" value={stats.sequences.totalEnrolled} color="warning" />
+          <KPICard title="完了" value={stats.sequences.completed} color="success" />
         </div>
       </section>
     </div>

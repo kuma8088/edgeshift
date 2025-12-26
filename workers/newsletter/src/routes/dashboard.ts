@@ -24,6 +24,12 @@ interface DashboardStats {
     openRate: number;
     clickRate: number;
   };
+  sequences: {
+    total: number;
+    active: number;
+    totalEnrolled: number;
+    completed: number;
+  };
 }
 
 export async function getDashboardStats(
@@ -86,6 +92,28 @@ export async function getDashboardStats(
     failed: number;
   }>();
 
+  // Get sequence stats
+  const sequenceStats = await env.DB.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
+    FROM sequences
+  `).first<{
+    total: number;
+    active: number;
+  }>();
+
+  // Get sequence enrollment stats
+  const enrollmentStats = await env.DB.prepare(`
+    SELECT
+      SUM(CASE WHEN completed_at IS NULL THEN 1 ELSE 0 END) as totalEnrolled,
+      SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END) as completed
+    FROM subscriber_sequences
+  `).first<{
+    totalEnrolled: number;
+    completed: number;
+  }>();
+
   // Calculate rates
   // delivered status means "delivered" only, opened status means "opened", clicked means "clicked"
   // For rate calculation: delivered base = delivered + opened + clicked (all successfully delivered)
@@ -118,6 +146,12 @@ export async function getDashboardStats(
       failed: deliveryStats?.failed ?? 0,
       openRate,
       clickRate,
+    },
+    sequences: {
+      total: sequenceStats?.total ?? 0,
+      active: sequenceStats?.active ?? 0,
+      totalEnrolled: enrollmentStats?.totalEnrolled ?? 0,
+      completed: enrollmentStats?.completed ?? 0,
     },
   };
 
