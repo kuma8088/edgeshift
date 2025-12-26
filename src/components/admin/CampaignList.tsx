@@ -147,7 +147,7 @@ export function CampaignList() {
   if (campaigns.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-[var(--color-text-secondary)] mb-4">キャンペーンがまだありません</p>
+        <p className="text-[var(--color-text-secondary)] mb-4">ニュースレターがまだありません</p>
         <a
           href="/admin/campaigns/new"
           className="inline-block px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
@@ -247,7 +247,7 @@ export function CampaignList() {
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        title={confirmModal.type === 'delete' ? 'キャンペーンを削除' : 'キャンペーンを送信'}
+        title={confirmModal.type === 'delete' ? 'ニュースレターを削除' : 'ニュースレターを送信'}
         message={
           confirmModal.type === 'delete'
             ? `「${confirmModal.campaignSubject}」を削除してもよろしいですか？この操作は取り消せません。`

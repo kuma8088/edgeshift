@@ -1,66 +1,72 @@
-# Session Notes: Batch TB - ユーザーテスト計画
+# Session Notes: Admin UI 改修 + シーケンス編集UI再設計
 
 ## 現在の状態
 
-**フェーズ:** 要件定義・ドキュメント作成完了
+**フェーズ:** Admin UI改修 Task実行中
+
+**確認方式:** 各Task完了後、本番環境でユーザーが動作確認。OKなら次のTaskへ。
+
+**デプロイフロー:**
+1. 実装完了 → コミット
+2. git push
+3. PR作成（gh pr create）
+4. **ユーザーがマージ判断**（Claudeはマージしない）
+5. 本番自動デプロイ
+6. ユーザー本番確認
 
 **進捗:**
-- ✅ superpowers:brainstorming で要件定義完了
-- ✅ 実装仕様の確認（delay_days/delay_time の動作）
-- ✅ テスト計画ドキュメント作成
-- ✅ 日本語化完了
-- ✅ コミット・プッシュ完了
-
-**完了タスク:**
-- TB-1: テストシナリオ作成（ドキュメント化）
-- 実装確認: delay_days=0 は「JST 当日の指定時刻」（直後送信ではない）
-- worktree 作成・セットアップ
+- ✅ Task 1: ナビゲーション変更
+- ⏳ Task 2: キャンペーン→ニュースレター名称変更（実装済み、本番確認待ち）
+- 🔲 Task 3: ダッシュボードにシーケンス統計追加
+- 🔲 Task 4: 購読者ページ削除とContact List統合
+- 🔲 Task 5: シーケンス詳細でdelay_time表示
+- 🔲 Task 6: シーケンス1通目の分単位設定
+- 🔲 Task 7: 本番デプロイと最終確認
 
 **未完了タスク:**
-- TB-2: 購読者視点でのフロー確認（テスト実施待ち）
-- TB-3: 管理者視点での操作確認（テスト実施待ち）
-- TB-5: フィードバック収集・改善（テスト実施待ち）
-- mail-tester.com 評価（テスト実施待ち）
+- Task 3: ダッシュボードにシーケンス統計追加
+- Task 5: シーケンス詳細でdelay_time表示
+- Task 6: シーケンス1通目の分単位設定
+- **新規: シーケンスステップ編集UI再設計**
 
 ---
 
 ## 直近の問題・解決
 
-**問題:** delay_days=0 の動作が不明確（直後送信？当日送信？）
-**解決:** sequence-processor.ts を確認し、「JST 当日の指定時刻」であることを確認
-- 登録直後に即時送信する機能は未実装
-- MVP 追加開発要件として newsletter_system_mvp.md に記録済み
+**問題:** CIでTypeScriptエラー（subscriber.subscribed_at is possibly undefined）
+**解決:** 条件チェック追加（`{subscriber.subscribed_at && ...}`）
 
-**問題:** テストシーケンスの設計
-**解決:** 5 ステップ構成で delay_days/delay_time の動作を網羅的に確認
-- ステップ 1-3: delay_days=0, delay_time で 09:00, 09:15, 09:30
-- ステップ 4: delay_days=1, delay_time=NULL（デフォルト時刻）
-- ステップ 5: delay_days=1, delay_time=14:00（個別指定）
+**問題:** キャンペーン一覧でメール本文が邪魔
+**解決:** 本文削除、代わりに開封数/クリック数/バウンス数を表示
+
+**問題:** ContactListからSubscriberを個別編集できない
+**解決:** 購読者詳細ページ新規作成（/admin/subscribers/detail?id=xxx）
 
 ---
 
 ## 次にやること
 
-### 1. テスト実施（優先度：最高）
-朝 08:00 JST に登録開始
-- [ ] テストシーケンス作成（管理画面で）
-- [ ] テストキャンペーン作成
-- [ ] Contact List 作成・メンバー追加
-- [ ] 埋め込みフォーム作成
+### 1. シーケンスステップ編集UI再設計（優先度：最高）
+ユーザー要件：
+- 各ステップを別ページで編集
+- サイドバーで他ステップへ移動可能
+- 編集対象: 件名、本文、delay_days、delay_time
+- ステップ追加・削除も可能
+- 新規作成も同様の仕様
+- 既存の /admin/sequences/edit は廃止
 
-### 2. メール受信確認
-- [ ] ステップ 1-3 受信（09:00, 09:15, 09:30）
-- [ ] クリックトラッキング確認
-- [ ] 翌日ステップ 4-5 受信（09:00, 14:00）
+設計中の構成：
+```
+/admin/sequences/:id           → シーケンス詳細（統計）
+/admin/sequences/:id/steps     → ステップ一覧・管理（新規）
+/admin/sequences/:id/steps/:n  → ステップ個別編集（新規）
+/admin/sequences/new           → シーケンス基本情報作成（改修）
+```
 
-### 3. mail-tester.com 評価
-- [ ] テストメール送信
-- [ ] スパムスコア確認（目標 8+/10）
-
-### 4. TB-5 フィードバック
-- [ ] 発見した問題を記録
-- [ ] 軽微な問題（15分以内）は即時修正
-- [ ] 大きな問題は別タスク化
+### 2. 残タスク（優先度：中）
+- Task 3: ダッシュボードにシーケンス統計追加
+- Task 5: シーケンス詳細でdelay_time表示
+- Task 6: シーケンス1通目の分単位設定
 
 ---
 
@@ -68,19 +74,19 @@
 
 ### 設計判断
 
-**テスト実施方法:**
-- セルフテスト（自分で実施）
-- 本番環境（edgeshift.tech）
-- 自分の実メールアドレス使用
+**購読者詳細ページ:**
+- ContactListDetail からメールクリックで遷移
+- 所属リストの一覧・追加・削除が可能
+- 既存の subscribers ページとは別（統合は保留）
 
-**モバイルテスト:**
-- スコープ外（現状必要性を感じない）
-- 必要になったら追加開発で対応
+**キャンペーン一覧の統計:**
+- 送信済みキャンペーンのみ統計表示
+- 開封数（率）、クリック数（率）、バウンス数
+- delivery_logs から集計
 
-**TB-5 フィードバック方式:**
-- ハイブリッド方式を採用
-- 軽微（15分以内）→ 即時修正
-- 大きい（15分超）→ 記録のみ、別タスク化
+**シーケンス編集UI:**
+- 現在の「全ステップまとめて編集」は使いにくい
+- ステップごとに別ページ + サイドバーナビゲーション方式に変更予定
 
 ### 無視した指摘
 
@@ -94,20 +100,25 @@
 
 ---
 
-## 作成したドキュメント
+## 作成・修正したファイル
 
-**テスト計画:**
-```
-docs/plans/2025-12-26-batch-tb-user-test-plan.md
-```
+**PR #32 (マージ済み):**
+- src/components/admin/CampaignList.tsx - 統計表示追加
+- src/components/admin/SubscriberDetail.tsx - 新規
+- src/components/admin/SubscriberListsSection.tsx - 新規
+- src/components/admin/ContactListDetail.tsx - リンク追加
+- src/pages/admin/subscribers/detail.astro - 新規
+- src/pages/admin/campaigns/*.astro - 名称変更
+- workers/newsletter/src/routes/campaigns.ts - stats API
+- workers/newsletter/src/routes/broadcast.ts - getSubscriber API
 
 **ブランチ:**
 ```
-docs/batch-tb-user-test-plan
+fix/richtexteditor-typography-v2 (current)
 ```
 
 ---
 
 **Last Updated:** 2025-12-26
-**Session:** Batch TB
+**Session:** Admin UI 改修
 **Model:** Opus 4.5

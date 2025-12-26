@@ -33,6 +33,18 @@ EdgeShift Portfolio - Personal portfolio and services website built with Astro a
 - main/master への直接 commit/push は禁止
 - 作業は必ず feature ブランチで行う
 - push 前に必ず確認を求める
+- **PR のマージは絶対に勝手に実行しない（ユーザーが明示的に「マージして」と指示した場合のみ）**
+
+## [CRITICAL] 本番デプロイフロー
+
+**本番デプロイにはGitが必要。wrangler pages deploy だけでは本番に反映されない。**
+
+1. 実装完了 → コミット
+2. `git push`
+3. `gh pr create` でPR作成
+4. **ユーザーがレビュー・マージ**（Claudeはマージしない）
+5. mainマージ後、本番自動デプロイ
+6. ユーザーが本番確認
 
 ```
 
