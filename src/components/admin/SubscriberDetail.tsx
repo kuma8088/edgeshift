@@ -116,12 +116,14 @@ export function SubscriberDetail({ subscriberId }: Props) {
             </span>
           </div>
 
-          <div>
-            <label className="text-sm text-[var(--color-text-secondary)] block mb-1">購読日時</label>
-            <p className="text-[var(--color-text)]">
-              {new Date(subscriber.subscribed_at * 1000).toLocaleString('ja-JP')}
-            </p>
-          </div>
+          {subscriber.subscribed_at && (
+            <div>
+              <label className="text-sm text-[var(--color-text-secondary)] block mb-1">購読日時</label>
+              <p className="text-[var(--color-text)]">
+                {new Date(subscriber.subscribed_at * 1000).toLocaleString('ja-JP')}
+              </p>
+            </div>
+          )}
 
           {subscriber.unsubscribed_at && (
             <div>
