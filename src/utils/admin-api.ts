@@ -69,6 +69,7 @@ export async function getDashboardStats() {
     subscribers: { total: number; active: number; pending: number; unsubscribed: number };
     campaigns: { total: number; draft: number; scheduled: number; sent: number };
     delivery: { total: number; delivered: number; opened: number; clicked: number; openRate: number; clickRate: number };
+    sequences: { total: number; active: number; totalEnrolled: number; completed: number };
   }>('/dashboard/stats');
 }
 
