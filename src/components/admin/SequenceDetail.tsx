@@ -6,6 +6,7 @@ import { ProgressBar } from './ProgressBar';
 
 interface SequenceStep {
   delay_days: number;
+  delay_time?: string;
   subject: string;
   content: string;
 }
@@ -14,6 +15,7 @@ interface Sequence {
   id: string;
   name: string;
   description?: string;
+  default_send_time: string; // "HH:MM" format, JST
   is_active: number;
   steps: SequenceStep[];
   created_at: number;
@@ -216,6 +218,9 @@ export function SequenceDetail({ sequenceId }: SequenceDetailProps) {
                       ステップ
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                      配信タイミング
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                       件名
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
@@ -230,10 +235,21 @@ export function SequenceDetail({ sequenceId }: SequenceDetailProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
-                  {stats.steps.map((step) => (
+                  {stats.steps.map((step) => {
+                    const sequenceStep = sequence.steps?.[step.step_number - 1];
+                    const delayDays = sequenceStep?.delay_days ?? 0;
+                    const delayTime = sequenceStep?.delay_time || sequence.default_send_time;
+                    const timing = delayDays === 0
+                      ? `当日 ${delayTime}`
+                      : `+${delayDays}日 ${delayTime}`;
+
+                    return (
                     <tr key={step.step_number} className="hover:bg-[var(--color-bg-tertiary)]">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--color-text)]">
                         {step.step_number}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
+                        {timing}
                       </td>
                       <td className="px-6 py-4 text-sm text-[var(--color-text)]">
                         {step.subject}
@@ -268,7 +284,8 @@ export function SequenceDetail({ sequenceId }: SequenceDetailProps) {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
