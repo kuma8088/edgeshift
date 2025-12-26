@@ -9,6 +9,18 @@ if (!userEmail || !adminApiKey) {
 }
 
 /**
+ * Generate unique test email using Gmail's + addressing with timestamp
+ */
+const generateTestEmail = (): string => {
+  const baseEmail = userEmail.split('@');
+  const timestamp = Date.now();
+  return `${baseEmail[0]}+test${timestamp}@${baseEmail[1]}`;
+};
+
+// Store test email for this run
+let testEmail: string;
+
+/**
  * Login to admin panel
  */
 async function loginAdmin(page: Page): Promise<void> {
@@ -156,12 +168,16 @@ test.describe('Batch TB User Test - Automated Flow', () => {
   });
 
   test('TB-2-1: Signup with real email', async ({ page }) => {
+    // Generate unique email for this test run
+    testEmail = generateTestEmail();
+    console.log('Using test email:', testEmail);
+
     // Navigate to signup page
     await page.goto('/newsletter/signup/welcome');
     await page.waitForLoadState('networkidle');
 
-    // Fill signup form
-    await page.fill('input[name="email"]', userEmail);
+    // Fill signup form with unique email
+    await page.fill('input[name="email"]', testEmail);
     await page.fill('input[name="name"]', 'Batch TB Test User');
 
     // Wait for Turnstile widget (may take time to load)
@@ -174,13 +190,13 @@ test.describe('Batch TB User Test - Automated Flow', () => {
     await expect(page.locator('text=確認メールを送信しました')).toBeVisible({ timeout: 15000 });
 
     // Verify subscriber created in D1
-    const subscriber = await getSubscriber(userEmail);
+    const subscriber = await getSubscriber(testEmail);
     expect(subscriber).toBeTruthy();
     expect(subscriber!.status).toBe('pending');
 
     console.log(`
 ========================================
-ACTION REQUIRED: Check your email (${userEmail})
+ACTION REQUIRED: Check your email (${testEmail})
 1. Look for confirmation email
 2. Click the confirmation link
 3. After confirming, run the delivery verification test
@@ -189,8 +205,14 @@ ACTION REQUIRED: Check your email (${userEmail})
   });
 
   test('TB-2-1: Verify delivery logs after confirmation', async () => {
+    if (!testEmail) {
+      console.log('Test email not set. Run signup test first.');
+      test.skip();
+      return;
+    }
+
     // This test should run after manual email confirmation
-    const subscriber = await getSubscriber(userEmail);
+    const subscriber = await getSubscriber(testEmail);
 
     if (!subscriber || subscriber.status !== 'active') {
       console.log('Subscriber not active yet. Confirm email first, then re-run this test.');
@@ -199,8 +221,8 @@ ACTION REQUIRED: Check your email (${userEmail})
     }
 
     // Check delivery logs
-    const logs = await getDeliveryLogs(userEmail);
-    console.log(`Found ${logs.length} delivery logs for ${userEmail}`);
+    const logs = await getDeliveryLogs(testEmail);
+    console.log(`Found ${logs.length} delivery logs for ${testEmail}`);
 
     // Verify at least one sequence delivery was attempted
     const sequenceLogs = logs.filter(log => log.sequence_id !== null);
