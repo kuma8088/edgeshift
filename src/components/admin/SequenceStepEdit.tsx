@@ -86,13 +86,38 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
     const updatedSteps = [...sequence.steps];
     updatedSteps[stepNumber - 1] = stepData;
 
-    const result = await updateSequence(sequenceId, { steps: updatedSteps });
+    // Create indexed steps for tracking position after sort
+    const indexedSteps = updatedSteps.map((step, idx) => ({ step, originalIndex: idx }));
+    const defaultTime = sequence.default_send_time || '10:00';
+
+    // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
+    indexedSteps.sort((a, b) => {
+      if (a.step.delay_days !== b.step.delay_days) {
+        return a.step.delay_days - b.step.delay_days;
+      }
+      const timeA = a.step.delay_time || defaultTime;
+      const timeB = b.step.delay_time || defaultTime;
+      return timeA.localeCompare(timeB);
+    });
+
+    const sortedSteps = indexedSteps.map((item) => item.step);
+    const result = await updateSequence(sequenceId, { steps: sortedSteps });
 
     if (result.success) {
-      setSuccessMessage('保存しました');
-      // Reload sequence to get latest data
-      await loadSequence();
-      setTimeout(() => setSuccessMessage(null), 3000);
+      // Find new position by tracking original index
+      const newPosition = indexedSteps.findIndex(
+        (item) => item.originalIndex === stepNumber - 1
+      );
+      const newStepNumber = newPosition + 1;
+
+      if (newStepNumber !== stepNumber) {
+        // Step moved, navigate to new position
+        window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${newStepNumber}`;
+      } else {
+        setSuccessMessage('保存しました');
+        await loadSequence();
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
     } else {
       setError(result.error || '保存に失敗しました');
     }
@@ -115,10 +140,31 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
     };
 
     const updatedSteps = [...sequence.steps, newStep];
-    const result = await updateSequence(sequenceId, { steps: updatedSteps });
+
+    // Create indexed steps for tracking position after sort
+    const indexedSteps = updatedSteps.map((step, idx) => ({ step, originalIndex: idx }));
+    const defaultTime = sequence.default_send_time || '10:00';
+
+    // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
+    indexedSteps.sort((a, b) => {
+      if (a.step.delay_days !== b.step.delay_days) {
+        return a.step.delay_days - b.step.delay_days;
+      }
+      const timeA = a.step.delay_time || defaultTime;
+      const timeB = b.step.delay_time || defaultTime;
+      return timeA.localeCompare(timeB);
+    });
+
+    const sortedSteps = indexedSteps.map((item) => item.step);
+    const result = await updateSequence(sequenceId, { steps: sortedSteps });
 
     if (result.success) {
-      window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${updatedSteps.length}`;
+      // Find new position by tracking original index (new step is last in updatedSteps)
+      const newStepOriginalIndex = updatedSteps.length - 1;
+      const newPosition = indexedSteps.findIndex(
+        (item) => item.originalIndex === newStepOriginalIndex
+      );
+      window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${newPosition + 1}`;
     } else {
       setError(result.error || 'ステップの追加に失敗しました');
     }

@@ -144,12 +144,20 @@ export function SequenceDetail({ sequenceId }: SequenceDetailProps) {
               作成日: {new Date(sequence.created_at * 1000).toLocaleDateString('ja-JP')}
             </p>
           </div>
-          <a
-            href="/admin/sequences"
-            className="px-4 py-2 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          >
-            ← 一覧に戻る
-          </a>
+          <div className="flex gap-2">
+            <a
+              href={`/admin/sequences/steps?id=${sequenceId}`}
+              className="px-4 py-2 text-sm bg-[var(--color-accent)] text-white rounded-lg hover:opacity-90 transition-opacity"
+            >
+              ステップ編集
+            </a>
+            <a
+              href="/admin/sequences"
+              className="px-4 py-2 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
+            >
+              ← 一覧に戻る
+            </a>
+          </div>
         </div>
       </div>
 

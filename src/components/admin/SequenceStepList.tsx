@@ -174,10 +174,22 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
       const newIndex = steps.findIndex((step) => step.id === over.id);
 
       const reorderedSteps = arrayMove(steps, oldIndex, newIndex);
-      setSteps(reorderedSteps);
+
+      // Apply auto-sort logic to DnD reordered steps
+      const defaultTime = sequence?.default_send_time || '10:00';
+      const sortedSteps = [...reorderedSteps].sort((a, b) => {
+        if (a.delay_days !== b.delay_days) {
+          return a.delay_days - b.delay_days;
+        }
+        const timeA = a.delay_time || defaultTime;
+        const timeB = b.delay_time || defaultTime;
+        return timeA.localeCompare(timeB);
+      });
+
+      setSteps(sortedSteps);
 
       // Save to backend
-      await saveSteps(reorderedSteps);
+      await saveSteps(sortedSteps);
     }
   };
 
@@ -196,11 +208,24 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
       content: '',
     };
     const newSteps = [...steps, newStep];
-    setSteps(newSteps);
-    await saveSteps(newSteps);
 
-    // Navigate to the new step
-    window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${newSteps.length}`;
+    // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
+    const defaultTime = sequence?.default_send_time || '10:00';
+    const sortedSteps = [...newSteps].sort((a, b) => {
+      if (a.delay_days !== b.delay_days) {
+        return a.delay_days - b.delay_days;
+      }
+      const timeA = a.delay_time || defaultTime;
+      const timeB = b.delay_time || defaultTime;
+      return timeA.localeCompare(timeB);
+    });
+
+    setSteps(sortedSteps);
+    await saveSteps(sortedSteps);
+
+    // Find position of the new step by ID and navigate to it
+    const newPosition = sortedSteps.findIndex((s) => s.id === newStep.id);
+    window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${newPosition + 1}`;
   };
 
   const saveSteps = async (updatedSteps: Step[]) => {
