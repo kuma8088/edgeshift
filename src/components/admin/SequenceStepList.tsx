@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -129,6 +129,9 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Unique ID counter to avoid collisions after delete+add
+  const idCounterRef = useRef(0);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -147,8 +150,8 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
     const result = await getSequence(sequenceId);
     if (result.success && result.data) {
       setSequence(result.data as Sequence);
-      const stepsWithIds = (result.data as Sequence).steps.map((step: Omit<Step, 'id'>, index: number) => ({
-        id: `step-${index}`,
+      const stepsWithIds = (result.data as Sequence).steps.map((step: Omit<Step, 'id'>) => ({
+        id: `step-${idCounterRef.current++}`,
         ...step,
       }));
       setSteps(stepsWithIds);
@@ -182,7 +185,7 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
 
   const handleAddStep = async () => {
     const newStep: Step = {
-      id: `step-${steps.length}`,
+      id: `step-${idCounterRef.current++}`,
       delay_days: 0,
       delay_time: '',
       subject: '',
@@ -203,7 +206,9 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
     const result = await updateSequence(sequenceId, { steps: stepsData });
 
     if (!result.success) {
-      setError(result.error || '保存に失敗しました');
+      setError(result.error || '保存に失敗しました。再読み込みします...');
+      // Reload to restore correct state from backend
+      await loadSequence();
     }
 
     setSaving(false);

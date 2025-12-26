@@ -54,7 +54,9 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
           content: step.content,
         });
       } else {
-        setError('ステップが見つかりません');
+        // Redirect to step list if step doesn't exist
+        window.location.href = `/admin/sequences/steps?id=${sequenceId}`;
+        return;
       }
     } else {
       setError(result.error || 'シーケンスの読み込みに失敗しました');
@@ -70,6 +72,13 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
     setSuccessMessage(null);
 
     if (!sequence) return;
+
+    // Guard: ensure step index is valid
+    if (stepNumber < 1 || stepNumber > sequence.steps.length) {
+      setError('無効なステップ番号です');
+      setSaving(false);
+      return;
+    }
 
     // Update the specific step
     const updatedSteps = [...sequence.steps];
