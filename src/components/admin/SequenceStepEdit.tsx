@@ -272,6 +272,8 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
     step_number: index + 1,
     subject: step.subject,
     delay_days: step.delay_days,
+    delay_time: step.delay_time,
+    delay_minutes: step.delay_minutes,
   }));
 
   return (
@@ -285,6 +287,7 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
         onAddStep={handleAddStep}
         isMobileOpen={isMobileSidebarOpen}
         onMobileToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        defaultSendTime={sequence.default_send_time}
       />
 
       {/* Main content */}

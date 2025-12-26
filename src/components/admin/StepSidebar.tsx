@@ -6,6 +6,8 @@ interface Step {
   step_number: number;
   subject: string;
   delay_days: number;
+  delay_time?: string;
+  delay_minutes?: number | null;
 }
 
 interface StepSidebarProps {
@@ -16,6 +18,7 @@ interface StepSidebarProps {
   onAddStep: () => void;
   isMobileOpen?: boolean;
   onMobileToggle?: () => void;
+  defaultSendTime?: string;
 }
 
 export function StepSidebar({
@@ -26,7 +29,25 @@ export function StepSidebar({
   onAddStep,
   isMobileOpen = false,
   onMobileToggle,
+  defaultSendTime = '10:00',
 }: StepSidebarProps) {
+  // Helper to format timing display
+  const formatTiming = (step: Step): string | null => {
+    // delay_minutes mode (immediate or +Xm)
+    if (step.delay_minutes !== null && step.delay_minutes !== undefined) {
+      if (step.delay_minutes === 0) {
+        return '即時送信';
+      }
+      return `+${step.delay_minutes}m`;
+    }
+
+    // delay_days mode
+    const time = step.delay_time || defaultSendTime;
+    if (step.delay_days === 0) {
+      return `当日 ${time}`;
+    }
+    return `+${step.delay_days}日 ${time}`;
+  };
   return (
     <>
       {/* Mobile toggle button */}
@@ -98,9 +119,9 @@ export function StepSidebar({
                     <span className={`text-xs font-medium ${isActive ? 'text-white' : 'text-[var(--color-text-muted)]'}`}>
                       ステップ {step.step_number}
                     </span>
-                    {step.delay_days > 0 && (
+                    {formatTiming(step) && (
                       <span className={`text-xs ${isActive ? 'text-white opacity-90' : 'text-[var(--color-text-muted)]'}`}>
-                        (+{step.delay_days}日)
+                        ({formatTiming(step)})
                       </span>
                     )}
                   </div>
