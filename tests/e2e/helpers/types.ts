@@ -28,3 +28,10 @@ export interface DeliveryLog {
   error_message: string | null;
   created_at: number;
 }
+
+export interface ClickEvent {
+  id: string;
+  delivery_log_id: string;
+  url: string;
+  clicked_at: number;
+}

@@ -1,6 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import type { Subscriber, DeliveryLog } from './types';
+import type { Subscriber, DeliveryLog, ClickEvent } from './types';
 
 const execAsync = promisify(exec);
 
@@ -86,6 +86,19 @@ export async function getSubscriber(email: string): Promise<Subscriber | null> {
   );
 
   return results.length > 0 ? results[0] : null;
+}
+
+/**
+ * Get click events for a subscriber by email
+ */
+export async function getClickEvents(email: string): Promise<ClickEvent[]> {
+  const sanitized = sanitizeEmail(email);
+  return queryD1<ClickEvent>(`
+    SELECT ce.* FROM click_events ce
+    JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
+    WHERE dl.email = '${sanitized}'
+    ORDER BY ce.clicked_at DESC
+  `);
 }
 
 /**
