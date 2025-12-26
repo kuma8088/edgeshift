@@ -40,8 +40,9 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
     setError(null);
 
     const result = await getSequence(sequenceId);
-    if (result.success && result.data) {
-      const seq = result.data as Sequence;
+    const responseData = result.data as { sequence?: Sequence } | undefined;
+    if (result.success && responseData?.sequence) {
+      const seq = responseData.sequence;
       setSequence(seq);
 
       // Load step data (stepNumber is 1-indexed)
