@@ -63,7 +63,7 @@ export default function CampaignEditForm({ campaignId }: CampaignEditFormProps) 
           href="/admin/campaigns"
           className="inline-block px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
-          キャンペーン一覧に戻る
+          ニュースレター一覧に戻る
         </a>
       </div>
     );

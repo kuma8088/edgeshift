@@ -111,12 +111,12 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
   if (error || !campaign) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600 mb-4">{error || 'キャンペーンが見つかりません'}</p>
+        <p className="text-red-600 mb-4">{error || 'ニュースレターが見つかりません'}</p>
         <a
           href="/admin/campaigns"
           className="inline-block px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
         >
-          キャンペーン一覧に戻る
+          ニュースレター一覧に戻る
         </a>
       </div>
     );

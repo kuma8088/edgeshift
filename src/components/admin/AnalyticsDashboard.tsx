@@ -93,14 +93,14 @@ export function AnalyticsDashboard() {
       <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
         <h1 className="text-2xl font-bold text-[var(--color-text)]">分析ダッシュボード</h1>
         <p className="text-sm text-[var(--color-text-secondary)] mt-2">
-          キャンペーン、シーケンス、購読者のパフォーマンス概要
+          ニュースレター、シーケンス、購読者のパフォーマンス概要
         </p>
       </div>
 
       {/* Campaign Performance */}
       <section>
         <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">
-          キャンペーンパフォーマンス（直近10件）
+          ニュースレターパフォーマンス（直近10件）
         </h2>
         {data.campaigns.length > 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden">
@@ -173,7 +173,7 @@ export function AnalyticsDashboard() {
         ) : (
           <div className="bg-white rounded-lg p-12 shadow-sm border border-[var(--color-border)] text-center">
             <p className="text-[var(--color-text-secondary)]">
-              まだ送信されたキャンペーンがありません
+              まだ送信されたニュースレターがありません
             </p>
           </div>
         )}
