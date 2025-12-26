@@ -207,7 +207,10 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
     const stepsData = updatedSteps.map(({ id, ...step }) => step);
     const result = await updateSequence(sequenceId, { steps: stepsData });
 
-    if (!result.success) {
+    if (result.success) {
+      // Clear any previous error on successful save
+      setError(null);
+    } else {
       setError(result.error || '保存に失敗しました。再読み込みします...');
       // Reload to restore correct state from backend (keep error visible)
       await loadSequence(false);
