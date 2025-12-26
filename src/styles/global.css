@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* EdgeShift Design Tokens - Light Theme (Obsidian-inspired) */
 :root {
