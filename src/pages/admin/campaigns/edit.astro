@@ -4,7 +4,7 @@ import { AuthProvider } from '../../../components/admin/AuthProvider';
 import CampaignEditFormWrapper from '../../../components/admin/CampaignEditFormWrapper';
 ---
 
-<AdminLayout title="キャンペーン編集">
+<AdminLayout title="ニュースレター編集">
   <AuthProvider client:load>
     <div class="space-y-6">
       <div class="flex items-center gap-4">
@@ -12,10 +12,10 @@ import CampaignEditFormWrapper from '../../../components/admin/CampaignEditFormW
           href="/admin/campaigns"
           class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
         >
-          ← キャンペーン一覧
+          ← ニュースレター一覧
         </a>
       </div>
-      <h1 class="text-2xl font-bold text-[var(--color-text)]">キャンペーン編集</h1>
+      <h1 class="text-2xl font-bold text-[var(--color-text)]">ニュースレター編集</h1>
       <div class="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
         <CampaignEditFormWrapper client:load />
       </div>
