@@ -61,13 +61,6 @@ export function MenuBar({ editor }: MenuBarProps) {
       >
         H3
       </button>
-      <button
-        onClick={() => editor.chain().focus().setParagraph().run()}
-        className={buttonClass(editor.isActive('paragraph'))}
-        type="button"
-      >
-        P
-      </button>
       <div className="w-px h-6 bg-gray-300 mx-1" />
       <button
         onClick={() => editor.chain().focus().toggleBulletList().run()}
