@@ -150,9 +150,11 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
     }
 
     const result = await getSequence(sequenceId);
-    if (result.success && result.data) {
-      setSequence(result.data as Sequence);
-      const stepsWithIds = (result.data as Sequence).steps.map((step: Omit<Step, 'id'>) => ({
+    const responseData = result.data as { sequence?: Sequence } | undefined;
+    if (result.success && responseData?.sequence) {
+      const seq = responseData.sequence;
+      setSequence(seq);
+      const stepsWithIds = (seq.steps || []).map((step: Omit<Step, 'id'>) => ({
         id: `step-${idCounterRef.current++}`,
         ...step,
       }));
