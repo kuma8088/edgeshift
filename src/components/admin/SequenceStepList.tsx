@@ -143,9 +143,11 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
     loadSequence();
   }, [sequenceId]);
 
-  const loadSequence = async () => {
+  const loadSequence = async (clearError = true) => {
     setLoading(true);
-    setError(null);
+    if (clearError) {
+      setError(null);
+    }
 
     const result = await getSequence(sequenceId);
     if (result.success && result.data) {
@@ -207,8 +209,8 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
 
     if (!result.success) {
       setError(result.error || '保存に失敗しました。再読み込みします...');
-      // Reload to restore correct state from backend
-      await loadSequence();
+      // Reload to restore correct state from backend (keep error visible)
+      await loadSequence(false);
     }
 
     setSaving(false);

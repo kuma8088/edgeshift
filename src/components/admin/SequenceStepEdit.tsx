@@ -55,6 +55,7 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
         });
       } else {
         // Redirect to step list if step doesn't exist
+        setLoading(false);
         window.location.href = `/admin/sequences/steps?id=${sequenceId}`;
         return;
       }
