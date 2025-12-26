@@ -67,9 +67,17 @@ export function ZennArticles({ rssXml }: ZennArticlesProps) {
         {error && (
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error}</p>
-            <p className="text-[var(--color-text-secondary)] text-sm">
-              ページを再読み込みしてください
+            <p className="text-[var(--color-text-secondary)] text-sm mb-3">
+              一時的なエラーの可能性があります。ページを再読み込みしてください。
             </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg
+                       hover:bg-[var(--color-accent-hover)] transition-colors text-sm
+                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+            >
+              再読み込み
+            </button>
           </div>
         )}
 
