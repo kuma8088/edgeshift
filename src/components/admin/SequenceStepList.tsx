@@ -157,6 +157,8 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
         ...step,
       }));
       setSteps(stepsWithIds);
+      // Clear error on successful load (even if clearError=false for save-failure case)
+      setError(null);
     } else {
       setError(result.error || 'シーケンスの読み込みに失敗しました');
     }
