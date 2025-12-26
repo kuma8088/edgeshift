@@ -37,8 +37,9 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
     sequence?.steps || [{ delay_days: 0, subject: '', content: '' }]
   );
   // Timing mode for step 1: 'days' for day+time, 'minutes' for immediate/delay
+  // Use != null to exclude both null and undefined
   const [step1TimingMode, setStep1TimingMode] = useState<TimingMode>(
-    sequence?.steps?.[0]?.delay_minutes !== undefined ? 'minutes' : 'days'
+    sequence?.steps?.[0]?.delay_minutes != null ? 'minutes' : 'days'
   );
   const [error, setError] = useState('');
 
@@ -49,8 +50,9 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
       setDescription(sequence.description || '');
       setDefaultSendTime(sequence.default_send_time || '10:00');
       setSteps(sequence.steps || [{ delay_days: 0, subject: '', content: '' }]);
+      // Use != null to exclude both null and undefined
       setStep1TimingMode(
-        sequence.steps?.[0]?.delay_minutes !== undefined ? 'minutes' : 'days'
+        sequence.steps?.[0]?.delay_minutes != null ? 'minutes' : 'days'
       );
     }
   }, [sequence]);

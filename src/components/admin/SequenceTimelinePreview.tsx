@@ -3,6 +3,7 @@
 interface SequenceStep {
   delay_days: number;
   delay_time?: string;
+  delay_minutes?: number | null;
   subject: string;
 }
 
@@ -38,17 +39,27 @@ export function SequenceTimelinePreview({ defaultSendTime, steps }: SequenceTime
 
         {/* Steps */}
         {steps.map((step, index) => {
-          const sendTime = step.delay_time || defaultSendTime;
-          const dayLabel = step.delay_days === 0
-            ? '即時'
-            : `${step.delay_days}日後`;
+          // Determine timing label based on delay_minutes or delay_days
+          let timingLabel: string;
+          if (step.delay_minutes != null) {
+            // Minutes mode: show immediate or +Xm
+            timingLabel = step.delay_minutes === 0
+              ? '即時送信'
+              : `+${step.delay_minutes}分`;
+          } else {
+            // Days mode: show day + time
+            const sendTime = step.delay_time || defaultSendTime;
+            timingLabel = step.delay_days === 0
+              ? `当日 ${formatTime(sendTime)}`
+              : `${step.delay_days}日後 ${formatTime(sendTime)}`;
+          }
 
           return (
             <div key={index} className="relative mb-4 last:mb-0">
               <div className="absolute left-[-18px] w-3 h-3 rounded-full bg-[var(--color-bg)] border-2 border-[var(--color-accent)]" />
               <div className="flex items-start gap-2">
                 <span className="text-xs font-medium text-[var(--color-accent)] min-w-[80px]">
-                  {dayLabel} ({formatTime(sendTime)})
+                  {timingLabel}
                 </span>
                 <span className="text-sm text-[var(--color-text)]">
                   {step.subject || `ステップ ${index + 1}`}
