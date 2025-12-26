@@ -1,0 +1,15 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import { SequenceStepList } from '../../../../components/admin/SequenceStepList';
+
+const url = new URL(Astro.request.url);
+const sequenceId = url.searchParams.get('id');
+
+if (!sequenceId) {
+  return Astro.redirect('/admin/sequences');
+}
+---
+
+<AdminLayout title="ステップ管理">
+  <SequenceStepList client:load sequenceId={sequenceId} />
+</AdminLayout>

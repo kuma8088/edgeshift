@@ -146,9 +146,19 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-3">
-          メールステップ <span className="text-red-500">*</span>
-        </label>
+        <div className="flex items-center justify-between mb-3">
+          <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
+            メールステップ <span className="text-red-500">*</span>
+          </label>
+          {sequence?.id && (
+            <a
+              href={`/admin/sequences/steps?id=${sequence.id}`}
+              className="text-sm text-[var(--color-accent)] hover:underline"
+            >
+              個別に編集 →
+            </a>
+          )}
+        </div>
         <SequenceStepEditor steps={steps} onChange={setSteps} />
       </div>
 

@@ -169,6 +169,12 @@ export function SequenceList() {
                 >
                   詳細
                 </a>
+                <a
+                  href={`/admin/sequences/steps?id=${sequence.id}`}
+                  className="px-3 py-1 text-sm bg-[var(--color-accent)] text-white rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  ステップ編集
+                </a>
                 <button
                   onClick={() => handleToggleActive(sequence)}
                   disabled={actionLoading}
@@ -184,7 +190,7 @@ export function SequenceList() {
                   href={`/admin/sequences/edit?id=${sequence.id}`}
                   className="px-3 py-1 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
                 >
-                  編集
+                  設定
                 </a>
                 <button
                   onClick={() => handleDelete(sequence)}
