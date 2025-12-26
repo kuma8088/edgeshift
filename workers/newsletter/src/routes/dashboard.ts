@@ -117,10 +117,12 @@ export async function getDashboardStats(
   }>();
 
   // Calculate rates
-  // delivered status means "delivered" only, opened status means "opened", clicked means "clicked"
-  // For rate calculation: delivered base = delivered + opened + clicked (all successfully delivered)
-  const delivered = (deliveryStats?.delivered ?? 0) + (deliveryStats?.opened ?? 0) + (deliveryStats?.clicked ?? 0);
-  const opened = (deliveryStats?.opened ?? 0) + (deliveryStats?.clicked ?? 0);
+  // Timestamp-based counts are already cumulative:
+  // - delivered_at IS NOT NULL = all delivered (includes opened and clicked)
+  // - opened_at IS NOT NULL = all opened (includes clicked)
+  // - clicked_at IS NOT NULL = all clicked
+  const delivered = deliveryStats?.delivered ?? 0;
+  const opened = deliveryStats?.opened ?? 0;
   const clicked = deliveryStats?.clicked ?? 0;
 
   const openRate = delivered > 0 ? Math.round((opened / delivered) * 100 * 10) / 10 : 0;
