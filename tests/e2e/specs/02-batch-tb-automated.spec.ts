@@ -49,14 +49,28 @@ test.describe('Batch TB User Test - Automated Flow', () => {
     const sequenceId = new URL(page.url()).searchParams.get('id');
     expect(sequenceId).toBeTruthy();
 
-    // Define 5 steps
+    // Calculate times based on current time for immediate execution
+    const now = new Date();
+    const formatTime = (date: Date): string => {
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    };
+
+    const addMinutes = (date: Date, mins: number): Date => {
+      return new Date(date.getTime() + mins * 60000);
+    };
+
+    // Define 5 steps with dynamic timing
     const steps = [
-      { delay_days: '0', delay_time: '09:00', subject: 'Step 1: Welcome', body: 'Welcome email with Link A: https://edgeshift.tech/articles/a' },
-      { delay_days: '0', delay_time: '09:15', subject: 'Step 2: Sample', body: 'Sample email with Link B: https://edgeshift.tech/articles/b' },
-      { delay_days: '0', delay_time: '09:30', subject: 'Step 3: Check', body: 'Check email with Link C: https://edgeshift.tech/page-c' },
+      { delay_days: '0', delay_time: formatTime(addMinutes(now, 2)), subject: 'Step 1: Welcome', body: 'Welcome email with Link A: https://edgeshift.tech/articles/a' },
+      { delay_days: '0', delay_time: formatTime(addMinutes(now, 5)), subject: 'Step 2: Sample', body: 'Sample email with Link B: https://edgeshift.tech/articles/b' },
+      { delay_days: '0', delay_time: formatTime(addMinutes(now, 8)), subject: 'Step 3: Check', body: 'Check email with Link C: https://edgeshift.tech/page-c' },
       { delay_days: '1', delay_time: '', subject: 'Step 4: Default', body: 'Default time email with Link D: https://edgeshift.tech/page-d' },
       { delay_days: '1', delay_time: '14:00', subject: 'Step 5: Specified', body: 'Specified time email with Link E: https://edgeshift.tech/step5' },
     ];
+
+    console.log('Sequence steps timing:', steps.map(s => ({ subject: s.subject, delay_days: s.delay_days, delay_time: s.delay_time })));
 
     // Add each step
     for (const step of steps) {
@@ -88,5 +102,8 @@ test.describe('Batch TB User Test - Automated Flow', () => {
 
     const stepsDb = await queryD1(`SELECT * FROM sequence_steps WHERE sequence_id = '${sequenceId}' ORDER BY step_order`);
     expect(stepsDb.length).toBe(5);
+
+    console.log('Sequence created successfully with ID:', sequenceId);
+    console.log('First 3 steps scheduled for today, starting at:', steps[0].delay_time);
   });
 });
