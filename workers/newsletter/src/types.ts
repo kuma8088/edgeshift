@@ -121,6 +121,7 @@ export interface SequenceStep {
   step_number: number;
   delay_days: number;
   delay_time?: string; // "HH:MM" format, JST (optional override)
+  delay_minutes?: number | null; // NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
   subject: string;
   content: string;
   is_enabled: number;  // Soft delete: 0 = disabled, 1 = enabled
@@ -177,6 +178,7 @@ export interface CreateSequenceRequest {
   steps: {
     delay_days: number;
     delay_time?: string; // Optional, "HH:MM" format
+    delay_minutes?: number | null; // NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
     subject: string;
     content: string;
   }[];
@@ -190,6 +192,7 @@ export interface UpdateSequenceRequest {
   steps?: {
     delay_days: number;
     delay_time?: string;
+    delay_minutes?: number | null; // NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
     subject: string;
     content: string;
   }[];

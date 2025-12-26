@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS sequence_steps (
   step_number INTEGER NOT NULL,
   delay_days INTEGER NOT NULL,
   delay_time TEXT,
+  delay_minutes INTEGER DEFAULT NULL,  -- NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
   subject TEXT NOT NULL,
   content TEXT NOT NULL,
   is_enabled INTEGER DEFAULT 1,  -- Soft delete: 0 = disabled, 1 = enabled

@@ -46,9 +46,18 @@ export async function createSequence(
       const stepId = crypto.randomUUID();
 
       await env.DB.prepare(`
-        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(stepId, sequenceId, i + 1, step.delay_days, step.delay_time || null, step.subject, step.content).run();
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, delay_minutes, subject, content)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        stepId,
+        sequenceId,
+        i + 1,
+        step.delay_days,
+        step.delay_time || null,
+        step.delay_minutes ?? null,
+        step.subject,
+        step.content
+      ).run();
     }
 
     const sequence = await getSequenceWithSteps(env, sequenceId);
@@ -178,9 +187,18 @@ export async function updateSequence(
         const stepId = crypto.randomUUID();
         newStepIds.push(stepId);
         await env.DB.prepare(`
-          INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, subject, content, is_enabled)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-        `).bind(stepId, id, i + 1, step.delay_days, step.delay_time || null, step.subject, step.content).run();
+          INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, delay_minutes, subject, content, is_enabled)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `).bind(
+          stepId,
+          id,
+          i + 1,
+          step.delay_days,
+          step.delay_time || null,
+          step.delay_minutes ?? null,
+          step.subject,
+          step.content
+        ).run();
       }
 
       // Phase 2: Atomically switch - disable old steps AND enable new steps in batch
