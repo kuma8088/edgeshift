@@ -111,14 +111,14 @@ test.describe('Batch TB User Test - Automated Flow', () => {
     await page.waitForURL('/admin/sequences', { timeout: 15000 });
 
     // Verify sequence was created in D1
-    const sequences = await queryD1<{ id: string; name: string; status: string }>(
-      `SELECT id, name, status FROM sequences WHERE name = 'Test Sequence - Batch TB' ORDER BY created_at DESC LIMIT 1`
+    const sequences = await queryD1<{ id: string; name: string; is_active: number }>(
+      `SELECT id, name, is_active FROM sequences WHERE name = 'Test Sequence - Batch TB' ORDER BY created_at DESC LIMIT 1`
     );
     expect(sequences.length).toBe(1);
     const sequenceId = sequences[0].id;
 
     // Verify 5 steps were created
-    const stepsDb = await queryD1(`SELECT * FROM sequence_steps WHERE sequence_id = '${sequenceId}' ORDER BY step_order`);
+    const stepsDb = await queryD1(`SELECT * FROM sequence_steps WHERE sequence_id = '${sequenceId}' ORDER BY step_number`);
     expect(stepsDb.length).toBe(5);
 
     console.log('Sequence created successfully with ID:', sequenceId);
