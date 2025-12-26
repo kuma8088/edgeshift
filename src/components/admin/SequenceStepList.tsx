@@ -181,9 +181,21 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
 
       const reorderedSteps = arrayMove(steps, oldIndex, newIndex);
 
-      // Apply auto-sort logic to DnD reordered steps
+      // Apply auto-sort logic: delay_minutes (if set) takes priority, then delay_days + delay_time
       const defaultTime = sequence?.default_send_time || '10:00';
       const sortedSteps = [...reorderedSteps].sort((a, b) => {
+        const aMinutes = a.delay_minutes;
+        const bMinutes = b.delay_minutes;
+
+        // If both have delay_minutes, compare them
+        if (aMinutes !== null && aMinutes !== undefined && bMinutes !== null && bMinutes !== undefined) {
+          return aMinutes - bMinutes;
+        }
+        // delay_minutes comes before delay_days (minutes are for immediate/near-immediate delivery)
+        if (aMinutes !== null && aMinutes !== undefined) return -1;
+        if (bMinutes !== null && bMinutes !== undefined) return 1;
+
+        // Both use delay_days
         if (a.delay_days !== b.delay_days) {
           return a.delay_days - b.delay_days;
         }
@@ -215,9 +227,21 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
     };
     const newSteps = [...steps, newStep];
 
-    // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
+    // Sort steps: delay_minutes (if set) takes priority, then delay_days + delay_time
     const defaultTime = sequence?.default_send_time || '10:00';
     const sortedSteps = [...newSteps].sort((a, b) => {
+      const aMinutes = a.delay_minutes;
+      const bMinutes = b.delay_minutes;
+
+      // If both have delay_minutes, compare them
+      if (aMinutes !== null && aMinutes !== undefined && bMinutes !== null && bMinutes !== undefined) {
+        return aMinutes - bMinutes;
+      }
+      // delay_minutes comes before delay_days (minutes are for immediate/near-immediate delivery)
+      if (aMinutes !== null && aMinutes !== undefined) return -1;
+      if (bMinutes !== null && bMinutes !== undefined) return 1;
+
+      // Both use delay_days
       if (a.delay_days !== b.delay_days) {
         return a.delay_days - b.delay_days;
       }
