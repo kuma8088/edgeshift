@@ -15,6 +15,7 @@ interface Sequence {
   id: string;
   name: string;
   description?: string;
+  default_send_time: string; // "HH:MM" format, JST
   is_active: number;
   steps: SequenceStep[];
   created_at: number;
@@ -237,10 +238,10 @@ export function SequenceDetail({ sequenceId }: SequenceDetailProps) {
                   {stats.steps.map((step) => {
                     const sequenceStep = sequence.steps?.[step.step_number - 1];
                     const delayDays = sequenceStep?.delay_days ?? 0;
-                    const delayTime = sequenceStep?.delay_time;
-                    const timing = delayDays === 0 && !delayTime
-                      ? '即時'
-                      : `+${delayDays}日${delayTime ? ` ${delayTime}` : ''}`;
+                    const delayTime = sequenceStep?.delay_time || sequence.default_send_time;
+                    const timing = delayDays === 0
+                      ? `当日 ${delayTime}`
+                      : `+${delayDays}日 ${delayTime}`;
 
                     return (
                     <tr key={step.step_number} className="hover:bg-[var(--color-bg-tertiary)]">
