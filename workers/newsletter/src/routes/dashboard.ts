@@ -74,12 +74,14 @@ export async function getDashboardStats(
   }>();
 
   // Get delivery stats
+  // Use timestamp fields for opened/clicked to count cumulative events
+  // (status transitions: sent → delivered → opened → clicked, so status alone misses intermediate states)
   const deliveryStats = await env.DB.prepare(`
     SELECT
       COUNT(*) as total,
-      SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
-      SUM(CASE WHEN status = 'opened' THEN 1 ELSE 0 END) as opened,
-      SUM(CASE WHEN status = 'clicked' THEN 1 ELSE 0 END) as clicked,
+      SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered,
+      SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+      SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked,
       SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
       SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
     FROM delivery_logs
@@ -115,10 +117,12 @@ export async function getDashboardStats(
   }>();
 
   // Calculate rates
-  // delivered status means "delivered" only, opened status means "opened", clicked means "clicked"
-  // For rate calculation: delivered base = delivered + opened + clicked (all successfully delivered)
-  const delivered = (deliveryStats?.delivered ?? 0) + (deliveryStats?.opened ?? 0) + (deliveryStats?.clicked ?? 0);
-  const opened = (deliveryStats?.opened ?? 0) + (deliveryStats?.clicked ?? 0);
+  // Timestamp-based counts are already cumulative:
+  // - delivered_at IS NOT NULL = all delivered (includes opened and clicked)
+  // - opened_at IS NOT NULL = all opened (includes clicked)
+  // - clicked_at IS NOT NULL = all clicked
+  const delivered = deliveryStats?.delivered ?? 0;
+  const opened = deliveryStats?.opened ?? 0;
   const clicked = deliveryStats?.clicked ?? 0;
 
   const openRate = delivered > 0 ? Math.round((opened / delivered) * 100 * 10) / 10 : 0;
