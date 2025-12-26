@@ -24,7 +24,15 @@ export function ContactListList() {
     try {
       const result = await getContactLists();
       if (result.success && result.data) {
-        setLists(result.data.lists);
+        // Add "All Subscribers" pseudo-list at the beginning
+        const allSubscribersList: ContactList = {
+          id: 'all',
+          name: '全購読者',
+          description: 'すべての購読者（全ステータス）',
+          created_at: 0,
+          updated_at: 0,
+        };
+        setLists([allSubscribersList, ...result.data.lists]);
       } else {
         setError(result.error || 'Failed to load lists');
       }
@@ -128,18 +136,22 @@ export function ContactListList() {
                   >
                     詳細
                   </a>
-                  <button
-                    onClick={() => handleEdit(list)}
-                    className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                  >
-                    編集
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(list)}
-                    className="px-4 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-                  >
-                    削除
-                  </button>
+                  {list.id !== 'all' && (
+                    <>
+                      <button
+                        onClick={() => handleEdit(list)}
+                        className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(list)}
+                        className="px-4 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                      >
+                        削除
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

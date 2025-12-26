@@ -2,7 +2,7 @@ import type { Env } from './types';
 import { handleSubscribe } from './routes/subscribe';
 import { handleConfirm } from './routes/confirm';
 import { handleUnsubscribe } from './routes/unsubscribe';
-import { handleBroadcast, handleGetSubscribers, handleGetSubscriber } from './routes/broadcast';
+import { handleBroadcast, handleGetSubscribers, handleGetSubscriber, handleUpdateSubscriber } from './routes/broadcast';
 import {
   createCampaign,
   getCampaign,
@@ -182,6 +182,9 @@ export default {
       } else if (path.match(/^\/api\/subscribers\/[^\/]+$/) && request.method === 'GET') {
         const id = path.replace('/api/subscribers/', '');
         response = await handleGetSubscriber(request, env, id);
+      } else if (path.match(/^\/api\/subscribers\/[^\/]+$/) && request.method === 'PUT') {
+        const id = path.replace('/api/subscribers/', '');
+        response = await handleUpdateSubscriber(request, env, id);
       }
       // Newsletter routes
       else if (path === '/api/newsletter/subscribe' && request.method === 'POST') {

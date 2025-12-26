@@ -197,6 +197,10 @@ export async function getSubscriber(id: string) {
   return apiRequest<{ subscriber: Subscriber }>(`/subscribers/${id}`);
 }
 
+export async function updateSubscriber(id: string, data: { name?: string; status?: string }) {
+  return apiRequest<{ subscriber: Subscriber }>(`/subscribers/${id}`, { method: 'PUT', body: data });
+}
+
 // Tracking
 export async function getCampaignTracking(id: string) {
   return apiRequest(`/campaigns/${id}/tracking`);

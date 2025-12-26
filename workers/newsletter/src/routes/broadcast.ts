@@ -211,6 +211,98 @@ export async function handleGetSubscriber(
   }
 }
 
+export async function handleUpdateSubscriber(
+  request: Request,
+  env: Env,
+  id: string
+): Promise<Response> {
+  // Check authorization
+  if (!isAuthorized(request, env)) {
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Unauthorized' },
+      401
+    );
+  }
+
+  try {
+    const body = await request.json<{ name?: string; status?: string }>();
+    const { name, status } = body;
+
+    // Validate status if provided
+    if (status && !['active', 'unsubscribed'].includes(status)) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'Invalid status. Must be "active" or "unsubscribed"' },
+        400
+      );
+    }
+
+    // Check if subscriber exists
+    const existing = await env.DB.prepare(
+      'SELECT id FROM subscribers WHERE id = ?'
+    ).bind(id).first();
+
+    if (!existing) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'Subscriber not found' },
+        404
+      );
+    }
+
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name || null);
+    }
+
+    if (status !== undefined) {
+      updates.push('status = ?');
+      values.push(status);
+
+      // Update status-related timestamps
+      if (status === 'active') {
+        updates.push('subscribed_at = ?');
+        values.push(Math.floor(Date.now() / 1000));
+        updates.push('unsubscribed_at = NULL');
+      } else if (status === 'unsubscribed') {
+        updates.push('unsubscribed_at = ?');
+        values.push(Math.floor(Date.now() / 1000));
+      }
+    }
+
+    if (updates.length === 0) {
+      return jsonResponse<ApiResponse>(
+        { success: false, error: 'No fields to update' },
+        400
+      );
+    }
+
+    values.push(id);
+
+    await env.DB.prepare(
+      `UPDATE subscribers SET ${updates.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+
+    // Fetch updated subscriber
+    const updated = await env.DB.prepare(
+      'SELECT id, email, name, status, subscribed_at, unsubscribed_at, created_at FROM subscribers WHERE id = ?'
+    ).bind(id).first<Subscriber>();
+
+    return jsonResponse<ApiResponse>({
+      success: true,
+      data: { subscriber: updated },
+    });
+  } catch (error) {
+    console.error('Update subscriber error:', error);
+    return jsonResponse<ApiResponse>(
+      { success: false, error: 'Internal server error' },
+      500
+    );
+  }
+}
+
 function jsonResponse<T>(data: T, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,

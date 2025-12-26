@@ -1,16 +1,4 @@
 ---
-import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../components/admin/AuthProvider';
-import { SubscriberList } from '../../../components/admin/SubscriberList';
+// Redirect to Contact Lists page
+return Astro.redirect('/admin/contact-lists', 302);
 ---
-
-<AdminLayout title="購読者管理">
-  <AuthProvider client:load>
-    <div class="space-y-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-[var(--color-text)]">購読者管理</h1>
-      </div>
-      <SubscriberList client:load />
-    </div>
-  </AuthProvider>
-</AdminLayout>

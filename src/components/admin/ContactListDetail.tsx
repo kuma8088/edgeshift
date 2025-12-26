@@ -5,6 +5,8 @@ import {
   getContactList,
   getListMembers,
   removeMemberFromList,
+  listSubscribers,
+  updateSubscriber,
   type ContactList
 } from '../../utils/admin-api';
 
@@ -12,6 +14,12 @@ interface Member {
   subscriber_id: string;
   email: string;
   name?: string;
+  status: string;
+}
+
+interface EditingMember {
+  subscriber_id: string;
+  name: string;
   status: string;
 }
 
@@ -25,6 +33,8 @@ export function ContactListDetail({ listId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [editingMember, setEditingMember] = useState<EditingMember | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -35,20 +45,44 @@ export function ContactListDetail({ listId }: Props) {
     setError(null);
 
     try {
-      const [listResult, membersResult] = await Promise.all([
-        getContactList(listId),
-        getListMembers(listId),
-      ]);
+      if (listId === 'all') {
+        // Pseudo-list: All Subscribers
+        const allList: ContactList = {
+          id: 'all',
+          name: '全購読者',
+          description: 'すべての購読者（全ステータス）',
+          created_at: 0,
+          updated_at: 0,
+        };
+        setList(allList);
 
-      if (listResult.success && listResult.data) {
-        setList(listResult.data.list);
+        // Fetch all subscribers (all statuses)
+        const subscribersResult = await listSubscribers({});
+        if (subscribersResult.success && subscribersResult.data) {
+          const subs = (subscribersResult.data as any).subscribers || [];
+          setMembers(subs.map((s: any) => ({
+            subscriber_id: s.id,
+            email: s.email,
+            name: s.name,
+            status: s.status,
+          })));
+        }
       } else {
-        setError(listResult.error || 'Failed to load list');
-        return;
-      }
+        const [listResult, membersResult] = await Promise.all([
+          getContactList(listId),
+          getListMembers(listId),
+        ]);
 
-      if (membersResult.success && membersResult.data) {
-        setMembers((membersResult.data as any).members || []);
+        if (listResult.success && listResult.data) {
+          setList(listResult.data.list);
+        } else {
+          setError(listResult.error || 'Failed to load list');
+          return;
+        }
+
+        if (membersResult.success && membersResult.data) {
+          setMembers((membersResult.data as any).members || []);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -58,6 +92,11 @@ export function ContactListDetail({ listId }: Props) {
   }
 
   async function handleRemoveMember(subscriberId: string) {
+    if (listId === 'all') {
+      setError('全購読者リストからは削除できません');
+      return;
+    }
+
     setRemoving(subscriberId);
     try {
       const result = await removeMemberFromList(listId, subscriberId);
@@ -70,6 +109,42 @@ export function ContactListDetail({ listId }: Props) {
       setError(err instanceof Error ? err.message : 'Failed to remove member');
     } finally {
       setRemoving(null);
+    }
+  }
+
+  function handleEditClick(member: Member) {
+    setEditingMember({
+      subscriber_id: member.subscriber_id,
+      name: member.name || '',
+      status: member.status,
+    });
+  }
+
+  async function handleSaveEdit() {
+    if (!editingMember) return;
+
+    setSaving(true);
+    try {
+      const result = await updateSubscriber(editingMember.subscriber_id, {
+        name: editingMember.name,
+        status: editingMember.status,
+      });
+
+      if (result.success) {
+        // Update local state
+        setMembers(members.map((m) =>
+          m.subscriber_id === editingMember.subscriber_id
+            ? { ...m, name: editingMember.name, status: editingMember.status }
+            : m
+        ));
+        setEditingMember(null);
+      } else {
+        setError(result.error || 'Failed to update subscriber');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update subscriber');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -143,13 +218,23 @@ export function ContactListDetail({ listId }: Props) {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleRemoveMember(member.subscriber_id)}
-                        disabled={removing === member.subscriber_id}
-                        className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                      >
-                        {removing === member.subscriber_id ? '削除中...' : '削除'}
-                      </button>
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => handleEditClick(member)}
+                          className="text-sm text-gray-700 hover:underline"
+                        >
+                          編集
+                        </button>
+                        {listId !== 'all' && (
+                          <button
+                            onClick={() => handleRemoveMember(member.subscriber_id)}
+                            disabled={removing === member.subscriber_id}
+                            className="text-sm text-red-600 hover:underline disabled:opacity-50"
+                          >
+                            {removing === member.subscriber_id ? '削除中...' : '削除'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -158,6 +243,57 @@ export function ContactListDetail({ listId }: Props) {
           </div>
         )}
       </div>
+
+      {editingMember && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">購読者を編集</h2>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={editingMember.name}
+                  onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-gray-800"
+                  placeholder="未設定"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={editingMember.status}
+                  onChange={(e) => setEditingMember({ ...editingMember, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-gray-800"
+                >
+                  <option value="active">active</option>
+                  <option value="unsubscribed">unsubscribed</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setEditingMember(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                disabled={saving}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50"
+                disabled={saving}
+              >
+                {saving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
