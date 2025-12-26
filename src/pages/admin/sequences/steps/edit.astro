@@ -1,0 +1,21 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import { SequenceStepEdit } from '../../../../components/admin/SequenceStepEdit';
+
+const url = new URL(Astro.request.url);
+const sequenceId = url.searchParams.get('id');
+const stepParam = url.searchParams.get('step');
+
+if (!sequenceId || !stepParam) {
+  return Astro.redirect('/admin/sequences');
+}
+
+const stepNumber = parseInt(stepParam, 10);
+if (isNaN(stepNumber) || stepNumber < 1) {
+  return Astro.redirect(`/admin/sequences/steps?id=${sequenceId}`);
+}
+---
+
+<AdminLayout title="ステップ編集">
+  <SequenceStepEdit client:load sequenceId={sequenceId} stepNumber={stepNumber} />
+</AdminLayout>
