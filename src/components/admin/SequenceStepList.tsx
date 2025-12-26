@@ -196,11 +196,23 @@ export function SequenceStepList({ sequenceId }: SequenceStepListProps) {
       content: '',
     };
     const newSteps = [...steps, newStep];
-    setSteps(newSteps);
-    await saveSteps(newSteps);
 
-    // Navigate to the new step
-    window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${newSteps.length}`;
+    // Sort steps by delay_days, then by delay_time
+    const sortedSteps = [...newSteps].sort((a, b) => {
+      if (a.delay_days !== b.delay_days) {
+        return a.delay_days - b.delay_days;
+      }
+      const timeA = a.delay_time || '00:00';
+      const timeB = b.delay_time || '00:00';
+      return timeA.localeCompare(timeB);
+    });
+
+    setSteps(sortedSteps);
+    await saveSteps(sortedSteps);
+
+    // Find position of the new step and navigate to it
+    const newPosition = sortedSteps.findIndex((s) => s.id === newStep.id);
+    window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${newPosition + 1}`;
   };
 
   const saveSteps = async (updatedSteps: Step[]) => {
