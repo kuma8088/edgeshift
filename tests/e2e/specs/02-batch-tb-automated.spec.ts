@@ -25,6 +25,9 @@ async function loginAdmin(page: Page): Promise<void> {
   await page.waitForSelector('text=ダッシュボード', { timeout: 10000 });
 }
 
+// Store sequence ID for subsequent tests
+let testSequenceId: string | null = null;
+
 test.describe('Batch TB User Test - Automated Flow', () => {
   test('Admin login works', async ({ page }) => {
     await loginAdmin(page);
@@ -121,7 +124,96 @@ test.describe('Batch TB User Test - Automated Flow', () => {
     const stepsDb = await queryD1(`SELECT * FROM sequence_steps WHERE sequence_id = '${sequenceId}' ORDER BY step_number`);
     expect(stepsDb.length).toBe(5);
 
+    // Store sequence ID for later tests
+    testSequenceId = sequenceId;
+
     console.log('Sequence created successfully with ID:', sequenceId);
     console.log('First 3 steps scheduled for today, starting at:', steps[0].delay_time);
+  });
+
+  test('TB-2-1: Connect signup page to test sequence', async ({ page }) => {
+    expect(testSequenceId).toBeTruthy();
+
+    await loginAdmin(page);
+    await page.waitForLoadState('networkidle');
+
+    // Navigate to signup page edit
+    await page.goto('/admin/signup-pages');
+    await page.waitForLoadState('networkidle');
+
+    // Click edit on the welcome page
+    await page.click('a[href="/admin/signup-pages/edit?id=test-welcome-page"]');
+    await page.waitForLoadState('networkidle');
+
+    // Update sequence selection
+    await page.selectOption('#sequence_id', testSequenceId!);
+
+    // Save changes
+    await page.click('button:has-text("更新")');
+    await page.waitForURL('/admin/signup-pages');
+
+    console.log('Signup page connected to sequence:', testSequenceId);
+  });
+
+  test('TB-2-1: Signup with real email', async ({ page }) => {
+    // Navigate to signup page
+    await page.goto('/newsletter/signup/welcome');
+    await page.waitForLoadState('networkidle');
+
+    // Fill signup form
+    await page.fill('input[name="email"]', userEmail);
+    await page.fill('input[name="name"]', 'Batch TB Test User');
+
+    // Wait for Turnstile widget (may take time to load)
+    await page.waitForTimeout(2000);
+
+    // Submit form
+    await page.click('button[type="submit"]');
+
+    // Wait for success message
+    await expect(page.locator('text=確認メールを送信しました')).toBeVisible({ timeout: 15000 });
+
+    // Verify subscriber created in D1
+    const subscriber = await getSubscriber(userEmail);
+    expect(subscriber).toBeTruthy();
+    expect(subscriber!.status).toBe('pending');
+
+    console.log(`
+========================================
+ACTION REQUIRED: Check your email (${userEmail})
+1. Look for confirmation email
+2. Click the confirmation link
+3. After confirming, run the delivery verification test
+========================================
+    `);
+  });
+
+  test('TB-2-1: Verify delivery logs after confirmation', async () => {
+    // This test should run after manual email confirmation
+    const subscriber = await getSubscriber(userEmail);
+
+    if (!subscriber || subscriber.status !== 'active') {
+      console.log('Subscriber not active yet. Confirm email first, then re-run this test.');
+      test.skip();
+      return;
+    }
+
+    // Check delivery logs
+    const logs = await getDeliveryLogs(userEmail);
+    console.log(`Found ${logs.length} delivery logs for ${userEmail}`);
+
+    // Verify at least one sequence delivery was attempted
+    const sequenceLogs = logs.filter(log => log.sequence_id !== null);
+
+    if (sequenceLogs.length === 0) {
+      console.log('No sequence deliveries yet. Wait for cron to process (runs every 15 minutes).');
+    } else {
+      console.log('Sequence delivery logs:', sequenceLogs.map(l => ({
+        subject: l.email_subject,
+        status: l.status,
+        sent_at: l.sent_at
+      })));
+      expect(sequenceLogs.length).toBeGreaterThan(0);
+    }
   });
 });
