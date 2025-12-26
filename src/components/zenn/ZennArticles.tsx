@@ -6,22 +6,18 @@ import { ZennArticleSkeleton } from './ZennArticleSkeleton';
 import { parseRSS } from '../../utils/rss-parser';
 import type { ZennArticle } from '../../types/zenn';
 
-const ZENN_RSS_URL = 'https://zenn.dev/kuma8088/feed';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 const ITEMS_PER_PAGE = 6;
 
-/**
- * Get the RSS URL with CORS proxy if needed
- */
-function getRssUrl(): string {
-  return `${CORS_PROXY}${encodeURIComponent(ZENN_RSS_URL)}`;
+interface ZennArticlesProps {
+  /** RSS feed XML fetched server-side */
+  rssXml: string | null;
 }
 
 /**
  * Main container component for Zenn articles section
- * Fetches RSS feed and displays articles in a paginated grid
+ * Displays articles from RSS feed in a paginated grid
  */
-export function ZennArticles() {
+export function ZennArticles({ rssXml }: ZennArticlesProps) {
   const [allArticles, setAllArticles] = useState<ZennArticle[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -31,18 +27,15 @@ export function ZennArticles() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const currentArticles = allArticles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const fetchArticles = async (): Promise<void> => {
+  useEffect(() => {
     setLoading(true);
     setError(null);
 
     try {
-      const url = getRssUrl();
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`HTTP error: ${res.status}`);
+      if (!rssXml) {
+        throw new Error('RSS feed data is not available');
       }
-      const xml = await res.text();
-      const parsed = parseRSS(xml);
+      const parsed = parseRSS(rssXml);
       setAllArticles(parsed.items);
       setCurrentPage(1);
     } catch (e) {
@@ -51,11 +44,7 @@ export function ZennArticles() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchArticles();
-  }, []);
+  }, [rssXml]);
 
   const goToPage = (page: number): void => {
     setCurrentPage(page);
@@ -78,10 +67,13 @@ export function ZennArticles() {
         {error && (
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-[var(--color-text-secondary)] text-sm mb-3">
+              一時的なエラーの可能性があります。ページを再読み込みしてください。
+            </p>
             <button
-              onClick={fetchArticles}
-              className="px-8 py-3 bg-[var(--color-accent)] text-white rounded-lg
-                       hover:bg-[var(--color-accent-hover)] transition-colors
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg
+                       hover:bg-[var(--color-accent-hover)] transition-colors text-sm
                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
             >
               再読み込み
