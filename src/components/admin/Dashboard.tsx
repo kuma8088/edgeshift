@@ -78,7 +78,7 @@ export function Dashboard() {
       <section>
         <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">ニュースレター</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard title="総配信数" value={stats.campaigns.total} />
+          <KPICard title="総数" value={stats.campaigns.total} />
           <KPICard title="下書き" value={stats.campaigns.draft} />
           <KPICard title="予約済み" value={stats.campaigns.scheduled} color="warning" />
           <KPICard title="送信済み" value={stats.campaigns.sent} color="success" />
