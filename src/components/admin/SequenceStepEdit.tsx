@@ -86,27 +86,27 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
     const updatedSteps = [...sequence.steps];
     updatedSteps[stepNumber - 1] = stepData;
 
-    // Sort steps by delay_days, then by delay_time
-    const sortedSteps = [...updatedSteps].sort((a, b) => {
-      if (a.delay_days !== b.delay_days) {
-        return a.delay_days - b.delay_days;
+    // Create indexed steps for tracking position after sort
+    const indexedSteps = updatedSteps.map((step, idx) => ({ step, originalIndex: idx }));
+    const defaultTime = sequence.default_send_time || '09:00';
+
+    // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
+    indexedSteps.sort((a, b) => {
+      if (a.step.delay_days !== b.step.delay_days) {
+        return a.step.delay_days - b.step.delay_days;
       }
-      // Compare delay_time (empty string comes first, then lexicographic order)
-      const timeA = a.delay_time || '00:00';
-      const timeB = b.delay_time || '00:00';
+      const timeA = a.step.delay_time || defaultTime;
+      const timeB = b.step.delay_time || defaultTime;
       return timeA.localeCompare(timeB);
     });
 
+    const sortedSteps = indexedSteps.map((item) => item.step);
     const result = await updateSequence(sequenceId, { steps: sortedSteps });
 
     if (result.success) {
-      // Find new position of the step we just edited
-      const newPosition = sortedSteps.findIndex(
-        (s) =>
-          s.subject === stepData.subject &&
-          s.content === stepData.content &&
-          s.delay_days === stepData.delay_days &&
-          s.delay_time === stepData.delay_time
+      // Find new position by tracking original index
+      const newPosition = indexedSteps.findIndex(
+        (item) => item.originalIndex === stepNumber - 1
       );
       const newStepNumber = newPosition + 1;
 
@@ -141,22 +141,28 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
 
     const updatedSteps = [...sequence.steps, newStep];
 
-    // Sort steps by delay_days, then by delay_time
-    const sortedSteps = [...updatedSteps].sort((a, b) => {
-      if (a.delay_days !== b.delay_days) {
-        return a.delay_days - b.delay_days;
+    // Create indexed steps for tracking position after sort
+    const indexedSteps = updatedSteps.map((step, idx) => ({ step, originalIndex: idx }));
+    const defaultTime = sequence.default_send_time || '09:00';
+
+    // Sort steps by delay_days, then by delay_time (use default_send_time for empty)
+    indexedSteps.sort((a, b) => {
+      if (a.step.delay_days !== b.step.delay_days) {
+        return a.step.delay_days - b.step.delay_days;
       }
-      const timeA = a.delay_time || '00:00';
-      const timeB = b.delay_time || '00:00';
+      const timeA = a.step.delay_time || defaultTime;
+      const timeB = b.step.delay_time || defaultTime;
       return timeA.localeCompare(timeB);
     });
 
+    const sortedSteps = indexedSteps.map((item) => item.step);
     const result = await updateSequence(sequenceId, { steps: sortedSteps });
 
     if (result.success) {
-      // Find position of the new step (delay_days=0, empty content)
-      const newPosition = sortedSteps.findIndex(
-        (s) => s.subject === '' && s.content === '' && s.delay_days === 0
+      // Find new position by tracking original index (new step is last in updatedSteps)
+      const newStepOriginalIndex = updatedSteps.length - 1;
+      const newPosition = indexedSteps.findIndex(
+        (item) => item.originalIndex === newStepOriginalIndex
       );
       window.location.href = `/admin/sequences/steps/edit?id=${sequenceId}&step=${newPosition + 1}`;
     } else {
