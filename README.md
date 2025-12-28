@@ -26,7 +26,7 @@ EdgeShift は、クラウドネイティブ開発とサーバーレスアーキ�
 
 ## Architecture
 
-![EdgeShift Architecture](./architecture.svg)
+![EdgeShift Architecture](./architecture.png)
 
 ## Project Structure
 
