@@ -55,3 +55,8 @@ tfplan
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Session and task notes (local development only)
+SESSION_NOTES.md
+TASK_*.md
+TODO_*.md
