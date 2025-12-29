@@ -1,5 +1,46 @@
-import type { Env, Subscriber } from '../types';
+import type { Env, Subscriber, ReferralMilestone } from '../types';
 import { enrollSubscriberInSequences } from '../lib/sequence-processor';
+
+/**
+ * Generate a unique referral code
+ * Uses 8 characters from a reduced alphabet (no O,0,I,1 for readability)
+ */
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  let code = '';
+  for (const byte of bytes) {
+    code += chars[byte % chars.length];
+  }
+  return code;
+}
+
+/**
+ * Check and record milestone achievements for a referrer
+ */
+async function checkMilestoneAchievements(
+  db: D1Database,
+  referrerId: string,
+  newReferralCount: number
+): Promise<void> {
+  // Get all milestones that are at or below the new referral count
+  const milestonesResult = await db.prepare(
+    'SELECT * FROM referral_milestones WHERE threshold <= ? ORDER BY threshold ASC'
+  ).bind(newReferralCount).all<ReferralMilestone>();
+
+  const milestones = milestonesResult.results || [];
+
+  const now = Math.floor(Date.now() / 1000);
+
+  for (const milestone of milestones) {
+    // Try to insert achievement (will fail silently if already exists due to UNIQUE constraint)
+    const achievementId = crypto.randomUUID();
+    await db.prepare(
+      `INSERT OR IGNORE INTO referral_achievements (id, subscriber_id, milestone_id, achieved_at)
+       VALUES (?, ?, ?, ?)`
+    ).bind(achievementId, referrerId, milestone.id, now).run();
+  }
+}
 
 export async function handleConfirm(
   request: Request,
@@ -24,15 +65,35 @@ export async function handleConfirm(
       return redirectWithMessage(env.SITE_URL, 'info', 'Already confirmed');
     }
 
-    // Update subscriber status to active
+    // Generate unique referral code for this subscriber
+    const referralCode = generateReferralCode();
+
+    // Update subscriber status to active and assign referral code
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare(`
       UPDATE subscribers
       SET status = 'active',
           confirm_token = NULL,
-          subscribed_at = ?
+          subscribed_at = ?,
+          referral_code = ?
       WHERE id = ?
-    `).bind(now, subscriber.id).run();
+    `).bind(now, referralCode, subscriber.id).run();
+
+    // If this subscriber was referred by someone, update the referrer's count
+    if (subscriber.referred_by) {
+      // Increment referrer's count
+      const updateResult = await env.DB.prepare(`
+        UPDATE subscribers
+        SET referral_count = referral_count + 1
+        WHERE id = ?
+        RETURNING referral_count
+      `).bind(subscriber.referred_by).first<{ referral_count: number }>();
+
+      if (updateResult) {
+        // Check and record milestone achievements
+        await checkMilestoneAchievements(env.DB, subscriber.referred_by, updateResult.referral_count);
+      }
+    }
 
     // Enroll in all active sequences
     await enrollSubscriberInSequences(env, subscriber.id);
@@ -52,8 +113,10 @@ export async function handleConfirm(
       }
     }
 
-    // Redirect to confirmation page
-    return Response.redirect(`${env.SITE_URL}/newsletter/confirmed`, 302);
+    // Redirect to confirmation page with referral code
+    const confirmedUrl = new URL('/newsletter/confirmed', env.SITE_URL);
+    confirmedUrl.searchParams.set('ref', referralCode);
+    return Response.redirect(confirmedUrl.toString(), 302);
   } catch (error) {
     console.error('Confirm error:', error);
     return redirectWithMessage(env.SITE_URL, 'error', 'An error occurred');

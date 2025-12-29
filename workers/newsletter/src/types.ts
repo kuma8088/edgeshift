@@ -22,6 +22,10 @@ export interface Subscriber {
   subscribed_at: number | null;
   unsubscribed_at: number | null;
   created_at: number;
+  // Referral program fields
+  referral_code: string | null;
+  referred_by: string | null;
+  referral_count: number;
 }
 
 export type CampaignStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
@@ -86,6 +90,7 @@ export interface SubscribeRequest {
   turnstileToken: string;
   sequenceId?: string;
   signupPageSlug?: string;
+  ref?: string;  // Referral code
 }
 
 export interface BroadcastRequest {
@@ -363,4 +368,70 @@ export interface ArchiveDetailResponse {
   subject: string;
   content: string;
   published_at: number;
+}
+
+// Referral Program types
+export type RewardType = 'badge' | 'discount' | 'content' | 'custom';
+
+export interface ReferralMilestone {
+  id: string;
+  threshold: number;
+  name: string;
+  description: string | null;
+  reward_type: RewardType | null;
+  reward_value: string | null;
+  created_at: number;
+}
+
+export interface ReferralAchievement {
+  id: string;
+  subscriber_id: string;
+  milestone_id: string;
+  achieved_at: number;
+  notified_at: number | null;
+}
+
+export interface CreateMilestoneRequest {
+  threshold: number;
+  name: string;
+  description?: string;
+  reward_type?: RewardType;
+  reward_value?: string;
+}
+
+export interface UpdateMilestoneRequest {
+  threshold?: number;
+  name?: string;
+  description?: string;
+  reward_type?: RewardType;
+  reward_value?: string;
+}
+
+export interface ReferralDashboardResponse {
+  referral_code: string;
+  referral_link: string;
+  referral_count: number;
+  achievements: {
+    id: string;
+    milestone_name: string;
+    threshold: number;
+    achieved_at: number;
+    reward_type: string | null;
+    reward_value: string | null;
+  }[];
+  next_milestone?: {
+    name: string;
+    threshold: number;
+    remaining: number;
+  };
+}
+
+export interface ReferralStatsResponse {
+  total_referrals: number;
+  active_referrers: number;
+  top_referrers: {
+    id: string;
+    email: string;
+    referral_count: number;
+  }[];
 }

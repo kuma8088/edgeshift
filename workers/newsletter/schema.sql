@@ -9,13 +9,18 @@ CREATE TABLE IF NOT EXISTS subscribers (
   signup_page_slug TEXT,
   subscribed_at INTEGER,
   unsubscribed_at INTEGER,
-  created_at INTEGER DEFAULT (unixepoch())
+  created_at INTEGER DEFAULT (unixepoch()),
+  -- Referral program fields
+  referral_code TEXT UNIQUE,
+  referred_by TEXT REFERENCES subscribers(id),
+  referral_count INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_subscribers_status ON subscribers(status);
 CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email);
 CREATE INDEX IF NOT EXISTS idx_subscribers_confirm_token ON subscribers(confirm_token);
 CREATE INDEX IF NOT EXISTS idx_subscribers_unsubscribe_token ON subscribers(unsubscribe_token);
+CREATE INDEX IF NOT EXISTS idx_subscribers_referral_code ON subscribers(referral_code);
 
 -- Campaigns table
 CREATE TABLE IF NOT EXISTS campaigns (
@@ -200,3 +205,29 @@ CREATE TABLE IF NOT EXISTS signup_pages (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_signup_pages_slug ON signup_pages(slug);
 CREATE INDEX IF NOT EXISTS idx_signup_pages_sequence ON signup_pages(sequence_id);
+
+-- Referral Milestones table
+CREATE TABLE IF NOT EXISTS referral_milestones (
+  id TEXT PRIMARY KEY,
+  threshold INTEGER NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  description TEXT,
+  reward_type TEXT CHECK (reward_type IN ('badge', 'discount', 'content', 'custom')),
+  reward_value TEXT,
+  created_at INTEGER DEFAULT (unixepoch())
+);
+
+-- Referral Achievements table
+CREATE TABLE IF NOT EXISTS referral_achievements (
+  id TEXT PRIMARY KEY,
+  subscriber_id TEXT NOT NULL,
+  milestone_id TEXT NOT NULL,
+  achieved_at INTEGER NOT NULL,
+  notified_at INTEGER,
+  FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+  FOREIGN KEY (milestone_id) REFERENCES referral_milestones(id) ON DELETE CASCADE,
+  UNIQUE(subscriber_id, milestone_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_achievements_subscriber ON referral_achievements(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_achievements_pending ON referral_achievements(notified_at);
