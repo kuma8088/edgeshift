@@ -9,7 +9,12 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   site: 'https://edgeshift.tech',
   output: 'server',
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    mode: 'advanced',
+    routes: {
+      exclude: ['/api/*']
+    }
+  }),
   integrations: [sitemap(), react()],
   vite: {
     plugins: [tailwindcss()]
