@@ -53,6 +53,7 @@ import {
   handleAddSubscriberToList,
   handleRemoveSubscriberFromList,
 } from './routes/contact-lists';
+import { getArchiveList, getArchiveArticle } from './routes/archive';
 import { isAuthorized } from './lib/auth';
 
 export default {
@@ -76,7 +77,15 @@ export default {
       let response: Response;
 
       // Route matching
+      // Archive routes (public, no auth)
+      if (path === '/api/archive' && request.method === 'GET') {
+        response = await getArchiveList(request, env);
+      } else if (path.match(/^\/api\/archive\/[^\/]+$/) && request.method === 'GET') {
+        const slug = path.replace('/api/archive/', '');
+        response = await getArchiveArticle(request, env, slug);
+      }
       // Contact Lists routes (Batch 4C)
+      else
       if (path === '/api/contact-lists' && request.method === 'GET') {
         response = await handleGetContactLists(request, env);
       } else if (path === '/api/contact-lists' && request.method === 'POST') {

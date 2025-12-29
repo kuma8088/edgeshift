@@ -53,31 +53,29 @@ function toRomaji(text: string): string {
 }
 
 /**
- * Generate a URL-safe slug from a newsletter title with date prefix.
- *
- * Format: YYYY-MM-<title-slug>
+ * Generate a URL-safe slug from a newsletter title.
  *
  * Steps:
  * 1. Convert Japanese to romaji
  * 2. Lowercase all characters
  * 3. Remove special characters (keep alphanumeric and spaces)
  * 4. Replace spaces with hyphens
- * 5. Add date prefix (YYYY-MM)
- * 6. Truncate to 100 characters
+ * 5. Truncate to 80 characters
+ * 6. Ensure uniqueness by checking database
  *
+ * @param db - D1 database instance
  * @param title - Newsletter title (may contain Japanese)
- * @param sentAt - Date the newsletter was sent
- * @returns URL-safe slug
+ * @returns URL-safe unique slug
  *
  * @example
- * generateSlug('Hello World Newsletter', new Date('2024-01-15'))
- * // => '2024-01-hello-world-newsletter'
+ * await generateSlug(db, 'Hello World Newsletter')
+ * // => 'hello-world-newsletter'
  *
  * @example
- * generateSlug('2024年1月のニュース', new Date('2024-01-15'))
- * // => '2024-01-2024nenmgatsunoniyusu'
+ * await generateSlug(db, '2024年1月のニュース')
+ * // => '2024-1-no-nyusu'
  */
-export function generateSlug(title: string, sentAt: Date): string {
+export async function generateSlug(db: D1Database, title: string): Promise<string> {
   // 1. Convert Japanese to romaji
   const romanized = toRomaji(title);
 
@@ -93,13 +91,11 @@ export function generateSlug(title: string, sentAt: Date): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
 
-  // 5. Add date prefix (YYYY-MM)
-  const year = sentAt.getFullYear();
-  const month = String(sentAt.getMonth() + 1).padStart(2, '0');
-  const withPrefix = `${year}-${month}-${hyphenated}`;
+  // 5. Truncate to 80 characters
+  const truncated = hyphenated.slice(0, 80).replace(/-$/, '');
 
-  // 6. Truncate to 100 characters
-  return withPrefix.slice(0, 100).replace(/-$/, ''); // Remove trailing hyphen if truncated
+  // 6. Ensure uniqueness
+  return ensureUniqueSlug(truncated, db);
 }
 
 /**
@@ -157,10 +153,10 @@ export async function ensureUniqueSlug(baseSlug: string, db: D1Database): Promis
   let slug = baseSlug;
   let suffix = 2;
 
-  // Check if slug exists
+  // Check if slug exists in campaigns table
   while (true) {
     const existing = await db
-      .prepare('SELECT slug FROM newsletter_archive WHERE slug = ?')
+      .prepare('SELECT slug FROM campaigns WHERE slug = ?')
       .bind(slug)
       .first();
 

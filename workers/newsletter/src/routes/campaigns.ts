@@ -1,6 +1,7 @@
 import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse } from '../types';
 import { isAuthorized } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
+import { generateSlug } from '../lib/slug';
 
 export async function createCampaign(
   request: Request,
@@ -20,10 +21,11 @@ export async function createCampaign(
 
     const id = crypto.randomUUID();
     const status = scheduled_at ? 'scheduled' : 'draft';
+    const slug = await generateSlug(env.DB, subject);
 
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, slug)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -35,7 +37,8 @@ export async function createCampaign(
       null,  // last_sent_at
       null,  // sent_at
       null,  // recipient_count
-      contact_list_id || null
+      contact_list_id || null,
+      slug
     ).run();
 
     const campaign = await env.DB.prepare(
