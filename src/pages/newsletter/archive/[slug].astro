@@ -56,9 +56,9 @@ try {
   notFound = true;
 }
 
-// Redirect to archive if not found
+// Return 404 if article not found
 if (notFound || !article) {
-  return Astro.redirect('/newsletter/archive');
+  return new Response('Article not found', { status: 404 });
 }
 
 // Format date
@@ -82,9 +82,8 @@ const pageDescription = extractExcerpt(article.content);
 const ogImage = `${Astro.site}og-image.png`; // Default OG image
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription} image={ogImage}>
+<BaseLayout title={pageTitle} description={pageDescription} image={ogImage} ogType="article">
   <!-- Additional OG tags for article -->
-  <meta slot="head" property="og:type" content="article" />
   <meta slot="head" property="article:published_time" content={article.sent_at} />
   <meta slot="head" property="article:author" content="EdgeShift" />
 
