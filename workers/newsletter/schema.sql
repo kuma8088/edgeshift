@@ -231,3 +231,19 @@ CREATE TABLE IF NOT EXISTS referral_achievements (
 
 CREATE INDEX IF NOT EXISTS idx_achievements_subscriber ON referral_achievements(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_achievements_pending ON referral_achievements(notified_at);
+
+-- Brand Settings table (Email Templates feature)
+CREATE TABLE IF NOT EXISTS brand_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  logo_url TEXT,
+  primary_color TEXT DEFAULT '#7c3aed',
+  secondary_color TEXT DEFAULT '#1e1e1e',
+  footer_text TEXT DEFAULT 'EdgeShift Newsletter',
+  default_template_id TEXT DEFAULT 'simple',
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch())
+);
+
+-- Note: Run these ALTER TABLE commands manually for existing database:
+-- ALTER TABLE campaigns ADD COLUMN template_id TEXT DEFAULT NULL;
+-- ALTER TABLE sequence_steps ADD COLUMN template_id TEXT DEFAULT NULL;

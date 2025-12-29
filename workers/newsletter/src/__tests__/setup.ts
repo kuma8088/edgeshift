@@ -179,6 +179,16 @@ export async function setupTestDb() {
       FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
       FOREIGN KEY (milestone_id) REFERENCES referral_milestones(id) ON DELETE CASCADE,
       UNIQUE(subscriber_id, milestone_id)
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS brand_settings (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      logo_url TEXT,
+      primary_color TEXT DEFAULT '#7c3aed',
+      secondary_color TEXT DEFAULT '#1e1e1e',
+      footer_text TEXT DEFAULT 'EdgeShift Newsletter',
+      default_template_id TEXT DEFAULT 'simple',
+      created_at INTEGER DEFAULT (unixepoch()),
+      updated_at INTEGER DEFAULT (unixepoch())
     )`)
   ]);
 }
@@ -199,7 +209,8 @@ export async function cleanupTestDb() {
       env.DB.prepare('DELETE FROM subscribers WHERE 1=1'),
       env.DB.prepare('DELETE FROM signup_pages WHERE 1=1'),
       env.DB.prepare('DELETE FROM contact_lists WHERE 1=1'),
-      env.DB.prepare('DELETE FROM referral_milestones WHERE 1=1')
+      env.DB.prepare('DELETE FROM referral_milestones WHERE 1=1'),
+      env.DB.prepare('DELETE FROM brand_settings WHERE 1=1')
     ]);
   } catch (error) {
     // Ignore errors during cleanup - tables might not exist yet
