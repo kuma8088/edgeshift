@@ -49,6 +49,7 @@ export async function setupTestDb() {
       sent_at INTEGER,
       recipient_count INTEGER,
       contact_list_id TEXT,
+      template_id TEXT,
       created_at INTEGER DEFAULT (unixepoch()),
       slug TEXT UNIQUE,
       is_published INTEGER DEFAULT 0,
@@ -92,6 +93,7 @@ export async function setupTestDb() {
       subject TEXT NOT NULL,
       content TEXT NOT NULL,
       is_enabled INTEGER DEFAULT 1,
+      template_id TEXT,
       created_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE
     )`),
