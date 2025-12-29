@@ -32,7 +32,10 @@ export async function setupTestDb() {
       signup_page_slug TEXT,
       subscribed_at INTEGER,
       unsubscribed_at INTEGER,
-      created_at INTEGER DEFAULT (unixepoch())
+      created_at INTEGER DEFAULT (unixepoch()),
+      referral_code TEXT UNIQUE,
+      referred_by TEXT,
+      referral_count INTEGER DEFAULT 0
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS campaigns (
       id TEXT PRIMARY KEY,
@@ -157,6 +160,25 @@ export async function setupTestDb() {
       FOREIGN KEY (contact_list_id) REFERENCES contact_lists(id) ON DELETE CASCADE,
       FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
       UNIQUE(contact_list_id, subscriber_id)
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS referral_milestones (
+      id TEXT PRIMARY KEY,
+      threshold INTEGER NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT,
+      reward_type TEXT CHECK (reward_type IN ('badge', 'discount', 'content', 'custom')),
+      reward_value TEXT,
+      created_at INTEGER DEFAULT (unixepoch())
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS referral_achievements (
+      id TEXT PRIMARY KEY,
+      subscriber_id TEXT NOT NULL,
+      milestone_id TEXT NOT NULL,
+      achieved_at INTEGER NOT NULL,
+      notified_at INTEGER,
+      FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+      FOREIGN KEY (milestone_id) REFERENCES referral_milestones(id) ON DELETE CASCADE,
+      UNIQUE(subscriber_id, milestone_id)
     )`)
   ]);
 }
@@ -173,9 +195,11 @@ export async function cleanupTestDb() {
       env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
       env.DB.prepare('DELETE FROM contact_list_members WHERE 1=1'),
+      env.DB.prepare('DELETE FROM referral_achievements WHERE 1=1'),
       env.DB.prepare('DELETE FROM subscribers WHERE 1=1'),
       env.DB.prepare('DELETE FROM signup_pages WHERE 1=1'),
-      env.DB.prepare('DELETE FROM contact_lists WHERE 1=1')
+      env.DB.prepare('DELETE FROM contact_lists WHERE 1=1'),
+      env.DB.prepare('DELETE FROM referral_milestones WHERE 1=1')
     ]);
   } catch (error) {
     // Ignore errors during cleanup - tables might not exist yet

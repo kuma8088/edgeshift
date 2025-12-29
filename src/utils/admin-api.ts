@@ -398,3 +398,62 @@ export async function addSubscriberToList(subscriberId: string, listId: string) 
 export async function removeSubscriberFromList(subscriberId: string, listId: string) {
   return apiRequest(`/subscribers/${subscriberId}/lists/${listId}`, { method: 'DELETE' });
 }
+
+// Referral Program API
+export type RewardType = 'badge' | 'discount' | 'content' | 'custom';
+
+export interface ReferralMilestone {
+  id: string;
+  threshold: number;
+  name: string;
+  description: string | null;
+  reward_type: RewardType | null;
+  reward_value: string | null;
+  created_at: number;
+}
+
+export interface CreateMilestoneData {
+  threshold: number;
+  name: string;
+  description?: string;
+  reward_type?: RewardType;
+  reward_value?: string;
+}
+
+export interface UpdateMilestoneData {
+  threshold?: number;
+  name?: string;
+  description?: string;
+  reward_type?: RewardType;
+  reward_value?: string;
+}
+
+export interface ReferralStatsResponse {
+  total_referrals: number;
+  active_referrers: number;
+  top_referrers: {
+    id: string;
+    email: string;
+    referral_count: number;
+  }[];
+}
+
+export async function getMilestones() {
+  return apiRequest<ReferralMilestone[]>('/admin/milestones');
+}
+
+export async function createMilestone(data: CreateMilestoneData) {
+  return apiRequest<ReferralMilestone>('/admin/milestones', { method: 'POST', body: data });
+}
+
+export async function updateMilestone(id: string, data: UpdateMilestoneData) {
+  return apiRequest<ReferralMilestone>(`/admin/milestones/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteMilestone(id: string) {
+  return apiRequest(`/admin/milestones/${id}`, { method: 'DELETE' });
+}
+
+export async function getReferralStats() {
+  return apiRequest<ReferralStatsResponse>('/admin/referral-stats');
+}

@@ -54,6 +54,14 @@ import {
   handleRemoveSubscriberFromList,
 } from './routes/contact-lists';
 import { getArchiveList, getArchiveArticle } from './routes/archive';
+import {
+  handleGetReferralDashboard,
+  handleGetMilestones,
+  handleCreateMilestone,
+  handleUpdateMilestone,
+  handleDeleteMilestone,
+  handleGetReferralStats,
+} from './routes/referral';
 import { isAuthorized } from './lib/auth';
 
 export default {
@@ -234,6 +242,60 @@ export default {
       } else if (path.match(/^\/api\/signup-pages\/[^\/]+$/) && request.method === 'DELETE') {
         const id = path.replace('/api/signup-pages/', '');
         response = await handleDeleteSignupPage(request, env, id);
+      }
+      // Referral routes (public)
+      else if (path.match(/^\/api\/referral\/dashboard\/[^\/]+$/) && request.method === 'GET') {
+        const code = path.replace('/api/referral/dashboard/', '');
+        response = await handleGetReferralDashboard(request, env, code);
+      }
+      // Referral admin routes (auth required)
+      else if (path === '/api/admin/milestones' && request.method === 'GET') {
+        if (!isAuthorized(request, env)) {
+          response = new Response(
+            JSON.stringify({ success: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        } else {
+          response = await handleGetMilestones(request, env);
+        }
+      } else if (path === '/api/admin/milestones' && request.method === 'POST') {
+        if (!isAuthorized(request, env)) {
+          response = new Response(
+            JSON.stringify({ success: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        } else {
+          response = await handleCreateMilestone(request, env);
+        }
+      } else if (path.match(/^\/api\/admin\/milestones\/[^\/]+$/) && request.method === 'PUT') {
+        if (!isAuthorized(request, env)) {
+          response = new Response(
+            JSON.stringify({ success: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        } else {
+          const id = path.replace('/api/admin/milestones/', '');
+          response = await handleUpdateMilestone(request, env, id);
+        }
+      } else if (path.match(/^\/api\/admin\/milestones\/[^\/]+$/) && request.method === 'DELETE') {
+        if (!isAuthorized(request, env)) {
+          response = new Response(
+            JSON.stringify({ success: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        } else {
+          const id = path.replace('/api/admin/milestones/', '');
+          response = await handleDeleteMilestone(request, env, id);
+        }
+      } else if (path === '/api/admin/referral-stats' && request.method === 'GET') {
+        if (!isAuthorized(request, env)) {
+          response = new Response(
+            JSON.stringify({ success: false, error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        } else {
+          response = await handleGetReferralStats(request, env);
+        }
       }
       // Manual cron trigger endpoint for E2E testing
       else if (path === '/api/admin/trigger-cron' && request.method === 'POST') {

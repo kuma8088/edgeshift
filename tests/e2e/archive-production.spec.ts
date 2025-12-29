@@ -38,17 +38,19 @@ test.describe('Newsletter Archive - Production', () => {
 
     // Should have article content
     await expect(page.locator('article h1')).toBeVisible();
-    await expect(page.locator('article p').first()).toBeVisible();
+    // Article content is rendered in div.prose
+    await expect(page.locator('article div.prose')).toBeVisible();
 
-    // Should have back link
-    await expect(page.locator('a[href="/newsletter/archive"]')).toBeVisible();
+    // Should have back link (use first() to avoid strict mode with multiple matches)
+    await expect(page.locator('a[href="/newsletter/archive"]').first()).toBeVisible();
   });
 
-  test('should have valid RSS feed', async ({ page }) => {
-    const response = await page.goto(`${BASE_URL}/newsletter/feed.xml`);
-    expect(response?.status()).toBe(200);
+  test('should have valid RSS feed', async ({ page, context }) => {
+    // Use context.request to fetch raw XML content (not browser-rendered HTML)
+    const response = await context.request.get(`${BASE_URL}/newsletter/feed.xml`);
+    expect(response.status()).toBe(200);
 
-    const content = await page.content();
+    const content = await response.text();
 
     // Should be valid XML
     expect(content).toContain('<?xml version="1.0" encoding="UTF-8"?>');
