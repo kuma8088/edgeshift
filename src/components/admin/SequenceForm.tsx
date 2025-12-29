@@ -10,6 +10,7 @@ interface SequenceStep {
   delay_minutes?: number;
   subject: string;
   content: string;
+  template_id?: string;
 }
 
 interface Sequence {
@@ -101,6 +102,7 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
             delay_minutes: step.delay_minutes ?? 0,
             subject: step.subject.trim(),
             content: step.content.trim(),
+            template_id: step.template_id,
           };
         }
         // Other steps or step 1 in days mode
@@ -109,6 +111,7 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
           delay_time: step.delay_time,
           subject: step.subject.trim(),
           content: step.content.trim(),
+          template_id: step.template_id,
         };
       }),
     };

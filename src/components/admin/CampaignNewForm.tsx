@@ -8,7 +8,7 @@ export default function CampaignNewForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (data: { subject: string; content: string; scheduled_at?: number }) => {
+  const handleSubmit = async (data: { subject: string; content: string; template_id?: string; scheduled_at?: number }) => {
     setLoading(true);
     setError(null);
 

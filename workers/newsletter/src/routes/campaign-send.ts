@@ -1,49 +1,9 @@
-import type { Env, Campaign, Subscriber, ApiResponse } from '../types';
+import type { Env, Campaign, Subscriber, BrandSettings } from '../types';
 import { isAuthorized } from '../lib/auth';
 import { sendBatchEmails } from '../lib/email';
 import { recordDeliveryLogs, getDeliveryStats } from '../lib/delivery';
 import { errorResponse, successResponse } from '../lib/response';
-
-/**
- * Convert plain text URLs to clickable links
- * Matches URLs starting with http:// or https://
- * Uses negative lookbehind to avoid matching URLs already inside HTML attributes
- */
-function linkifyUrls(text: string): string {
-  // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
-  // Also skip URLs that are already inside <a> tags
-  const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"]+)(?![^<]*<\/a>)/g;
-  return text.replace(urlRegex, '<a href="$1" style="color: #7c3aed;">$1</a>');
-}
-
-function buildNewsletterEmail(
-  content: string,
-  unsubscribeUrl: string,
-  siteUrl: string
-): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="color: #1e1e1e; font-size: 24px; margin: 0;">EdgeShift Newsletter</h1>
-  </div>
-  <div style="margin-bottom: 32px;">
-    ${linkifyUrls(content)}
-  </div>
-  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
-    <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a><br>
-    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>
-  `.trim();
-}
+import { renderEmail, getDefaultBrandSettings } from '../lib/templates';
 
 export async function sendCampaign(
   request: Request,
@@ -91,15 +51,30 @@ export async function sendCampaign(
       return errorResponse('No active subscribers', 400);
     }
 
-    // Prepare emails
+    // Get brand settings
+    let brandSettings = await env.DB.prepare(
+      'SELECT * FROM brand_settings WHERE id = ?'
+    ).bind('default').first<BrandSettings>();
+
+    if (!brandSettings) {
+      brandSettings = getDefaultBrandSettings();
+    }
+
+    const templateId = campaign.template_id || brandSettings.default_template_id;
+
+    // Prepare emails using template engine
     const emails = subscribers.map((sub) => ({
       to: sub.email,
       subject: campaign.subject,
-      html: buildNewsletterEmail(
-        campaign.content,
-        `${env.SITE_URL}/api/newsletter/unsubscribe/${sub.unsubscribe_token}`,
-        env.SITE_URL
-      ),
+      html: renderEmail({
+        templateId,
+        content: campaign.content,
+        subject: campaign.subject,
+        brandSettings,
+        subscriber: { name: sub.name, email: sub.email },
+        unsubscribeUrl: `${env.SITE_URL}/api/newsletter/unsubscribe/${sub.unsubscribe_token}`,
+        siteUrl: env.SITE_URL,
+      }),
     }));
 
     // Send batch emails

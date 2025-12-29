@@ -10,6 +10,7 @@ interface SequenceStep {
   delay_time?: string;
   subject: string;
   content: string;
+  template_id?: string;
 }
 
 interface Sequence {

@@ -9,6 +9,7 @@ interface SequenceStep {
   delay_time?: string;
   subject: string;
   content: string;
+  template_id?: string;
 }
 
 export default function SequenceNewForm() {

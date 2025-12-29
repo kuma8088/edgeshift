@@ -14,7 +14,7 @@ export async function createCampaign(
 
   try {
     const body = await request.json<CreateCampaignRequest>();
-    const { subject, content, scheduled_at, schedule_type, schedule_config, contact_list_id, slug: providedSlug, excerpt: providedExcerpt, is_published } = body;
+    const { subject, content, scheduled_at, schedule_type, schedule_config, contact_list_id, template_id, slug: providedSlug, excerpt: providedExcerpt, is_published } = body;
 
     if (!subject || !content) {
       return errorResponse('Subject and content are required', 400);
@@ -30,8 +30,8 @@ export async function createCampaign(
     const excerpt = providedExcerpt || generateExcerpt(content, 150);
 
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, slug, excerpt, is_published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, template_id, slug, excerpt, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -44,6 +44,7 @@ export async function createCampaign(
       null,  // sent_at
       null,  // recipient_count
       contact_list_id || null,
+      template_id || null,
       slug,
       excerpt,
       is_published !== undefined ? (is_published ? 1 : 0) : 0  // Default to unpublished
@@ -237,6 +238,10 @@ export async function updateCampaign(
     if (body.contact_list_id !== undefined) {
       updates.push('contact_list_id = ?');
       bindings.push(body.contact_list_id || null);
+    }
+    if (body.template_id !== undefined) {
+      updates.push('template_id = ?');
+      bindings.push(body.template_id || null);
     }
     if (body.slug !== undefined) {
       updates.push('slug = ?');

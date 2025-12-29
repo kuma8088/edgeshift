@@ -1,6 +1,7 @@
-import type { Env } from '../types';
+import type { Env, BrandSettings } from '../types';
 import { sendEmail } from './email';
 import { recordSequenceDeliveryLog } from './delivery';
+import { renderEmail, getDefaultBrandSettings } from './templates';
 
 interface PendingSequenceEmail {
   subscriber_sequence_id: string;
@@ -18,6 +19,7 @@ interface PendingSequenceEmail {
   default_send_time: string;
   delay_time: string | null;
   delay_minutes: number | null;
+  template_id: string | null;
 }
 
 const JST_OFFSET_SECONDS = 9 * 60 * 60; // +9 hours in seconds
@@ -99,6 +101,7 @@ export async function processSequenceEmails(env: Env): Promise<void> {
         step.delay_days,
         step.delay_time,
         step.delay_minutes,
+        step.template_id,
         seq.default_send_time
       FROM subscriber_sequences ss
       JOIN subscribers s ON s.id = ss.subscriber_id
@@ -112,6 +115,15 @@ export async function processSequenceEmails(env: Env): Promise<void> {
 
     const pending = pendingEmails.results || [];
     console.log(`Found ${pending.length} potential sequence email(s), checking scheduled times...`);
+
+    // Get brand settings for template rendering
+    let brandSettings = await env.DB.prepare(
+      'SELECT * FROM brand_settings WHERE id = ?'
+    ).bind('default').first<BrandSettings>();
+
+    if (!brandSettings) {
+      brandSettings = getDefaultBrandSettings();
+    }
 
     for (const email of pending) {
       let scheduledAt: number;
@@ -162,18 +174,25 @@ export async function processSequenceEmails(env: Env): Promise<void> {
 
       console.log(`Sending sequence email to ${email.email}, step ${email.step_number}`);
 
+      // Determine template: step template_id > brand default > 'simple'
+      const templateId = email.template_id || brandSettings.default_template_id || 'simple';
+      const unsubscribeUrl = `${env.SITE_URL}/api/newsletter/unsubscribe/${email.unsubscribe_token}`;
+
       const result = await sendEmail(
         env.RESEND_API_KEY,
         `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
         {
           to: email.email,
           subject: email.subject,
-          html: buildSequenceEmail(
-            email.content,
-            email.name,
-            `${env.SITE_URL}/api/newsletter/unsubscribe/${email.unsubscribe_token}`,
-            env.SITE_URL
-          ),
+          html: renderEmail({
+            templateId,
+            content: email.content,
+            subject: email.subject,
+            brandSettings,
+            subscriber: { name: email.name, email: email.email },
+            unsubscribeUrl,
+            siteUrl: env.SITE_URL,
+          }),
         }
       );
 
@@ -332,40 +351,4 @@ export async function enrollSubscriberInSequence(
     console.error('Error enrolling subscriber in sequence:', error);
     throw error;
   }
-}
-
-/**
- * Build sequence email HTML
- * Simpler than newsletter email, focuses on personal communication
- */
-function buildSequenceEmail(
-  content: string,
-  name: string | null,
-  unsubscribeUrl: string,
-  siteUrl: string
-): string {
-  const greeting = name ? `${name}さん、` : '';
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="margin-bottom: 16px;">
-    ${greeting}
-  </div>
-  <div style="margin-bottom: 32px;">
-    ${content}
-  </div>
-  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
-    <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a><br>
-    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>
-  `.trim();
 }

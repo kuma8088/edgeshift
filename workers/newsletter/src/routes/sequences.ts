@@ -46,8 +46,8 @@ export async function createSequence(
       const stepId = crypto.randomUUID();
 
       await env.DB.prepare(`
-        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, delay_minutes, subject, content)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, delay_minutes, subject, content, template_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         stepId,
         sequenceId,
@@ -56,7 +56,8 @@ export async function createSequence(
         step.delay_time || null,
         step.delay_minutes ?? null,
         step.subject,
-        step.content
+        step.content,
+        step.template_id || null
       ).run();
     }
 
@@ -187,8 +188,8 @@ export async function updateSequence(
         const stepId = crypto.randomUUID();
         newStepIds.push(stepId);
         await env.DB.prepare(`
-          INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, delay_minutes, subject, content, is_enabled)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+          INSERT INTO sequence_steps (id, sequence_id, step_number, delay_days, delay_time, delay_minutes, subject, content, template_id, is_enabled)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         `).bind(
           stepId,
           id,
@@ -197,7 +198,8 @@ export async function updateSequence(
           step.delay_time || null,
           step.delay_minutes ?? null,
           step.subject,
-          step.content
+          step.content,
+          step.template_id || null
         ).run();
       }
 

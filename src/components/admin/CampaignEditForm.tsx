@@ -8,6 +8,7 @@ interface Campaign {
   id: string;
   subject: string;
   content: string;
+  template_id?: string | null;
   scheduled_at?: number;
   status: string;
 }
@@ -36,7 +37,7 @@ export default function CampaignEditForm({ campaignId }: CampaignEditFormProps) 
     fetchCampaign();
   }, [campaignId]);
 
-  const handleSubmit = async (data: { subject: string; content: string; scheduled_at?: number }) => {
+  const handleSubmit = async (data: { subject: string; content: string; template_id?: string; scheduled_at?: number }) => {
     setLoading(true);
     setError(null);
 

@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   sent_at INTEGER,
   recipient_count INTEGER,
   contact_list_id TEXT REFERENCES contact_lists(id) ON DELETE SET NULL,
+  template_id TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
   slug TEXT UNIQUE,
   is_published INTEGER DEFAULT 0,
@@ -99,6 +100,7 @@ CREATE TABLE IF NOT EXISTS sequence_steps (
   delay_minutes INTEGER DEFAULT NULL,  -- NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
   subject TEXT NOT NULL,
   content TEXT NOT NULL,
+  template_id TEXT,
   is_enabled INTEGER DEFAULT 1,  -- Soft delete: 0 = disabled, 1 = enabled
   created_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (sequence_id) REFERENCES sequences(id) ON DELETE CASCADE
@@ -231,3 +233,19 @@ CREATE TABLE IF NOT EXISTS referral_achievements (
 
 CREATE INDEX IF NOT EXISTS idx_achievements_subscriber ON referral_achievements(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_achievements_pending ON referral_achievements(notified_at);
+
+-- Brand Settings table (Email Templates feature)
+CREATE TABLE IF NOT EXISTS brand_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  logo_url TEXT,
+  primary_color TEXT DEFAULT '#7c3aed',
+  secondary_color TEXT DEFAULT '#1e1e1e',
+  footer_text TEXT DEFAULT 'EdgeShift Newsletter',
+  default_template_id TEXT DEFAULT 'simple',
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch())
+);
+
+-- Note: Run these ALTER TABLE commands manually for existing database:
+-- ALTER TABLE campaigns ADD COLUMN template_id TEXT DEFAULT NULL;
+-- ALTER TABLE sequence_steps ADD COLUMN template_id TEXT DEFAULT NULL;
