@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/patch-routes.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "lint": "eslint src --ext .ts,.astro",
