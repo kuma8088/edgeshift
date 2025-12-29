@@ -89,6 +89,7 @@ ALLOWED_ORIGIN = "https://edgeshift.tech"
 SENDER_EMAIL = "newsletter@mail.edgeshift.tech"
 SENDER_NAME = "EdgeShift Newsletter"
 SITE_URL = "https://edgeshift.tech"
+# ADMIN_EMAIL = "admin@edgeshift.tech"  # Optional: set for milestone achievement notifications
 
 # D1 Database binding
 [[d1_databases]]

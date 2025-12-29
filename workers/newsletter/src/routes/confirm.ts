@@ -1,5 +1,6 @@
 import type { Env, Subscriber, ReferralMilestone } from '../types';
 import { enrollSubscriberInSequences } from '../lib/sequence-processor';
+import { sendMilestoneNotifications } from '../lib/milestone-notifications';
 
 /**
  * Generate a unique referral code
@@ -17,12 +18,13 @@ function generateReferralCode(): string {
 
 /**
  * Check and record milestone achievements for a referrer
+ * Returns newly achieved milestones for notification
  */
 async function checkMilestoneAchievements(
   db: D1Database,
   referrerId: string,
   newReferralCount: number
-): Promise<void> {
+): Promise<ReferralMilestone[]> {
   // Get all milestones that are at or below the new referral count
   const milestonesResult = await db.prepare(
     'SELECT * FROM referral_milestones WHERE threshold <= ? ORDER BY threshold ASC'
@@ -31,15 +33,23 @@ async function checkMilestoneAchievements(
   const milestones = milestonesResult.results || [];
 
   const now = Math.floor(Date.now() / 1000);
+  const newlyAchieved: ReferralMilestone[] = [];
 
   for (const milestone of milestones) {
     // Try to insert achievement (will fail silently if already exists due to UNIQUE constraint)
     const achievementId = crypto.randomUUID();
-    await db.prepare(
+    const result = await db.prepare(
       `INSERT OR IGNORE INTO referral_achievements (id, subscriber_id, milestone_id, achieved_at)
        VALUES (?, ?, ?, ?)`
     ).bind(achievementId, referrerId, milestone.id, now).run();
+
+    // If a row was inserted, this is a newly achieved milestone
+    if (result.meta.changes > 0) {
+      newlyAchieved.push(milestone);
+    }
   }
+
+  return newlyAchieved;
 }
 
 export async function handleConfirm(
@@ -91,7 +101,38 @@ export async function handleConfirm(
 
       if (updateResult) {
         // Check and record milestone achievements
-        await checkMilestoneAchievements(env.DB, subscriber.referred_by, updateResult.referral_count);
+        const newlyAchieved = await checkMilestoneAchievements(
+          env.DB,
+          subscriber.referred_by,
+          updateResult.referral_count
+        );
+
+        // Send notifications for newly achieved milestones
+        if (newlyAchieved.length > 0) {
+          // Get the referrer's details for notification
+          const referrer = await env.DB.prepare(
+            'SELECT * FROM subscribers WHERE id = ?'
+          ).bind(subscriber.referred_by).first<Subscriber>();
+
+          if (referrer && referrer.status === 'active') {
+            // Send notifications for each newly achieved milestone
+            // (usually just one, but could be multiple if they jumped thresholds)
+            // Only send to active subscribers (respect opt-out)
+            for (const milestone of newlyAchieved) {
+              try {
+                await sendMilestoneNotifications(
+                  env,
+                  referrer,
+                  milestone,
+                  updateResult.referral_count
+                );
+              } catch (error) {
+                // Log but don't fail the confirmation process
+                console.error('Failed to send milestone notification:', error);
+              }
+            }
+          }
+        }
       }
     }
 
