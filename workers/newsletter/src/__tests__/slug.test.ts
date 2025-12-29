@@ -3,30 +3,65 @@ import { generateSlug, ensureUniqueSlug } from '../lib/slug';
 
 describe('Slug Generation', () => {
   describe('generateSlug', () => {
-    it('should convert Japanese to romaji with date prefix', () => {
-      const result = generateSlug('のニュース', new Date('2024-01-15'));
-      expect(result).toBe('2024-01-noniyusu');
+    it('should convert Japanese to romaji', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => null, // No existing slug
+          }),
+        }),
+      };
+      const result = await generateSlug(mockDB as any, 'のニュース');
+      expect(result).toBe('noniyusu');
     });
 
-    it('should handle English titles', () => {
-      const result = generateSlug('Hello World Newsletter', new Date('2024-01-15'));
-      expect(result).toBe('2024-01-hello-world-newsletter');
+    it('should handle English titles', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => null,
+          }),
+        }),
+      };
+      const result = await generateSlug(mockDB as any, 'Hello World Newsletter');
+      expect(result).toBe('hello-world-newsletter');
     });
 
-    it('should remove special characters', () => {
-      const result = generateSlug('Tech News #123 @ 2024!', new Date('2024-01-15'));
-      expect(result).toBe('2024-01-tech-news-123-2024');
+    it('should remove special characters', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => null,
+          }),
+        }),
+      };
+      const result = await generateSlug(mockDB as any, 'Tech News #123 @ 2024!');
+      expect(result).toBe('tech-news-123-2024');
     });
 
-    it('should truncate to 100 characters', () => {
+    it('should truncate to 80 characters', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => null,
+          }),
+        }),
+      };
       const longTitle = 'A'.repeat(200);
-      const result = generateSlug(longTitle, new Date('2024-01-15'));
-      expect(result.length).toBeLessThanOrEqual(100);
+      const result = await generateSlug(mockDB as any, longTitle);
+      expect(result.length).toBeLessThanOrEqual(80);
     });
 
-    it('should lowercase all characters', () => {
-      const result = generateSlug('UPPERCASE Title', new Date('2024-01-15'));
-      expect(result).toBe('2024-01-uppercase-title');
+    it('should lowercase all characters', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => null,
+          }),
+        }),
+      };
+      const result = await generateSlug(mockDB as any, 'UPPERCASE Title');
+      expect(result).toBe('uppercase-title');
     });
   });
 
