@@ -37,19 +37,28 @@ edgeshift/
 │   │   ├── index.astro              # Landing page
 │   │   ├── newsletter/              # Newsletter signup flow
 │   │   │   ├── signup/[slug].astro  # Dynamic signup pages (SSR)
-│   │   │   └── confirm.astro        # Email confirmation
+│   │   │   ├── embed/[slug].astro   # Embeddable signup forms
+│   │   │   ├── archive/             # Newsletter archive (public)
+│   │   │   ├── referrals/[code].astro  # Referral landing page
+│   │   │   ├── confirm.astro        # Email confirmation
+│   │   │   └── feed.xml.ts          # RSS feed
 │   │   └── admin/                   # Admin dashboard
 │   │       ├── index.astro          # Dashboard home
-│   │       ├── newsletters/         # Newsletter (campaign) management
+│   │       ├── campaigns/           # Newsletter (campaign) management
 │   │       ├── sequences/           # Email sequence management
 │   │       ├── contact-lists/       # Subscriber segmentation
-│   │       └── signup-pages/        # Signup page builder
+│   │       ├── signup-pages/        # Signup page builder
+│   │       ├── brand-settings/      # Brand customization
+│   │       ├── referrals/           # Referral program management
+│   │       └── analytics/           # Analytics dashboard
 │   ├── components/
 │   │   ├── admin/                   # React components for admin
 │   │   │   ├── Dashboard.tsx
 │   │   │   ├── SequenceForm.tsx
-│   │   │   ├── SequenceStepEdit.tsx
 │   │   │   ├── RichTextEditor.tsx
+│   │   │   ├── TemplateSelector.tsx
+│   │   │   ├── BrandSettingsForm.tsx
+│   │   │   ├── ReferralDashboard.tsx
 │   │   │   └── ...
 │   │   └── *.astro                  # Static components
 │   ├── layouts/
@@ -64,7 +73,22 @@ edgeshift/
 │   │   │   ├── types.ts             # TypeScript interfaces
 │   │   │   ├── scheduled.ts         # Cron handler (sequence processing)
 │   │   │   ├── lib/                 # Utilities
+│   │   │   │   ├── auth.ts          # Authentication helpers
+│   │   │   │   ├── email.ts         # Email sending with Resend
+│   │   │   │   └── templates/       # Email template system
+│   │   │   │       ├── index.ts     # Template renderer
+│   │   │   │       ├── variables.ts # Variable replacement
+│   │   │   │       └── presets/     # 5 template presets
 │   │   │   └── routes/              # API handlers
+│   │   │       ├── subscribe.ts     # Subscribe/confirm flow
+│   │   │       ├── campaigns.ts     # Campaign CRUD
+│   │   │       ├── sequences.ts     # Sequence CRUD
+│   │   │       ├── templates.ts     # Template management
+│   │   │       ├── brand-settings.ts # Brand settings API
+│   │   │       ├── archive.ts       # Archive API (public)
+│   │   │       ├── referral.ts      # Referral program API
+│   │   │       ├── tracking.ts      # Open/click tracking
+│   │   │       └── webhook.ts       # Resend webhook handler
 │   │   ├── schema.sql               # D1 database schema
 │   │   ├── migrations/              # Schema migrations
 │   │   └── wrangler.toml
@@ -97,6 +121,11 @@ edgeshift/
 - **Newsletter Campaigns** - One-time broadcast emails
 - **Contact Lists** - Subscriber segmentation for targeted delivery
 - **Signup Pages** - Customizable landing pages with Turnstile protection
+- **Newsletter Archive** - Public archive for published newsletters with RSS feed
+- **Email Templates** - 5 customizable presets (Simple, Newsletter, Announcement, Welcome, Product Update)
+- **Brand Settings** - Logo, colors, and footer text customization
+- **Embed Forms** - Embeddable signup forms for external sites
+- **Referral Program** - Milestone-based referral tracking with rewards
 - **Analytics Dashboard** - Open rates, click rates, delivery tracking
 - **Webhook Integration** - Real-time delivery status via Resend webhooks
 
@@ -104,7 +133,10 @@ edgeshift/
 - **Dashboard** - KPIs for subscribers, newsletters, sequences
 - **Rich Text Editor** - TipTap-based email composer
 - **Sequence Builder** - Visual step management with timeline preview
-- **Real-time Preview** - Email preview before sending
+- **Template Manager** - Email template selection and live preview
+- **Brand Settings** - Centralized brand identity management
+- **Referral Dashboard** - Milestone management and referral analytics
+- **Real-time Preview** - Email preview before sending with template rendering
 
 ## Development
 
@@ -210,6 +242,8 @@ Configured in `wrangler.toml`:
 |:--|:--|
 | `ALLOWED_ORIGIN` | CORS origin (`https://edgeshift.tech`) |
 | `SITE_URL` | Base URL for email links |
+| `SENDER_NAME` | Email sender name |
+| `SENDER_EMAIL` | Email sender address |
 
 ## Database Schema
 
@@ -217,16 +251,19 @@ Key tables in D1:
 
 | Table | Description |
 |:--|:--|
-| `subscribers` | Email subscribers (status: pending/active/unsubscribed) |
-| `campaigns` | Newsletter campaigns with scheduling |
+| `subscribers` | Email subscribers (status: pending/active/unsubscribed, referral code/count) |
+| `campaigns` | Newsletter campaigns with scheduling and archive publish flag |
 | `sequences` | Email sequences with step configuration |
 | `sequence_steps` | Individual steps with delay settings |
 | `sequence_enrollments` | Subscriber enrollment tracking |
 | `contact_lists` | Subscriber segmentation lists |
 | `contact_list_members` | List membership (many-to-many) |
 | `signup_pages` | Dynamic signup page configurations |
-| `delivery_logs` | Email delivery tracking |
+| `delivery_logs` | Email delivery tracking (opens, clicks, bounces) |
 | `click_events` | URL click tracking |
+| `brand_settings` | Brand identity settings (logo, colors, default template) |
+| `referral_milestones` | Referral program milestone definitions |
+| `referral_achievements` | Milestone achievements by subscribers |
 
 ## Infrastructure
 
@@ -245,22 +282,33 @@ terraform apply
 
 | Method | Path | Description |
 |:--|:--|:--|
-| POST | `/api/subscribe` | Subscribe to newsletter |
+| POST | `/api/subscribe` | Subscribe to newsletter (with optional ref parameter) |
 | GET | `/api/confirm` | Confirm email subscription |
 | GET | `/api/unsubscribe` | Unsubscribe from newsletter |
-| GET | `/api/t/open/:id` | Track email opens |
-| GET | `/api/t/click/:id` | Track link clicks |
+| GET | `/api/t/open/:id` | Track email opens (transparent pixel) |
+| GET | `/api/t/click/:id` | Track link clicks (redirect proxy) |
+| GET | `/api/archive` | Get published newsletter archive list |
+| GET | `/api/archive/:slug` | Get single published newsletter by slug |
+| GET | `/api/referral/dashboard/:code` | Get referral dashboard data |
 
 ### Admin Endpoints (requires `ADMIN_API_KEY`)
 
 | Method | Path | Description |
 |:--|:--|:--|
 | GET/POST | `/api/subscribers` | Subscriber management |
-| GET/POST | `/api/campaigns` | Newsletter campaigns |
-| GET/POST | `/api/sequences` | Email sequences |
+| GET/POST | `/api/campaigns` | Newsletter campaigns (CRUD) |
+| POST | `/api/campaigns/:id/send` | Send/schedule campaign |
+| GET/POST | `/api/sequences` | Email sequences (CRUD) |
 | GET/POST | `/api/contact-lists` | Contact list management |
 | GET/POST | `/api/signup-pages` | Signup page management |
-| GET | `/api/dashboard/stats` | Dashboard statistics |
+| GET | `/api/templates` | Get available email templates |
+| POST | `/api/templates/preview` | Preview template rendering |
+| POST | `/api/templates/test-send` | Send test email with template |
+| GET/POST | `/api/brand-settings` | Brand settings management |
+| GET/POST/PUT/DELETE | `/api/admin/milestones` | Referral milestone management |
+| GET | `/api/admin/referral-stats` | Referral program statistics |
+| GET | `/api/dashboard/stats` | Dashboard KPIs |
+| GET | `/api/analytics` | Campaign/sequence analytics |
 
 ## License
 

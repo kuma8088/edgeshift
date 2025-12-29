@@ -46,18 +46,6 @@ EdgeShift Portfolio - Personal portfolio and services website built with Astro a
 5. mainマージ後、本番自動デプロイ
 6. ユーザーが本番確認
 
-```
-
-### 3. GitHub でブランチ保護
-```
-
-Settings → Branches → Branch protection rules
-
-- main に対して:
-  ✅ Require pull request before merging
-  ✅ Require approvals (1以上)
-  ✅ Do not allow bypassing
-
 ## Development Commands
 
 ```bash
@@ -79,6 +67,10 @@ npm test src/__tests__/tracking.test.ts  # Run single test file
 cd workers/contact-form
 npm run dev
 npm run deploy
+
+# E2E Tests (Playwright)
+npx playwright test                              # Run all E2E tests
+npx playwright test tests/e2e/campaigns.spec.ts  # Run single test file
 ```
 
 ## Architecture
@@ -149,6 +141,15 @@ When modifying schema:
 1. Update `workers/newsletter/schema.sql`
 2. Apply to local: `npm run db:migrate`
 3. Apply to prod: `npm run db:migrate:prod` or use ALTER TABLE
+
+### Adding New API Endpoints
+
+When adding new endpoints to Newsletter Worker:
+
+1. Add route handler in `workers/newsletter/src/routes/`
+2. Register route in `workers/newsletter/src/index.ts`
+3. **Important:** Add route pattern to `workers/newsletter/wrangler.toml` (otherwise 404 in production)
+4. Deploy: `cd workers/newsletter && npm run deploy`
 
 ## Project Structure
 
