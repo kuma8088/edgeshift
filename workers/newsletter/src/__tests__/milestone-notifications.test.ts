@@ -158,6 +158,47 @@ describe('Milestone Notifications', () => {
       expect(result.subscriberNotified).toBe(true);
     });
 
+    it('should skip notification for unsubscribed referrer', async () => {
+      const env = {
+        ...getTestEnv(),
+        ADMIN_EMAIL: 'admin@test.com',
+      };
+
+      const referrer: Subscriber = {
+        id: 'ref1',
+        email: 'referrer@test.com',
+        name: 'Test Referrer',
+        status: 'unsubscribed', // Unsubscribed referrer
+        confirm_token: null,
+        unsubscribe_token: 'unsub-token',
+        signup_page_slug: null,
+        subscribed_at: Date.now(),
+        unsubscribed_at: Date.now(),
+        created_at: Date.now(),
+        referral_code: 'REFCODE1',
+        referred_by: null,
+        referral_count: 3,
+      };
+
+      const milestone: ReferralMilestone = {
+        id: 'm1',
+        threshold: 3,
+        name: 'Bronze',
+        description: 'First milestone',
+        reward_type: 'badge',
+        reward_value: 'bronze-badge',
+        created_at: Date.now(),
+      };
+
+      const result = await sendMilestoneNotifications(env as Env, referrer, milestone, 3);
+
+      // Should not send any notifications
+      expect(result.adminNotified).toBe(false);
+      expect(result.subscriberNotified).toBe(false);
+      expect(result.subscriberError).toContain('not active');
+      expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+
     it('should include different badge emoji based on milestone name', async () => {
       const env = {
         ...getTestEnv(),
@@ -280,6 +321,50 @@ describe('Milestone Notifications', () => {
 
       // No new achievement, so no notification should be sent
       expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+
+    it('should not send notification to unsubscribed referrer', async () => {
+      const env = {
+        ...getTestEnv(),
+        ADMIN_EMAIL: 'admin@test.com',
+      };
+
+      // Create UNSUBSCRIBED referrer with 2 referrals
+      await env.DB.prepare(
+        `INSERT INTO subscribers (id, email, status, referral_code, referral_count) VALUES (?, ?, ?, ?, ?)`
+      ).bind('referrer', 'referrer@test.com', 'unsubscribed', 'REFCODE1', 2).run();
+
+      // Create pending subscriber with referred_by
+      const confirmToken = 'test-confirm-token';
+      await env.DB.prepare(
+        `INSERT INTO subscribers (id, email, status, confirm_token, referred_by) VALUES (?, ?, ?, ?, ?)`
+      ).bind('sub1', 'new@test.com', 'pending', confirmToken, 'referrer').run();
+
+      // Create Bronze milestone at threshold 3
+      await env.DB.prepare(
+        `INSERT INTO referral_milestones (id, threshold, name, reward_type, reward_value) VALUES (?, ?, ?, ?, ?)`
+      ).bind('m1', 3, 'Bronze', 'badge', 'bronze-star').run();
+
+      const request = new Request(`http://localhost/api/newsletter/confirm/${confirmToken}`, {
+        method: 'GET',
+      });
+
+      await handleConfirm(request, env as Env, confirmToken);
+
+      // Referrer is unsubscribed, so NO notification should be sent
+      expect(mockSendEmail).not.toHaveBeenCalled();
+
+      // But the referral count should still be incremented
+      const referrer = await env.DB.prepare(
+        'SELECT referral_count FROM subscribers WHERE id = ?'
+      ).bind('referrer').first<{ referral_count: number }>();
+      expect(referrer?.referral_count).toBe(3);
+
+      // And the milestone achievement should still be recorded
+      const achievement = await env.DB.prepare(
+        'SELECT * FROM referral_achievements WHERE subscriber_id = ? AND milestone_id = ?'
+      ).bind('referrer', 'm1').first();
+      expect(achievement).toBeDefined();
     });
 
     it('should send multiple notifications when multiple milestones are achieved', async () => {

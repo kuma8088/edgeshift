@@ -27,6 +27,13 @@ export async function sendMilestoneNotifications(
     subscriberNotified: false,
   };
 
+  // Skip sending to unsubscribed referrers (respect opt-out)
+  if (referrer.status !== 'active') {
+    console.log(`Skipping milestone notification for ${referrer.email} - status: ${referrer.status}`);
+    result.subscriberError = `Referrer is not active (status: ${referrer.status})`;
+    return result;
+  }
+
   const from = `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`;
 
   // Send admin notification

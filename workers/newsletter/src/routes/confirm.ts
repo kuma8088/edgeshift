@@ -114,9 +114,10 @@ export async function handleConfirm(
             'SELECT * FROM subscribers WHERE id = ?'
           ).bind(subscriber.referred_by).first<Subscriber>();
 
-          if (referrer) {
+          if (referrer && referrer.status === 'active') {
             // Send notifications for each newly achieved milestone
             // (usually just one, but could be multiple if they jumped thresholds)
+            // Only send to active subscribers (respect opt-out)
             for (const milestone of newlyAchieved) {
               try {
                 await sendMilestoneNotifications(
