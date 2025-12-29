@@ -59,8 +59,8 @@ function extractPlainText(html: string): string {
 
 export const GET: APIRoute = async ({ site, url }) => {
   try {
-    // Fetch latest 20 articles
-    const apiUrl = `${site}api/archive?limit=20&offset=0`;
+    // Fetch latest 20 articles (use default limit/offset to avoid query param routing issues)
+    const apiUrl = `${site}api/archive`;
     const response = await fetch(apiUrl);
 
     if (!response.ok) {
