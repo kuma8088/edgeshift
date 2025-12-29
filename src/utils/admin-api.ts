@@ -92,13 +92,16 @@ export interface CreateCampaignData {
   content: string;
   scheduled_at?: number;
   contact_list_id?: string;
+  slug?: string;
+  is_published?: boolean;
+  excerpt?: string;
 }
 
 export async function createCampaign(data: CreateCampaignData) {
   return apiRequest('/campaigns', { method: 'POST', body: data });
 }
 
-export async function updateCampaign(id: string, data: { subject?: string; content?: string; status?: string }) {
+export async function updateCampaign(id: string, data: { subject?: string; content?: string; status?: string; slug?: string; is_published?: boolean; excerpt?: string }) {
   return apiRequest(`/campaigns/${id}`, { method: 'PUT', body: data });
 }
 

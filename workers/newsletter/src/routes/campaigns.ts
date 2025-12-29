@@ -1,6 +1,8 @@
 import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse } from '../types';
 import { isAuthorized } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
+import { generateSlug } from '../lib/slug';
+import { generateExcerpt } from '../lib/excerpt';
 
 export async function createCampaign(
   request: Request,
@@ -12,7 +14,7 @@ export async function createCampaign(
 
   try {
     const body = await request.json<CreateCampaignRequest>();
-    const { subject, content, scheduled_at, schedule_type, schedule_config, contact_list_id } = body;
+    const { subject, content, scheduled_at, schedule_type, schedule_config, contact_list_id, slug: providedSlug, excerpt: providedExcerpt, is_published } = body;
 
     if (!subject || !content) {
       return errorResponse('Subject and content are required', 400);
@@ -21,9 +23,15 @@ export async function createCampaign(
     const id = crypto.randomUUID();
     const status = scheduled_at ? 'scheduled' : 'draft';
 
+    // Auto-generate slug if not provided
+    const slug = providedSlug || await generateSlug(env.DB, subject);
+
+    // Auto-generate excerpt if not provided
+    const excerpt = providedExcerpt || generateExcerpt(content, 150);
+
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, slug, excerpt, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -35,7 +43,10 @@ export async function createCampaign(
       null,  // last_sent_at
       null,  // sent_at
       null,  // recipient_count
-      contact_list_id || null
+      contact_list_id || null,
+      slug,
+      excerpt,
+      is_published !== undefined ? (is_published ? 1 : 0) : 0  // Default to unpublished
     ).run();
 
     const campaign = await env.DB.prepare(
@@ -212,6 +223,12 @@ export async function updateCampaign(
     if (body.content !== undefined) {
       updates.push('content = ?');
       bindings.push(body.content);
+
+      // Auto-generate excerpt if content changed but excerpt not provided
+      if (body.excerpt === undefined) {
+        updates.push('excerpt = ?');
+        bindings.push(generateExcerpt(body.content, 150));
+      }
     }
     if (body.status !== undefined && body.status !== 'sent') {
       updates.push('status = ?');
@@ -220,6 +237,18 @@ export async function updateCampaign(
     if (body.contact_list_id !== undefined) {
       updates.push('contact_list_id = ?');
       bindings.push(body.contact_list_id || null);
+    }
+    if (body.slug !== undefined) {
+      updates.push('slug = ?');
+      bindings.push(body.slug);
+    }
+    if (body.excerpt !== undefined) {
+      updates.push('excerpt = ?');
+      bindings.push(body.excerpt);
+    }
+    if (body.is_published !== undefined) {
+      updates.push('is_published = ?');
+      bindings.push(body.is_published ? 1 : 0);
     }
 
     if (updates.length === 0) {

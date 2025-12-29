@@ -47,6 +47,9 @@ export interface Campaign {
   sent_at: number | null;
   recipient_count: number | null;
   contact_list_id: string | null;
+  slug: string;
+  excerpt: string;
+  is_published: number;  // 0 or 1
   created_at: number;
 }
 
@@ -97,6 +100,9 @@ export interface CreateCampaignRequest {
   schedule_type?: ScheduleType;
   schedule_config?: ScheduleConfig;
   contact_list_id?: string;
+  slug?: string;
+  excerpt?: string;
+  is_published?: boolean;
 }
 
 export interface UpdateCampaignRequest {
@@ -104,6 +110,9 @@ export interface UpdateCampaignRequest {
   content?: string;
   status?: CampaignStatus;
   contact_list_id?: string;
+  slug?: string;
+  excerpt?: string;
+  is_published?: boolean;
 }
 
 export interface Sequence {
@@ -327,4 +336,31 @@ export interface UpdateSignupPageRequest {
   confirmed_message?: string;
   embed_theme?: EmbedTheme;
   embed_size?: EmbedSize;
+}
+
+// Archive API types
+export interface ArchiveArticle {
+  id: string;
+  slug: string;
+  subject: string;
+  excerpt: string;
+  published_at: number;
+  is_subscriber_only: boolean; // Future use
+}
+
+export interface ArchiveListResponse {
+  articles: ArchiveArticle[];
+  pagination: {
+    page: number;
+    total_pages: number;
+    total_count: number;
+  };
+}
+
+export interface ArchiveDetailResponse {
+  id: string;
+  slug: string;
+  subject: string;
+  content: string;
+  published_at: number;
 }

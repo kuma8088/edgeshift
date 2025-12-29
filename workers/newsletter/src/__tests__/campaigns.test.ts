@@ -33,6 +33,97 @@ describe('Campaign CRUD', () => {
       expect(result.success).toBe(true);
       expect(result.data.id).toBeDefined();
       expect(result.data.status).toBe('draft');
+      expect(result.data.slug).toBeDefined();
+      expect(result.data.excerpt).toBeDefined();
+      expect(result.data.is_published).toBe(0);  // Default unpublished
+    });
+
+    it('should auto-generate slug if not provided', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: 'My Great Newsletter',
+          content: '<p>Content</p>',
+        }),
+      });
+
+      const response = await createCampaign(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(result.data.slug).toBe('my-great-newsletter');
+    });
+
+    it('should use provided slug if given', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: 'Test Newsletter',
+          content: '<p>Content</p>',
+          slug: 'custom-slug',
+        }),
+      });
+
+      const response = await createCampaign(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(result.data.slug).toBe('custom-slug');
+    });
+
+    it('should auto-generate excerpt if not provided', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: 'Newsletter',
+          content: '<p>This is a very long content that should be truncated to a shorter excerpt. It has multiple sentences and HTML tags that should be stripped out.</p>',
+        }),
+      });
+
+      const response = await createCampaign(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(result.data.excerpt).toBeDefined();
+      expect(result.data.excerpt.length).toBeLessThanOrEqual(153);  // 150 + "..."
+      expect(result.data.excerpt).not.toContain('<p>');  // HTML stripped
+    });
+
+    it('should handle is_published field', async () => {
+      const env = getTestEnv();
+      const request = new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: 'Published Newsletter',
+          content: '<p>Content</p>',
+          is_published: true,
+        }),
+      });
+
+      const response = await createCampaign(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(result.data.is_published).toBe(1);
     });
 
     it('should return 400 if subject is missing', async () => {
@@ -262,6 +353,121 @@ describe('Campaign CRUD', () => {
       const response = await updateCampaign(updateReq, env, created.data.id);
 
       expect(response.status).toBe(400);
+    });
+
+    it('should update slug', async () => {
+      const env = getTestEnv();
+
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Original', content: '<p>Original</p>' }),
+      }), env);
+      const created = await createRes.json();
+
+      const updateReq = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ slug: 'new-custom-slug' }),
+      });
+      const response = await updateCampaign(updateReq, env, created.data.id);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.slug).toBe('new-custom-slug');
+    });
+
+    it('should update excerpt', async () => {
+      const env = getTestEnv();
+
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Test', content: '<p>Original</p>' }),
+      }), env);
+      const created = await createRes.json();
+
+      const updateReq = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ excerpt: 'Custom excerpt' }),
+      });
+      const response = await updateCampaign(updateReq, env, created.data.id);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.excerpt).toBe('Custom excerpt');
+    });
+
+    it('should auto-generate excerpt when content is updated without excerpt', async () => {
+      const env = getTestEnv();
+
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Test', content: '<p>Original</p>' }),
+      }), env);
+      const created = await createRes.json();
+
+      const updateReq = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ content: '<p>New content that is very long</p>' }),
+      });
+      const response = await updateCampaign(updateReq, env, created.data.id);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.excerpt).toContain('New content');
+      expect(result.data.excerpt).not.toContain('<p>');
+    });
+
+    it('should update is_published', async () => {
+      const env = getTestEnv();
+
+      const createRes = await createCampaign(new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ subject: 'Test', content: '<p>Test</p>' }),
+      }), env);
+      const created = await createRes.json();
+
+      expect(created.data.is_published).toBe(0);
+
+      const updateReq = new Request(`http://localhost/api/campaigns/${created.data.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({ is_published: true }),
+      });
+      const response = await updateCampaign(updateReq, env, created.data.id);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.data.is_published).toBe(1);
     });
   });
 

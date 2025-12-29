@@ -32,8 +32,15 @@ CREATE TABLE IF NOT EXISTS campaigns (
   sent_at INTEGER,
   recipient_count INTEGER,
   contact_list_id TEXT REFERENCES contact_lists(id) ON DELETE SET NULL,
-  created_at INTEGER DEFAULT (unixepoch())
+  created_at INTEGER DEFAULT (unixepoch()),
+  slug TEXT UNIQUE,
+  is_published INTEGER DEFAULT 0,
+  published_at INTEGER,
+  excerpt TEXT
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_campaigns_slug ON campaigns(slug);
+CREATE INDEX IF NOT EXISTS idx_campaigns_published ON campaigns(is_published, published_at);
 
 -- Delivery logs table (Phase 2 + Phase 3B tracking foundation)
 -- campaign_id is nullable for sequence emails

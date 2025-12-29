@@ -46,7 +46,11 @@ export async function setupTestDb() {
       sent_at INTEGER,
       recipient_count INTEGER,
       contact_list_id TEXT,
-      created_at INTEGER DEFAULT (unixepoch())
+      created_at INTEGER DEFAULT (unixepoch()),
+      slug TEXT UNIQUE,
+      is_published INTEGER DEFAULT 0,
+      published_at INTEGER,
+      excerpt TEXT
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS delivery_logs (
       id TEXT PRIMARY KEY,
