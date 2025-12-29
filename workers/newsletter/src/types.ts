@@ -51,6 +51,7 @@ export interface Campaign {
   sent_at: number | null;
   recipient_count: number | null;
   contact_list_id: string | null;
+  template_id: string | null;
   slug: string;
   excerpt: string;
   is_published: number;  // 0 or 1
@@ -105,6 +106,7 @@ export interface CreateCampaignRequest {
   schedule_type?: ScheduleType;
   schedule_config?: ScheduleConfig;
   contact_list_id?: string;
+  template_id?: string;
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
@@ -115,6 +117,7 @@ export interface UpdateCampaignRequest {
   content?: string;
   status?: CampaignStatus;
   contact_list_id?: string;
+  template_id?: string;
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
@@ -138,6 +141,7 @@ export interface SequenceStep {
   delay_minutes?: number | null; // NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
   subject: string;
   content: string;
+  template_id: string | null;
   is_enabled: number;  // Soft delete: 0 = disabled, 1 = enabled
   created_at: number;
 }
@@ -195,6 +199,7 @@ export interface CreateSequenceRequest {
     delay_minutes?: number | null; // NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
     subject: string;
     content: string;
+    template_id?: string;
   }[];
 }
 
@@ -209,6 +214,7 @@ export interface UpdateSequenceRequest {
     delay_minutes?: number | null; // NULL = use delay_days/delay_time, 0 = immediate, >0 = delay in minutes
     subject: string;
     content: string;
+    template_id?: string;
   }[];
 }
 
@@ -434,4 +440,46 @@ export interface ReferralStatsResponse {
     email: string;
     referral_count: number;
   }[];
+}
+
+// Email Templates (Brand Settings)
+export interface BrandSettings {
+  id: string;
+  logo_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  footer_text: string;
+  default_template_id: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface UpdateBrandSettingsRequest {
+  logo_url?: string | null;
+  primary_color?: string;
+  secondary_color?: string;
+  footer_text?: string;
+  default_template_id?: string;
+}
+
+export type TemplateId = 'simple' | 'newsletter' | 'announcement' | 'welcome' | 'product-update';
+
+export interface TemplateInfo {
+  id: TemplateId;
+  name: string;
+  description: string;
+}
+
+export interface PreviewRequest {
+  template_id: string;
+  content: string;
+  subject: string;
+  brand_settings?: Partial<BrandSettings>;
+}
+
+export interface TestSendRequest {
+  template_id: string;
+  content: string;
+  subject: string;
+  to: string;
 }
