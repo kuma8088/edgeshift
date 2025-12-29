@@ -84,7 +84,10 @@ export default {
     }
 
     try {
-      let response: Response;
+      let response: Response = new Response(
+        JSON.stringify({ success: false, error: 'Not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
 
       // Route matching
       // Archive routes (public, no auth)
