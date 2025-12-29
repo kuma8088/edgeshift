@@ -3,12 +3,15 @@
 import { useState, type FormEvent } from 'react';
 import { RichTextEditor } from './RichTextEditor';
 import { ListSelector } from './ListSelector';
+import { TemplateSelector } from './TemplateSelector';
+import { EmailPreviewModal } from './EmailPreviewModal';
 
 interface Campaign {
   id?: string;
   subject: string;
   content: string;
   contact_list_id?: string | null;
+  template_id?: string | null;
   scheduled_at?: number;
   status?: string;
   slug?: string;
@@ -18,7 +21,7 @@ interface Campaign {
 
 interface CampaignFormProps {
   campaign?: Campaign;
-  onSubmit: (data: { subject: string; content: string; contact_list_id?: string; scheduled_at?: number; slug?: string; is_published?: boolean; excerpt?: string }) => Promise<void>;
+  onSubmit: (data: { subject: string; content: string; contact_list_id?: string; template_id?: string; scheduled_at?: number; slug?: string; is_published?: boolean; excerpt?: string }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -27,6 +30,8 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
   const [subject, setSubject] = useState(campaign?.subject || '');
   const [content, setContent] = useState(campaign?.content || '');
   const [contactListId, setContactListId] = useState<string | null>(campaign?.contact_list_id || null);
+  const [templateId, setTemplateId] = useState<string | undefined>(campaign?.template_id || undefined);
+  const [showPreview, setShowPreview] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(
     campaign?.scheduled_at
       ? new Date(campaign.scheduled_at * 1000).toISOString().slice(0, 16)
@@ -78,10 +83,11 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
       return;
     }
 
-    const data: { subject: string; content: string; contact_list_id?: string; scheduled_at?: number; slug?: string; is_published?: boolean; excerpt?: string } = {
+    const data: { subject: string; content: string; contact_list_id?: string; template_id?: string; scheduled_at?: number; slug?: string; is_published?: boolean; excerpt?: string } = {
       subject: subject.trim(),
       content: content.trim(),
       contact_list_id: contactListId || undefined,
+      template_id: templateId || undefined,
     };
 
     if (scheduledAt) {
@@ -142,6 +148,24 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
         label="配信対象リスト（オプション）"
         allowNull
       />
+
+      <div className="flex gap-4 items-end">
+        <div className="flex-1">
+          <TemplateSelector
+            value={templateId}
+            onChange={setTemplateId}
+            label="メールテンプレート"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowPreview(true)}
+          disabled={!content.trim()}
+          className="px-4 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Preview
+        </button>
+      </div>
 
       <div>
         <label htmlFor="scheduledAt" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
@@ -253,6 +277,14 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
           {loading ? '保存中...' : campaign?.id ? '更新' : '作成'}
         </button>
       </div>
+
+      <EmailPreviewModal
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        content={content}
+        subject={subject}
+        templateId={templateId}
+      />
     </form>
   );
 }

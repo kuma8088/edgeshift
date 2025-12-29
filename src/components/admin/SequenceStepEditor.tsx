@@ -27,6 +27,7 @@ interface SequenceStep {
   delay_minutes?: number;
   subject: string;
   content: string;
+  template_id?: string;
 }
 
 type TimingMode = 'days' | 'minutes';

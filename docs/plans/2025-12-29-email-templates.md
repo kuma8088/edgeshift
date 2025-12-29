@@ -2,950 +2,1520 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** ハイブリッド保存（プリセット=ファイル、カスタム=DB）のメールテンプレートシステムを実装し、Liquid風変数でパーソナライズ可能にする
+**Goal:** Add email template system with 5 presets, brand settings, and preview functionality that works for both campaigns and sequences.
 
-**Architecture:** 5種類のプリセットテンプレートをTypeScriptファイルで定義し、ブランド設定とカスタムテンプレートはDBに保存。変数展開はサーバーサイドで実行。
+**Architecture:** Shared template engine in `lib/templates/` with presets as TypeScript files. Brand settings stored in D1. `renderEmail()` function used by both campaign-send and sequence-processor.
 
-**Tech Stack:** TypeScript, Cloudflare D1, Astro + React
+**Tech Stack:** TypeScript, Cloudflare Workers, D1 (SQLite), React (admin UI), Vitest
 
 ---
 
-## Phase 1: プリセットテンプレート定義
-
-### Task 1.1: テンプレート型定義の作成
+## Task 1: Database Schema - Add brand_settings table
 
 **Files:**
-- Create: `workers/newsletter/src/lib/templates/types.ts`
+- Modify: `workers/newsletter/schema.sql`
+- Modify: `workers/newsletter/src/__tests__/setup.ts`
+
+**Step 1: Add brand_settings table to schema.sql**
+
+Add after the `signup_pages` table definition:
+
+```sql
+-- Brand Settings table (Email Templates feature)
+CREATE TABLE IF NOT EXISTS brand_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  logo_url TEXT,
+  primary_color TEXT DEFAULT '#7c3aed',
+  secondary_color TEXT DEFAULT '#1e1e1e',
+  footer_text TEXT DEFAULT 'EdgeShift Newsletter',
+  default_template_id TEXT DEFAULT 'simple',
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch())
+);
+```
+
+**Step 2: Add template_id to campaigns table**
+
+Add after existing columns:
+
+```sql
+-- Note: Run as ALTER TABLE for existing DB
+-- ALTER TABLE campaigns ADD COLUMN template_id TEXT DEFAULT NULL;
+```
+
+**Step 3: Add template_id to sequence_steps table**
+
+```sql
+-- Note: Run as ALTER TABLE for existing DB
+-- ALTER TABLE sequence_steps ADD COLUMN template_id TEXT DEFAULT NULL;
+```
+
+**Step 4: Update test setup.ts**
+
+Add to `setupTestDb()` function after contact_list_members table:
+
+```typescript
+env.DB.prepare(`CREATE TABLE IF NOT EXISTS brand_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  logo_url TEXT,
+  primary_color TEXT DEFAULT '#7c3aed',
+  secondary_color TEXT DEFAULT '#1e1e1e',
+  footer_text TEXT DEFAULT 'EdgeShift Newsletter',
+  default_template_id TEXT DEFAULT 'simple',
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch())
+)`),
+```
+
+Add to `cleanupTestDb()`:
+
+```typescript
+env.DB.prepare('DELETE FROM brand_settings WHERE 1=1'),
+```
+
+**Step 5: Run local migration**
+
+Run: `cd workers/newsletter && npm run db:migrate`
+Expected: Schema applied successfully
+
+**Step 6: Commit**
+
+```bash
+git add workers/newsletter/schema.sql workers/newsletter/src/__tests__/setup.ts
+git commit -m "feat(templates): add brand_settings table and template_id columns
+
+- Add brand_settings table for email template customization
+- Add template_id column to campaigns (NULL = use default)
+- Add template_id column to sequence_steps (NULL = use default)
+- Update test setup for new table"
+```
+
+---
+
+## Task 2: Types - Add template-related TypeScript types
+
+**Files:**
+- Modify: `workers/newsletter/src/types.ts`
+
+**Step 1: Add BrandSettings interface**
+
+Add after `ArchiveDetailResponse` interface:
+
+```typescript
+// Email Templates (Brand Settings)
+export interface BrandSettings {
+  id: string;
+  logo_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  footer_text: string;
+  default_template_id: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface UpdateBrandSettingsRequest {
+  logo_url?: string | null;
+  primary_color?: string;
+  secondary_color?: string;
+  footer_text?: string;
+  default_template_id?: string;
+}
+
+export type TemplateId = 'simple' | 'newsletter' | 'announcement' | 'welcome' | 'product-update';
+
+export interface TemplateInfo {
+  id: TemplateId;
+  name: string;
+  description: string;
+}
+
+export interface PreviewRequest {
+  template_id: string;
+  content: string;
+  subject: string;
+  brand_settings?: Partial<BrandSettings>;
+}
+
+export interface TestSendRequest {
+  template_id: string;
+  content: string;
+  subject: string;
+  to: string;
+}
+```
+
+**Step 2: Update Campaign interface**
+
+Add `template_id` field:
+
+```typescript
+export interface Campaign {
+  id: string;
+  subject: string;
+  content: string;
+  status: CampaignStatus;
+  scheduled_at: number | null;
+  schedule_type: ScheduleType | null;
+  schedule_config: string | null;
+  last_sent_at: number | null;
+  sent_at: number | null;
+  recipient_count: number | null;
+  contact_list_id: string | null;
+  template_id: string | null;  // NEW
+  slug: string;
+  excerpt: string;
+  is_published: number;
+  created_at: number;
+}
+```
+
+**Step 3: Update SequenceStep interface**
+
+Add `template_id` field:
+
+```typescript
+export interface SequenceStep {
+  id: string;
+  sequence_id: string;
+  step_number: number;
+  delay_days: number;
+  delay_time?: string;
+  delay_minutes?: number | null;
+  subject: string;
+  content: string;
+  template_id: string | null;  // NEW
+  is_enabled: number;
+  created_at: number;
+}
+```
+
+**Step 4: Update CreateCampaignRequest**
+
+```typescript
+export interface CreateCampaignRequest {
+  subject: string;
+  content: string;
+  scheduled_at?: number;
+  schedule_type?: ScheduleType;
+  schedule_config?: ScheduleConfig;
+  contact_list_id?: string;
+  template_id?: string;  // NEW
+  slug?: string;
+  excerpt?: string;
+  is_published?: boolean;
+}
+```
+
+**Step 5: Update UpdateCampaignRequest**
+
+```typescript
+export interface UpdateCampaignRequest {
+  subject?: string;
+  content?: string;
+  status?: CampaignStatus;
+  contact_list_id?: string;
+  template_id?: string;  // NEW
+  slug?: string;
+  excerpt?: string;
+  is_published?: boolean;
+}
+```
+
+**Step 6: Update CreateSequenceRequest steps**
+
+```typescript
+export interface CreateSequenceRequest {
+  name: string;
+  description?: string;
+  default_send_time: string;
+  steps: {
+    delay_days: number;
+    delay_time?: string;
+    delay_minutes?: number | null;
+    subject: string;
+    content: string;
+    template_id?: string;  // NEW
+  }[];
+}
+```
+
+**Step 7: Update UpdateSequenceRequest steps**
+
+```typescript
+export interface UpdateSequenceRequest {
+  name?: string;
+  description?: string;
+  default_send_time?: string;
+  is_active?: number;
+  steps?: {
+    delay_days: number;
+    delay_time?: string;
+    delay_minutes?: number | null;
+    subject: string;
+    content: string;
+    template_id?: string;  // NEW
+  }[];
+}
+```
+
+**Step 8: Commit**
+
+```bash
+git add workers/newsletter/src/types.ts
+git commit -m "feat(templates): add TypeScript types for email templates
+
+- Add BrandSettings interface
+- Add TemplateId, TemplateInfo types
+- Add PreviewRequest, TestSendRequest interfaces
+- Add template_id to Campaign and SequenceStep interfaces
+- Update request interfaces for template_id"
+```
+
+---
+
+## Task 3: Template Engine - Variable replacement
+
+**Files:**
+- Create: `workers/newsletter/src/lib/templates/variables.ts`
+- Test: `workers/newsletter/src/__tests__/templates-variables.test.ts`
 
 **Step 1: Write the failing test**
 
-```typescript
-// workers/newsletter/src/__tests__/templates.test.ts
-import { describe, it, expect } from 'vitest';
-import type { EmailTemplate, TemplateVariable } from '../lib/templates/types';
+Create `workers/newsletter/src/__tests__/templates-variables.test.ts`:
 
-describe('Email Template Types', () => {
-  it('should define template structure', () => {
-    const template: EmailTemplate = {
-      id: 'simple',
-      name: 'シンプル',
-      description: 'ミニマルなテキスト重視のデザイン',
-      category: 'preset',
-      html: '<html>{{content}}</html>',
-      variables: ['content', 'subscriber.name', 'unsubscribe_url'],
-    };
-    expect(template.id).toBe('simple');
+```typescript
+import { describe, it, expect } from 'vitest';
+import { replaceVariables } from '../lib/templates/variables';
+
+describe('replaceVariables', () => {
+  it('should replace {{subscriber.name}} with name', () => {
+    const result = replaceVariables('Hello {{subscriber.name}}!', {
+      subscriberName: 'John',
+      unsubscribeUrl: 'http://example.com/unsub',
+    });
+    expect(result).toBe('Hello John!');
+  });
+
+  it('should replace {{unsubscribe_url}} with URL', () => {
+    const result = replaceVariables('Click {{unsubscribe_url}} to unsubscribe', {
+      subscriberName: 'John',
+      unsubscribeUrl: 'http://example.com/unsub/abc123',
+    });
+    expect(result).toBe('Click http://example.com/unsub/abc123 to unsubscribe');
+  });
+
+  it('should fallback to empty string when name is null', () => {
+    const result = replaceVariables('Hello {{subscriber.name}}!', {
+      subscriberName: null,
+      unsubscribeUrl: 'http://example.com/unsub',
+    });
+    expect(result).toBe('Hello !');
+  });
+
+  it('should handle multiple variables', () => {
+    const result = replaceVariables(
+      '{{subscriber.name}}さん、配信停止は{{unsubscribe_url}}から',
+      {
+        subscriberName: '田中',
+        unsubscribeUrl: 'http://example.com/unsub',
+      }
+    );
+    expect(result).toBe('田中さん、配信停止はhttp://example.com/unsubから');
   });
 });
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd workers/newsletter && npx vitest run src/__tests__/templates.test.ts`
-Expected: FAIL with "Cannot find module"
+Run: `cd workers/newsletter && npm test src/__tests__/templates-variables.test.ts`
+Expected: FAIL - Cannot find module '../lib/templates/variables'
 
 **Step 3: Write minimal implementation**
 
+Create `workers/newsletter/src/lib/templates/variables.ts`:
+
 ```typescript
-// workers/newsletter/src/lib/templates/types.ts
-export type TemplateCategory = 'preset' | 'custom';
-
-export interface EmailTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: TemplateCategory;
-  html: string;
-  variables: string[];
-  thumbnail?: string;
+export interface VariableContext {
+  subscriberName: string | null;
+  unsubscribeUrl: string;
 }
 
-export interface BrandSettings {
-  logo_url?: string;
-  primary_color: string;
-  secondary_color: string;
-  footer_text?: string;
+export function replaceVariables(template: string, context: VariableContext): string {
+  return template
+    .replace(/\{\{subscriber\.name\}\}/g, context.subscriberName ?? '')
+    .replace(/\{\{unsubscribe_url\}\}/g, context.unsubscribeUrl);
 }
-
-export interface TemplateVariable {
-  name: string;
-  description: string;
-  example: string;
-}
-
-export const AVAILABLE_VARIABLES: TemplateVariable[] = [
-  { name: 'content', description: 'メール本文', example: 'こんにちは！' },
-  { name: 'subscriber.name', description: '購読者名', example: '山田太郎' },
-  { name: 'subscriber.email', description: '購読者メール', example: 'user@example.com' },
-  { name: 'unsubscribe_url', description: '配信停止URL', example: 'https://...' },
-  { name: 'brand.logo', description: 'ブランドロゴURL', example: 'https://...' },
-  { name: 'brand.color', description: 'ブランドカラー', example: '#7c3aed' },
-  { name: 'site_url', description: 'サイトURL', example: 'https://edgeshift.tech' },
-];
 ```
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd workers/newsletter && npx vitest run src/__tests__/templates.test.ts`
+Run: `cd workers/newsletter && npm test src/__tests__/templates-variables.test.ts`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add workers/newsletter/src/lib/templates/types.ts workers/newsletter/src/__tests__/templates.test.ts
-git commit -m "feat(templates): add type definitions for email templates"
+git add workers/newsletter/src/lib/templates/variables.ts workers/newsletter/src/__tests__/templates-variables.test.ts
+git commit -m "feat(templates): add variable replacement engine
+
+- Support {{subscriber.name}} variable
+- Support {{unsubscribe_url}} variable
+- Handle null name gracefully"
 ```
 
 ---
 
-### Task 1.2: 5種類のプリセットテンプレート作成
+## Task 4: Template Engine - Preset templates
 
 **Files:**
 - Create: `workers/newsletter/src/lib/templates/presets/simple.ts`
 - Create: `workers/newsletter/src/lib/templates/presets/newsletter.ts`
 - Create: `workers/newsletter/src/lib/templates/presets/announcement.ts`
 - Create: `workers/newsletter/src/lib/templates/presets/welcome.ts`
-- Create: `workers/newsletter/src/lib/templates/presets/product.ts`
+- Create: `workers/newsletter/src/lib/templates/presets/product-update.ts`
 - Create: `workers/newsletter/src/lib/templates/presets/index.ts`
 
-**Step 1: Write the failing test**
+**Step 1: Create simple template**
+
+Create `workers/newsletter/src/lib/templates/presets/simple.ts`:
 
 ```typescript
-// workers/newsletter/src/__tests__/templates.test.ts (append)
-import { PRESET_TEMPLATES, getPresetTemplate } from '../lib/templates/presets';
+import type { BrandSettings } from '../../../types';
 
-describe('Preset Templates', () => {
-  it('should have 5 preset templates', () => {
-    expect(PRESET_TEMPLATES).toHaveLength(5);
-  });
-
-  it('should get simple template by id', () => {
-    const template = getPresetTemplate('simple');
-    expect(template?.name).toBe('シンプル');
-    expect(template?.html).toContain('{{content}}');
-  });
-
-  it('should return undefined for unknown template', () => {
-    const template = getPresetTemplate('unknown');
-    expect(template).toBeUndefined();
-  });
-});
-```
-
-**Step 2: Run test to verify it fails**
-
-Run: `cd workers/newsletter && npx vitest run src/__tests__/templates.test.ts`
-Expected: FAIL with "Cannot find module"
-
-**Step 3: Write minimal implementation**
-
-```typescript
-// workers/newsletter/src/lib/templates/presets/simple.ts
-import type { EmailTemplate } from '../types';
-
-export const simpleTemplate: EmailTemplate = {
-  id: 'simple',
-  name: 'シンプル',
-  description: 'ミニマルなテキスト重視のデザイン',
-  category: 'preset',
-  variables: ['content', 'subscriber.name', 'unsubscribe_url', 'brand.color', 'site_url'],
-  html: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-  <div style="margin-bottom: 32px;">
-    {{content}}
-  </div>
-  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
-    <a href="{{site_url}}" style="color: {{brand.color}};">EdgeShift</a><br>
-    <a href="{{unsubscribe_url}}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>`,
-};
-```
-
-```typescript
-// workers/newsletter/src/lib/templates/presets/newsletter.ts
-import type { EmailTemplate } from '../types';
-
-export const newsletterTemplate: EmailTemplate = {
-  id: 'newsletter',
-  name: 'ニュースレター',
-  description: 'ヘッダー付きの標準的なニュースレター',
-  category: 'preset',
-  variables: ['content', 'subscriber.name', 'unsubscribe_url', 'brand.logo', 'brand.color', 'site_url'],
-  html: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 0; background-color: #f5f5f5;">
-  <div style="background-color: {{brand.color}}; padding: 24px; text-align: center;">
-    {{#if brand.logo}}
-    <img src="{{brand.logo}}" alt="Logo" style="max-height: 40px;">
-    {{else}}
-    <h1 style="color: #ffffff; font-size: 24px; margin: 0;">EdgeShift Newsletter</h1>
-    {{/if}}
-  </div>
-  <div style="background-color: #ffffff; padding: 32px;">
-    {{content}}
-  </div>
-  <div style="padding: 24px; text-align: center; color: #a3a3a3; font-size: 12px;">
-    <a href="{{site_url}}" style="color: {{brand.color}};">EdgeShift</a><br>
-    <a href="{{unsubscribe_url}}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </div>
-</body>
-</html>`,
-};
-```
-
-```typescript
-// workers/newsletter/src/lib/templates/presets/announcement.ts
-import type { EmailTemplate } from '../types';
-
-export const announcementTemplate: EmailTemplate = {
-  id: 'announcement',
-  name: 'お知らせ',
-  description: '重要なお知らせ用の目立つデザイン',
-  category: 'preset',
-  variables: ['content', 'subscriber.name', 'unsubscribe_url', 'brand.color', 'site_url'],
-  html: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-  <div style="border-left: 4px solid {{brand.color}}; padding-left: 20px; margin-bottom: 32px;">
-    <h2 style="color: {{brand.color}}; margin-top: 0;">📢 お知らせ</h2>
-    {{content}}
-  </div>
-  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
-    <a href="{{site_url}}" style="color: {{brand.color}};">EdgeShift</a><br>
-    <a href="{{unsubscribe_url}}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>`,
-};
-```
-
-```typescript
-// workers/newsletter/src/lib/templates/presets/welcome.ts
-import type { EmailTemplate } from '../types';
-
-export const welcomeTemplate: EmailTemplate = {
-  id: 'welcome',
-  name: 'ウェルカム',
-  description: '新規購読者向けの歓迎メール',
-  category: 'preset',
-  variables: ['content', 'subscriber.name', 'unsubscribe_url', 'brand.logo', 'brand.color', 'site_url'],
-  html: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-  <div style="text-align: center; margin-bottom: 32px;">
-    {{#if brand.logo}}
-    <img src="{{brand.logo}}" alt="Logo" style="max-height: 60px; margin-bottom: 16px;">
-    {{/if}}
-    <h1 style="color: {{brand.color}}; margin: 0;">ようこそ！ 🎉</h1>
-    {{#if subscriber.name}}
-    <p style="font-size: 18px; color: #525252;">{{subscriber.name}}さん</p>
-    {{/if}}
-  </div>
-  <div style="margin-bottom: 32px;">
-    {{content}}
-  </div>
-  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
-    <a href="{{site_url}}" style="color: {{brand.color}};">EdgeShift</a><br>
-    <a href="{{unsubscribe_url}}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>`,
-};
-```
-
-```typescript
-// workers/newsletter/src/lib/templates/presets/product.ts
-import type { EmailTemplate } from '../types';
-
-export const productTemplate: EmailTemplate = {
-  id: 'product',
-  name: 'プロダクト',
-  description: '製品・サービス紹介用のカード型デザイン',
-  category: 'preset',
-  variables: ['content', 'subscriber.name', 'unsubscribe_url', 'brand.logo', 'brand.color', 'site_url'],
-  html: `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-  <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <div style="background: linear-gradient(135deg, {{brand.color}} 0%, #4c1d95 100%); padding: 32px; text-align: center;">
-      {{#if brand.logo}}
-      <img src="{{brand.logo}}" alt="Logo" style="max-height: 40px;">
-      {{else}}
-      <h1 style="color: #ffffff; font-size: 24px; margin: 0;">新機能のご紹介</h1>
-      {{/if}}
-    </div>
-    <div style="padding: 32px;">
-      {{content}}
-    </div>
-  </div>
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center; margin-top: 24px;">
-    <a href="{{site_url}}" style="color: {{brand.color}};">EdgeShift</a><br>
-    <a href="{{unsubscribe_url}}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>`,
-};
-```
-
-```typescript
-// workers/newsletter/src/lib/templates/presets/index.ts
-import type { EmailTemplate } from '../types';
-import { simpleTemplate } from './simple';
-import { newsletterTemplate } from './newsletter';
-import { announcementTemplate } from './announcement';
-import { welcomeTemplate } from './welcome';
-import { productTemplate } from './product';
-
-export const PRESET_TEMPLATES: EmailTemplate[] = [
-  simpleTemplate,
-  newsletterTemplate,
-  announcementTemplate,
-  welcomeTemplate,
-  productTemplate,
-];
-
-export function getPresetTemplate(id: string): EmailTemplate | undefined {
-  return PRESET_TEMPLATES.find(t => t.id === id);
+export interface PresetRenderOptions {
+  content: string;
+  subject: string;
+  brandSettings: BrandSettings;
+  subscriberName: string | null;
+  unsubscribeUrl: string;
+  siteUrl: string;
 }
 
-export {
-  simpleTemplate,
-  newsletterTemplate,
-  announcementTemplate,
-  welcomeTemplate,
-  productTemplate,
-};
+export function renderSimple(options: PresetRenderOptions): string {
+  const { content, brandSettings, subscriberName, unsubscribeUrl, siteUrl } = options;
+  const greeting = subscriberName ? `${subscriberName}さん、` : '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: ${brandSettings.secondary_color}; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="margin-bottom: 16px;">
+    ${greeting}
+  </div>
+  <div style="margin-bottom: 32px;">
+    ${content}
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+    <a href="${siteUrl}" style="color: ${brandSettings.primary_color};">${brandSettings.footer_text}</a><br>
+    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
+  </p>
+</body>
+</html>
+  `.trim();
+}
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 2: Create newsletter template**
 
-Run: `cd workers/newsletter && npx vitest run src/__tests__/templates.test.ts`
-Expected: PASS
+Create `workers/newsletter/src/lib/templates/presets/newsletter.ts`:
 
-**Step 5: Commit**
+```typescript
+import type { BrandSettings } from '../../../types';
+import type { PresetRenderOptions } from './simple';
+
+export function renderNewsletter(options: PresetRenderOptions): string {
+  const { content, subject, brandSettings, unsubscribeUrl, siteUrl } = options;
+
+  const logoHtml = brandSettings.logo_url
+    ? `<img src="${brandSettings.logo_url}" alt="${brandSettings.footer_text}" style="max-height: 40px; margin-bottom: 16px;">`
+    : '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: ${brandSettings.secondary_color}; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 32px;">
+    ${logoHtml}
+    <h1 style="color: ${brandSettings.secondary_color}; font-size: 24px; margin: 0;">${subject}</h1>
+  </div>
+  <div style="margin-bottom: 32px;">
+    ${content}
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+    <a href="${siteUrl}" style="color: ${brandSettings.primary_color};">${brandSettings.footer_text}</a><br>
+    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
+  </p>
+</body>
+</html>
+  `.trim();
+}
+```
+
+**Step 3: Create announcement template**
+
+Create `workers/newsletter/src/lib/templates/presets/announcement.ts`:
+
+```typescript
+import type { BrandSettings } from '../../../types';
+import type { PresetRenderOptions } from './simple';
+
+export function renderAnnouncement(options: PresetRenderOptions): string {
+  const { content, subject, brandSettings, unsubscribeUrl, siteUrl } = options;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: ${brandSettings.secondary_color}; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background-color: ${brandSettings.primary_color}; color: white; padding: 24px; text-align: center; border-radius: 8px; margin-bottom: 24px;">
+    <h1 style="margin: 0; font-size: 28px;">📢 ${subject}</h1>
+  </div>
+  <div style="margin-bottom: 32px; padding: 0 16px;">
+    ${content}
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+    <a href="${siteUrl}" style="color: ${brandSettings.primary_color};">${brandSettings.footer_text}</a><br>
+    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
+  </p>
+</body>
+</html>
+  `.trim();
+}
+```
+
+**Step 4: Create welcome template**
+
+Create `workers/newsletter/src/lib/templates/presets/welcome.ts`:
+
+```typescript
+import type { BrandSettings } from '../../../types';
+import type { PresetRenderOptions } from './simple';
+
+export function renderWelcome(options: PresetRenderOptions): string {
+  const { content, brandSettings, subscriberName, unsubscribeUrl, siteUrl } = options;
+  const name = subscriberName || 'ゲスト';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: ${brandSettings.secondary_color}; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 32px;">
+    <h1 style="color: ${brandSettings.primary_color}; font-size: 28px; margin-bottom: 8px;">🎉 ようこそ！</h1>
+    <p style="font-size: 18px; color: ${brandSettings.secondary_color};">${name}さん、ご登録ありがとうございます</p>
+  </div>
+  <div style="margin-bottom: 32px; background-color: #f9fafb; padding: 24px; border-radius: 8px;">
+    ${content}
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+    <a href="${siteUrl}" style="color: ${brandSettings.primary_color};">${brandSettings.footer_text}</a><br>
+    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
+  </p>
+</body>
+</html>
+  `.trim();
+}
+```
+
+**Step 5: Create product-update template**
+
+Create `workers/newsletter/src/lib/templates/presets/product-update.ts`:
+
+```typescript
+import type { BrandSettings } from '../../../types';
+import type { PresetRenderOptions } from './simple';
+
+export function renderProductUpdate(options: PresetRenderOptions): string {
+  const { content, subject, brandSettings, unsubscribeUrl, siteUrl } = options;
+
+  const logoHtml = brandSettings.logo_url
+    ? `<img src="${brandSettings.logo_url}" alt="${brandSettings.footer_text}" style="max-height: 32px;">`
+    : `<span style="font-weight: bold; color: ${brandSettings.primary_color};">${brandSettings.footer_text}</span>`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: ${brandSettings.secondary_color}; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid ${brandSettings.primary_color};">
+    ${logoHtml}
+    <span style="background-color: ${brandSettings.primary_color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">UPDATE</span>
+  </div>
+  <h1 style="font-size: 24px; color: ${brandSettings.secondary_color}; margin-bottom: 24px;">🚀 ${subject}</h1>
+  <div style="margin-bottom: 32px;">
+    ${content}
+  </div>
+  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+    <a href="${siteUrl}" style="color: ${brandSettings.primary_color};">${brandSettings.footer_text}</a><br>
+    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
+  </p>
+</body>
+</html>
+  `.trim();
+}
+```
+
+**Step 6: Create presets index**
+
+Create `workers/newsletter/src/lib/templates/presets/index.ts`:
+
+```typescript
+import type { TemplateId, TemplateInfo } from '../../../types';
+import { renderSimple, type PresetRenderOptions } from './simple';
+import { renderNewsletter } from './newsletter';
+import { renderAnnouncement } from './announcement';
+import { renderWelcome } from './welcome';
+import { renderProductUpdate } from './product-update';
+
+export type { PresetRenderOptions };
+
+export const TEMPLATE_LIST: TemplateInfo[] = [
+  { id: 'simple', name: 'シンプル', description: 'テキスト中心のシンプルなレイアウト' },
+  { id: 'newsletter', name: 'ニュースレター', description: 'ヘッダー付きの定番スタイル' },
+  { id: 'announcement', name: 'お知らせ', description: '重要なお知らせを強調表示' },
+  { id: 'welcome', name: 'ウェルカム', description: '新規登録者への挨拶メール' },
+  { id: 'product-update', name: 'プロダクトアップデート', description: '製品・サービスの更新情報' },
+];
+
+const renderers: Record<TemplateId, (options: PresetRenderOptions) => string> = {
+  simple: renderSimple,
+  newsletter: renderNewsletter,
+  announcement: renderAnnouncement,
+  welcome: renderWelcome,
+  'product-update': renderProductUpdate,
+};
+
+export function renderPreset(templateId: TemplateId, options: PresetRenderOptions): string {
+  const renderer = renderers[templateId];
+  if (!renderer) {
+    console.warn(`Unknown template ID: ${templateId}, falling back to simple`);
+    return renderSimple(options);
+  }
+  return renderer(options);
+}
+
+export function isValidTemplateId(id: string): id is TemplateId {
+  return TEMPLATE_LIST.some((t) => t.id === id);
+}
+```
+
+**Step 7: Commit**
 
 ```bash
 git add workers/newsletter/src/lib/templates/presets/
-git commit -m "feat(templates): add 5 preset email templates"
+git commit -m "feat(templates): add 5 preset email templates
+
+- simple: text-focused minimal layout
+- newsletter: header with logo, classic style
+- announcement: emphasized banner style
+- welcome: greeting for new subscribers
+- product-update: feature update style with badge"
 ```
 
 ---
 
-## Phase 2: 変数展開エンジン
-
-### Task 2.1: 変数展開関数の実装
+## Task 5: Template Engine - Main renderEmail function
 
 **Files:**
-- Create: `workers/newsletter/src/lib/templates/renderer.ts`
-- Modify: `workers/newsletter/src/__tests__/templates.test.ts`
+- Create: `workers/newsletter/src/lib/templates/index.ts`
+- Test: `workers/newsletter/src/__tests__/templates.test.ts`
 
 **Step 1: Write the failing test**
 
+Create `workers/newsletter/src/__tests__/templates.test.ts`:
+
 ```typescript
-// workers/newsletter/src/__tests__/templates.test.ts (append)
-import { renderTemplate } from '../lib/templates/renderer';
+import { describe, it, expect } from 'vitest';
+import { renderEmail, getDefaultBrandSettings } from '../lib/templates';
+import type { BrandSettings } from '../types';
 
-describe('Template Renderer', () => {
-  it('should replace simple variables', () => {
-    const html = 'Hello {{subscriber.name}}!';
-    const result = renderTemplate(html, {
-      subscriber: { name: '太郎', email: 'taro@example.com' },
+describe('Template Engine', () => {
+  const defaultBrandSettings: BrandSettings = {
+    id: 'default',
+    logo_url: null,
+    primary_color: '#7c3aed',
+    secondary_color: '#1e1e1e',
+    footer_text: 'EdgeShift Newsletter',
+    default_template_id: 'simple',
+    created_at: 0,
+    updated_at: 0,
+  };
+
+  describe('renderEmail', () => {
+    it('should render simple template with brand settings', () => {
+      const html = renderEmail({
+        templateId: 'simple',
+        content: 'Hello World',
+        subject: 'Test Subject',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: 'John', email: 'john@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+      });
+
+      expect(html).toContain('Hello World');
+      expect(html).toContain('#7c3aed');
+      expect(html).toContain('EdgeShift Newsletter');
+      expect(html).toContain('http://example.com/unsub');
     });
-    expect(result).toBe('Hello 太郎!');
-  });
 
-  it('should handle nested variables', () => {
-    const html = 'Color: {{brand.color}}';
-    const result = renderTemplate(html, {
-      brand: { color: '#7c3aed' },
+    it('should replace {{subscriber.name}} variable', () => {
+      const html = renderEmail({
+        templateId: 'simple',
+        content: 'こんにちは、{{subscriber.name}}さん',
+        subject: 'Test',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: '田中', email: 'tanaka@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+      });
+
+      expect(html).toContain('こんにちは、田中さん');
+      expect(html).not.toContain('{{subscriber.name}}');
     });
-    expect(result).toBe('Color: #7c3aed');
+
+    it('should replace {{unsubscribe_url}} variable', () => {
+      const html = renderEmail({
+        templateId: 'simple',
+        content: 'Unsubscribe: {{unsubscribe_url}}',
+        subject: 'Test',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: null, email: 'test@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub/abc123',
+        siteUrl: 'http://example.com',
+      });
+
+      expect(html).toContain('Unsubscribe: http://example.com/unsub/abc123');
+    });
+
+    it('should apply primary_color to links', () => {
+      const customSettings = { ...defaultBrandSettings, primary_color: '#ff0000' };
+      const html = renderEmail({
+        templateId: 'simple',
+        content: 'Test',
+        subject: 'Test',
+        brandSettings: customSettings,
+        subscriber: { name: null, email: 'test@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+      });
+
+      expect(html).toContain('#ff0000');
+    });
+
+    it('should include footer_text', () => {
+      const customSettings = { ...defaultBrandSettings, footer_text: 'My Newsletter' };
+      const html = renderEmail({
+        templateId: 'simple',
+        content: 'Test',
+        subject: 'Test',
+        brandSettings: customSettings,
+        subscriber: { name: null, email: 'test@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+      });
+
+      expect(html).toContain('My Newsletter');
+    });
+
+    it('should fallback to simple when template not found', () => {
+      const html = renderEmail({
+        templateId: 'nonexistent' as any,
+        content: 'Test Content',
+        subject: 'Test',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: null, email: 'test@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+      });
+
+      expect(html).toContain('Test Content');
+      expect(html).toContain('<!DOCTYPE html>');
+    });
   });
 
-  it('should handle missing variables gracefully', () => {
-    const html = 'Hello {{subscriber.name}}!';
-    const result = renderTemplate(html, {});
-    expect(result).toBe('Hello !');
-  });
-
-  it('should handle if blocks', () => {
-    const html = '{{#if subscriber.name}}Hi {{subscriber.name}}{{else}}Hi there{{/if}}';
-    const withName = renderTemplate(html, { subscriber: { name: 'Bob' } });
-    const withoutName = renderTemplate(html, { subscriber: {} });
-    expect(withName).toBe('Hi Bob');
-    expect(withoutName).toBe('Hi there');
+  describe('getDefaultBrandSettings', () => {
+    it('should return default values', () => {
+      const settings = getDefaultBrandSettings();
+      expect(settings.primary_color).toBe('#7c3aed');
+      expect(settings.secondary_color).toBe('#1e1e1e');
+      expect(settings.footer_text).toBe('EdgeShift Newsletter');
+      expect(settings.default_template_id).toBe('simple');
+    });
   });
 });
 ```
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd workers/newsletter && npx vitest run src/__tests__/templates.test.ts`
-Expected: FAIL
+Run: `cd workers/newsletter && npm test src/__tests__/templates.test.ts`
+Expected: FAIL - Cannot find module '../lib/templates'
 
-**Step 3: Write minimal implementation**
+**Step 3: Write implementation**
+
+Create `workers/newsletter/src/lib/templates/index.ts`:
 
 ```typescript
-// workers/newsletter/src/lib/templates/renderer.ts
-export interface TemplateContext {
-  content?: string;
-  subscriber?: {
-    name?: string;
-    email?: string;
-  };
-  brand?: {
-    logo?: string;
-    color?: string;
-  };
-  unsubscribe_url?: string;
-  site_url?: string;
-  [key: string]: unknown;
+import type { BrandSettings, TemplateId, TemplateInfo } from '../../types';
+import { replaceVariables } from './variables';
+import { renderPreset, isValidTemplateId, TEMPLATE_LIST } from './presets';
+
+export interface RenderEmailOptions {
+  templateId: string;
+  content: string;
+  subject: string;
+  brandSettings: BrandSettings;
+  subscriber: { name: string | null; email: string };
+  unsubscribeUrl: string;
+  siteUrl: string;
 }
 
-/**
- * Get nested value from object using dot notation
- */
-function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-  return path.split('.').reduce((current, key) => {
-    if (current && typeof current === 'object' && key in current) {
-      return (current as Record<string, unknown>)[key];
-    }
-    return undefined;
-  }, obj as unknown);
-}
+export function renderEmail(options: RenderEmailOptions): string {
+  const { templateId, content, subject, brandSettings, subscriber, unsubscribeUrl, siteUrl } = options;
 
-/**
- * Process {{#if var}}...{{else}}...{{/if}} blocks
- */
-function processIfBlocks(html: string, context: TemplateContext): string {
-  const ifPattern = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+  // Replace variables in content first
+  const processedContent = replaceVariables(content, {
+    subscriberName: subscriber.name,
+    unsubscribeUrl,
+  });
 
-  return html.replace(ifPattern, (_, condition, content) => {
-    const value = getNestedValue(context as Record<string, unknown>, condition.trim());
-    const hasElse = content.includes('{{else}}');
+  // Validate and get template ID
+  const validTemplateId: TemplateId = isValidTemplateId(templateId) ? templateId : 'simple';
 
-    if (hasElse) {
-      const [ifContent, elseContent] = content.split('{{else}}');
-      return value ? ifContent : elseContent;
-    }
-
-    return value ? content : '';
+  // Render using preset
+  return renderPreset(validTemplateId, {
+    content: processedContent,
+    subject,
+    brandSettings,
+    subscriberName: subscriber.name,
+    unsubscribeUrl,
+    siteUrl,
   });
 }
 
-/**
- * Replace {{variable}} placeholders with values from context
- */
-function replaceVariables(html: string, context: TemplateContext): string {
-  const variablePattern = /\{\{([^#/][^}]*)\}\}/g;
-
-  return html.replace(variablePattern, (_, variable) => {
-    const value = getNestedValue(context as Record<string, unknown>, variable.trim());
-    return value !== undefined ? String(value) : '';
-  });
-}
-
-/**
- * Render template with given context
- */
-export function renderTemplate(html: string, context: TemplateContext): string {
-  // First process if blocks
-  let result = processIfBlocks(html, context);
-  // Then replace variables
-  result = replaceVariables(result, context);
-  return result;
-}
-
-/**
- * Build full template context from subscriber and brand settings
- */
-export function buildTemplateContext(
-  content: string,
-  subscriber: { name?: string; email?: string },
-  unsubscribeUrl: string,
-  siteUrl: string,
-  brand?: { logo_url?: string; primary_color?: string }
-): TemplateContext {
+export function getDefaultBrandSettings(): BrandSettings {
   return {
-    content,
-    subscriber: {
-      name: subscriber.name || '',
-      email: subscriber.email || '',
-    },
-    brand: {
-      logo: brand?.logo_url || '',
-      color: brand?.primary_color || '#7c3aed',
-    },
-    unsubscribe_url: unsubscribeUrl,
-    site_url: siteUrl,
+    id: 'default',
+    logo_url: null,
+    primary_color: '#7c3aed',
+    secondary_color: '#1e1e1e',
+    footer_text: 'EdgeShift Newsletter',
+    default_template_id: 'simple',
+    created_at: Math.floor(Date.now() / 1000),
+    updated_at: Math.floor(Date.now() / 1000),
   };
 }
+
+export function getTemplateList(): TemplateInfo[] {
+  return TEMPLATE_LIST;
+}
+
+export { isValidTemplateId };
 ```
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd workers/newsletter && npx vitest run src/__tests__/templates.test.ts`
+Run: `cd workers/newsletter && npm test src/__tests__/templates.test.ts`
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add workers/newsletter/src/lib/templates/renderer.ts workers/newsletter/src/__tests__/templates.test.ts
-git commit -m "feat(templates): implement variable rendering engine"
+git add workers/newsletter/src/lib/templates/index.ts workers/newsletter/src/__tests__/templates.test.ts
+git commit -m "feat(templates): add main renderEmail function
+
+- Compose variable replacement and preset rendering
+- Provide getDefaultBrandSettings helper
+- Fallback to simple template for invalid IDs"
 ```
 
 ---
 
-## Phase 3: ブランド設定 DB スキーマ
-
-### Task 3.1: brand_settings テーブル追加
+## Task 6: Brand Settings API - GET and PUT endpoints
 
 **Files:**
-- Modify: `workers/newsletter/schema.sql`
-- Create: `workers/newsletter/migrations/005_email_templates.sql`
+- Create: `workers/newsletter/src/routes/brand-settings.ts`
+- Modify: `workers/newsletter/src/index.ts`
+- Test: `workers/newsletter/src/__tests__/brand-settings.test.ts`
 
-**Step 1: Write the migration SQL**
+**Step 1: Write the failing test**
 
-```sql
--- workers/newsletter/migrations/005_email_templates.sql
--- Migration: Email Templates
--- Date: 2025-12-29
--- Description: Add brand settings and custom templates
+Create `workers/newsletter/src/__tests__/brand-settings.test.ts`:
 
--- Brand settings table (singleton - only one row)
-CREATE TABLE IF NOT EXISTS brand_settings (
-  id TEXT PRIMARY KEY DEFAULT 'default',
-  logo_url TEXT,
-  primary_color TEXT DEFAULT '#7c3aed',
-  secondary_color TEXT DEFAULT '#4c1d95',
-  footer_text TEXT,
-  updated_at INTEGER DEFAULT (unixepoch())
-);
+```typescript
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
+import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
 
--- Custom email templates table
-CREATE TABLE IF NOT EXISTS email_templates (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  html TEXT NOT NULL,
-  is_active INTEGER DEFAULT 1,
-  created_at INTEGER DEFAULT (unixepoch()),
-  updated_at INTEGER DEFAULT (unixepoch())
-);
+describe('Brand Settings API', () => {
+  const env = getTestEnv();
 
--- Insert default brand settings
-INSERT OR IGNORE INTO brand_settings (id, primary_color, secondary_color)
-VALUES ('default', '#7c3aed', '#4c1d95');
+  beforeAll(async () => {
+    await setupTestDb();
+  });
+
+  beforeEach(async () => {
+    await cleanupTestDb();
+  });
+
+  describe('GET /api/brand-settings', () => {
+    it('should return default settings when none exist', async () => {
+      const { getBrandSettings } = await import('../routes/brand-settings');
+      const request = new Request('http://localhost/api/brand-settings', {
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getBrandSettings(request, env);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.primary_color).toBe('#7c3aed');
+      expect(data.data.default_template_id).toBe('simple');
+    });
+
+    it('should return saved settings', async () => {
+      await env.DB.prepare(`
+        INSERT INTO brand_settings (id, primary_color, footer_text)
+        VALUES ('default', '#ff0000', 'Custom Footer')
+      `).run();
+
+      const { getBrandSettings } = await import('../routes/brand-settings');
+      const request = new Request('http://localhost/api/brand-settings', {
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getBrandSettings(request, env);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.data.primary_color).toBe('#ff0000');
+      expect(data.data.footer_text).toBe('Custom Footer');
+    });
+  });
+
+  describe('PUT /api/brand-settings', () => {
+    it('should create settings if none exist', async () => {
+      const { updateBrandSettings } = await import('../routes/brand-settings');
+      const request = new Request('http://localhost/api/brand-settings', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${env.ADMIN_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ primary_color: '#00ff00', footer_text: 'New Footer' }),
+      });
+
+      const response = await updateBrandSettings(request, env);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.primary_color).toBe('#00ff00');
+      expect(data.data.footer_text).toBe('New Footer');
+    });
+
+    it('should reject unauthorized requests', async () => {
+      const { updateBrandSettings } = await import('../routes/brand-settings');
+      const request = new Request('http://localhost/api/brand-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primary_color: '#00ff00' }),
+      });
+
+      const response = await updateBrandSettings(request, env);
+      expect(response.status).toBe(401);
+    });
+  });
+});
 ```
 
-**Step 2: Update schema.sql**
+**Step 2: Run test to verify it fails**
 
-Add the same table definitions to `schema.sql`.
+Run: `cd workers/newsletter && npm test src/__tests__/brand-settings.test.ts`
+Expected: FAIL - Cannot find module '../routes/brand-settings'
 
-**Step 3: Apply migration locally**
+**Step 3: Write implementation**
 
-Run: `cd workers/newsletter && npm run db:migrate`
-Expected: Tables created
+Create `workers/newsletter/src/routes/brand-settings.ts`:
 
-**Step 4: Commit**
+```typescript
+import type { Env, BrandSettings, UpdateBrandSettingsRequest } from '../types';
+import { isAuthorized } from '../lib/auth';
+import { errorResponse, successResponse } from '../lib/response';
+import { getDefaultBrandSettings } from '../lib/templates';
+
+export async function getBrandSettings(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    const settings = await env.DB.prepare(
+      'SELECT * FROM brand_settings WHERE id = ?'
+    ).bind('default').first<BrandSettings>();
+
+    if (!settings) {
+      return successResponse(getDefaultBrandSettings());
+    }
+
+    return successResponse(settings);
+  } catch (error) {
+    console.error('Get brand settings error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+export async function updateBrandSettings(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    const body: UpdateBrandSettingsRequest = await request.json();
+    const now = Math.floor(Date.now() / 1000);
+
+    const existing = await env.DB.prepare(
+      'SELECT id FROM brand_settings WHERE id = ?'
+    ).bind('default').first();
+
+    if (existing) {
+      const updates: string[] = [];
+      const values: (string | number | null)[] = [];
+
+      if (body.logo_url !== undefined) {
+        updates.push('logo_url = ?');
+        values.push(body.logo_url);
+      }
+      if (body.primary_color !== undefined) {
+        updates.push('primary_color = ?');
+        values.push(body.primary_color);
+      }
+      if (body.secondary_color !== undefined) {
+        updates.push('secondary_color = ?');
+        values.push(body.secondary_color);
+      }
+      if (body.footer_text !== undefined) {
+        updates.push('footer_text = ?');
+        values.push(body.footer_text);
+      }
+      if (body.default_template_id !== undefined) {
+        updates.push('default_template_id = ?');
+        values.push(body.default_template_id);
+      }
+
+      updates.push('updated_at = ?');
+      values.push(now);
+      values.push('default');
+
+      await env.DB.prepare(
+        `UPDATE brand_settings SET ${updates.join(', ')} WHERE id = ?`
+      ).bind(...values).run();
+    } else {
+      const defaults = getDefaultBrandSettings();
+      await env.DB.prepare(`
+        INSERT INTO brand_settings (id, logo_url, primary_color, secondary_color, footer_text, default_template_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        'default',
+        body.logo_url ?? defaults.logo_url,
+        body.primary_color ?? defaults.primary_color,
+        body.secondary_color ?? defaults.secondary_color,
+        body.footer_text ?? defaults.footer_text,
+        body.default_template_id ?? defaults.default_template_id,
+        now,
+        now
+      ).run();
+    }
+
+    const updated = await env.DB.prepare(
+      'SELECT * FROM brand_settings WHERE id = ?'
+    ).bind('default').first<BrandSettings>();
+
+    return successResponse(updated);
+  } catch (error) {
+    console.error('Update brand settings error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+```
+
+**Step 4: Add routes to index.ts**
+
+Add import at top:
+
+```typescript
+import { getBrandSettings, updateBrandSettings } from './routes/brand-settings';
+```
+
+Add route handling before "Newsletter routes" section:
+
+```typescript
+// Brand Settings routes (Email Templates)
+else if (path === '/api/brand-settings' && request.method === 'GET') {
+  response = await getBrandSettings(request, env);
+} else if (path === '/api/brand-settings' && request.method === 'PUT') {
+  response = await updateBrandSettings(request, env);
+}
+```
+
+**Step 5: Run test to verify it passes**
+
+Run: `cd workers/newsletter && npm test src/__tests__/brand-settings.test.ts`
+Expected: PASS
+
+**Step 6: Commit**
 
 ```bash
-git add workers/newsletter/schema.sql workers/newsletter/migrations/005_email_templates.sql
-git commit -m "feat(templates): add brand_settings and email_templates tables"
+git add workers/newsletter/src/routes/brand-settings.ts workers/newsletter/src/index.ts workers/newsletter/src/__tests__/brand-settings.test.ts
+git commit -m "feat(templates): add brand settings API
+
+- GET /api/brand-settings returns current or default settings
+- PUT /api/brand-settings creates/updates settings
+- Upsert logic for single-row brand_settings table"
 ```
 
 ---
 
-## Phase 4: API エンドポイント
-
-### Task 4.1: ブランド設定 API
+## Task 7: Templates List and Preview API
 
 **Files:**
 - Create: `workers/newsletter/src/routes/templates.ts`
 - Modify: `workers/newsletter/src/index.ts`
-- Modify: `workers/newsletter/src/types.ts`
+- Test: `workers/newsletter/src/__tests__/templates-api.test.ts`
 
-**Step 1: Add types**
+**Step 1: Write the failing test**
+
+Create `workers/newsletter/src/__tests__/templates-api.test.ts`:
 
 ```typescript
-// workers/newsletter/src/types.ts (append)
-export interface BrandSettings {
-  id: string;
-  logo_url: string | null;
-  primary_color: string;
-  secondary_color: string;
-  footer_text: string | null;
-  updated_at: number;
-}
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
+import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
 
-export interface CustomEmailTemplate {
-  id: string;
-  name: string;
-  description: string | null;
-  html: string;
-  is_active: number;
-  created_at: number;
-  updated_at: number;
-}
+describe('Templates API', () => {
+  const env = getTestEnv();
 
-export interface UpdateBrandSettingsRequest {
-  logo_url?: string;
-  primary_color?: string;
-  secondary_color?: string;
-  footer_text?: string;
-}
+  beforeAll(async () => {
+    await setupTestDb();
+  });
 
-export interface CreateTemplateRequest {
-  name: string;
-  description?: string;
-  html: string;
-}
+  beforeEach(async () => {
+    await cleanupTestDb();
+  });
 
-export interface UpdateTemplateRequest {
-  name?: string;
-  description?: string;
-  html?: string;
-  is_active?: boolean;
-}
+  describe('GET /api/templates', () => {
+    it('should return list of available templates', async () => {
+      const { getTemplates } = await import('../routes/templates');
+      const request = new Request('http://localhost/api/templates', {
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await getTemplates(request, env);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(5);
+      expect(data.data[0]).toHaveProperty('id');
+      expect(data.data[0]).toHaveProperty('name');
+      expect(data.data[0]).toHaveProperty('description');
+    });
+  });
+
+  describe('POST /api/templates/preview', () => {
+    it('should render preview HTML', async () => {
+      const { previewTemplate } = await import('../routes/templates');
+      const request = new Request('http://localhost/api/templates/preview', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.ADMIN_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template_id: 'simple',
+          content: 'Hello World',
+          subject: 'Test Subject',
+        }),
+      });
+
+      const response = await previewTemplate(request, env);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.html).toContain('Hello World');
+      expect(data.data.html).toContain('<!DOCTYPE html>');
+    });
+  });
+});
 ```
 
-**Step 2: Implement route handlers**
+**Step 2: Run test to verify it fails**
+
+Run: `cd workers/newsletter && npm test src/__tests__/templates-api.test.ts`
+Expected: FAIL
+
+**Step 3: Write implementation**
+
+Create `workers/newsletter/src/routes/templates.ts`:
 
 ```typescript
-// workers/newsletter/src/routes/templates.ts
-import type { Env, ApiResponse, BrandSettings, CustomEmailTemplate } from '../types';
-import { PRESET_TEMPLATES, getPresetTemplate } from '../lib/templates/presets';
-import { renderTemplate, buildTemplateContext } from '../lib/templates/renderer';
+import type { Env, BrandSettings, PreviewRequest, TestSendRequest } from '../types';
+import { isAuthorized } from '../lib/auth';
+import { errorResponse, successResponse } from '../lib/response';
+import { renderEmail, getDefaultBrandSettings, getTemplateList } from '../lib/templates';
+import { sendEmail } from '../lib/email';
 
-function jsonResponse<T>(data: T, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-// GET /api/templates/presets - List preset templates
-export async function handleGetPresets(request: Request, env: Env): Promise<Response> {
-  return jsonResponse<ApiResponse>({
-    success: true,
-    data: PRESET_TEMPLATES.map(t => ({
-      id: t.id,
-      name: t.name,
-      description: t.description,
-      category: t.category,
-      variables: t.variables,
-    })),
-  });
-}
-
-// GET /api/templates/presets/:id - Get preset template
-export async function handleGetPreset(request: Request, env: Env, id: string): Promise<Response> {
-  const template = getPresetTemplate(id);
-  if (!template) {
-    return jsonResponse<ApiResponse>({ success: false, error: 'Template not found' }, 404);
+export async function getTemplates(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
   }
-  return jsonResponse<ApiResponse>({ success: true, data: template });
+
+  return successResponse(getTemplateList());
 }
 
-// GET /api/brand-settings - Get brand settings
-export async function handleGetBrandSettings(request: Request, env: Env): Promise<Response> {
-  try {
-    const settings = await env.DB.prepare(
-      'SELECT * FROM brand_settings WHERE id = ?'
-    ).bind('default').first<BrandSettings>();
-
-    return jsonResponse<ApiResponse>({
-      success: true,
-      data: settings || { id: 'default', primary_color: '#7c3aed', secondary_color: '#4c1d95' },
-    });
-  } catch (error) {
-    return jsonResponse<ApiResponse>({ success: false, error: 'Failed to get brand settings' }, 500);
+export async function previewTemplate(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
   }
-}
 
-// PUT /api/brand-settings - Update brand settings
-export async function handleUpdateBrandSettings(request: Request, env: Env): Promise<Response> {
   try {
-    const body = await request.json<UpdateBrandSettingsRequest>();
-    const now = Math.floor(Date.now() / 1000);
+    const body: PreviewRequest = await request.json();
 
-    await env.DB.prepare(`
-      INSERT INTO brand_settings (id, logo_url, primary_color, secondary_color, footer_text, updated_at)
-      VALUES ('default', ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        logo_url = COALESCE(?, logo_url),
-        primary_color = COALESCE(?, primary_color),
-        secondary_color = COALESCE(?, secondary_color),
-        footer_text = COALESCE(?, footer_text),
-        updated_at = ?
-    `).bind(
-      body.logo_url || null,
-      body.primary_color || '#7c3aed',
-      body.secondary_color || '#4c1d95',
-      body.footer_text || null,
-      now,
-      body.logo_url,
-      body.primary_color,
-      body.secondary_color,
-      body.footer_text,
-      now
-    ).run();
-
-    const settings = await env.DB.prepare(
-      'SELECT * FROM brand_settings WHERE id = ?'
-    ).bind('default').first<BrandSettings>();
-
-    return jsonResponse<ApiResponse>({ success: true, data: settings });
-  } catch (error) {
-    return jsonResponse<ApiResponse>({ success: false, error: 'Failed to update brand settings' }, 500);
-  }
-}
-
-// POST /api/templates/preview - Preview template with sample data
-export async function handlePreviewTemplate(request: Request, env: Env): Promise<Response> {
-  try {
-    const body = await request.json<{ templateId?: string; html?: string; content: string }>();
-
-    let templateHtml: string;
-    if (body.html) {
-      templateHtml = body.html;
-    } else if (body.templateId) {
-      const preset = getPresetTemplate(body.templateId);
-      if (!preset) {
-        return jsonResponse<ApiResponse>({ success: false, error: 'Template not found' }, 404);
-      }
-      templateHtml = preset.html;
-    } else {
-      return jsonResponse<ApiResponse>({ success: false, error: 'templateId or html required' }, 400);
+    if (!body.template_id || !body.content) {
+      return errorResponse('template_id and content are required', 400);
     }
 
-    // Get brand settings
-    const brand = await env.DB.prepare(
+    let brandSettings = await env.DB.prepare(
       'SELECT * FROM brand_settings WHERE id = ?'
     ).bind('default').first<BrandSettings>();
 
-    const context = buildTemplateContext(
-      body.content,
-      { name: 'サンプル 太郎', email: 'sample@example.com' },
-      'https://example.com/unsubscribe/xxx',
-      env.SITE_URL,
-      { logo_url: brand?.logo_url || undefined, primary_color: brand?.primary_color }
+    if (!brandSettings) {
+      brandSettings = getDefaultBrandSettings();
+    }
+
+    if (body.brand_settings) {
+      brandSettings = { ...brandSettings, ...body.brand_settings };
+    }
+
+    const html = renderEmail({
+      templateId: body.template_id,
+      content: body.content,
+      subject: body.subject || 'Preview',
+      brandSettings,
+      subscriber: { name: 'プレビューユーザー', email: 'preview@example.com' },
+      unsubscribeUrl: `${env.SITE_URL}/unsubscribe/preview`,
+      siteUrl: env.SITE_URL,
+    });
+
+    return successResponse({ html });
+  } catch (error) {
+    console.error('Preview template error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+export async function testSendTemplate(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    const body: TestSendRequest = await request.json();
+
+    if (!body.template_id || !body.content || !body.to) {
+      return errorResponse('template_id, content, and to are required', 400);
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(body.to)) {
+      return errorResponse('Invalid email address', 400);
+    }
+
+    let brandSettings = await env.DB.prepare(
+      'SELECT * FROM brand_settings WHERE id = ?'
+    ).bind('default').first<BrandSettings>();
+
+    if (!brandSettings) {
+      brandSettings = getDefaultBrandSettings();
+    }
+
+    const html = renderEmail({
+      templateId: body.template_id,
+      content: body.content,
+      subject: body.subject || 'テストメール',
+      brandSettings,
+      subscriber: { name: 'テスト送信者', email: body.to },
+      unsubscribeUrl: `${env.SITE_URL}/unsubscribe/test`,
+      siteUrl: env.SITE_URL,
+    });
+
+    const result = await sendEmail(
+      env.RESEND_API_KEY,
+      `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
+      {
+        to: body.to,
+        subject: `[テスト] ${body.subject || 'テストメール'}`,
+        html,
+      }
     );
 
-    const rendered = renderTemplate(templateHtml, context);
+    if (!result.success) {
+      return errorResponse(result.error || 'Failed to send test email', 500);
+    }
 
-    return jsonResponse<ApiResponse>({ success: true, data: { html: rendered } });
+    return successResponse({ message_id: result.id });
   } catch (error) {
-    return jsonResponse<ApiResponse>({ success: false, error: 'Failed to preview template' }, 500);
+    console.error('Test send error:', error);
+    return errorResponse('Internal server error', 500);
   }
 }
 ```
 
-**Step 3: Register routes in index.ts**
+**Step 4: Add routes to index.ts**
 
-Add route handlers for:
-- `GET /api/templates/presets`
-- `GET /api/templates/presets/:id`
-- `GET /api/brand-settings`
-- `PUT /api/brand-settings`
-- `POST /api/templates/preview`
+Add import and routes:
 
-**Step 4: Write tests and verify**
+```typescript
+import { getTemplates, previewTemplate, testSendTemplate } from './routes/templates';
 
-Run: `cd workers/newsletter && npx vitest run`
-Expected: All tests pass
+// Templates routes
+else if (path === '/api/templates' && request.method === 'GET') {
+  response = await getTemplates(request, env);
+} else if (path === '/api/templates/preview' && request.method === 'POST') {
+  response = await previewTemplate(request, env);
+} else if (path === '/api/templates/test-send' && request.method === 'POST') {
+  response = await testSendTemplate(request, env);
+}
+```
 
-**Step 5: Commit**
+**Step 5: Run test to verify it passes**
+
+Run: `cd workers/newsletter && npm test src/__tests__/templates-api.test.ts`
+Expected: PASS
+
+**Step 6: Commit**
 
 ```bash
-git add workers/newsletter/src/routes/templates.ts workers/newsletter/src/index.ts workers/newsletter/src/types.ts
-git commit -m "feat(templates): add template and brand settings API endpoints"
+git add workers/newsletter/src/routes/templates.ts workers/newsletter/src/index.ts workers/newsletter/src/__tests__/templates-api.test.ts
+git commit -m "feat(templates): add templates list, preview, and test-send APIs
+
+- GET /api/templates returns available preset list
+- POST /api/templates/preview renders HTML with sample data
+- POST /api/templates/test-send sends actual test email"
 ```
 
 ---
 
-## Phase 5: campaign-send.ts 統合
-
-### Task 5.1: sendCampaign でテンプレート使用
+## Task 8: Integrate template engine with campaign-send
 
 **Files:**
 - Modify: `workers/newsletter/src/routes/campaign-send.ts`
 
-**Step 1: Update buildNewsletterEmail to use templates**
+**Step 1: Update imports**
+
+Replace imports at top:
 
 ```typescript
-// Replace hardcoded buildNewsletterEmail with template-based version
-import { getPresetTemplate } from '../lib/templates/presets';
-import { renderTemplate, buildTemplateContext } from '../lib/templates/renderer';
-
-async function buildEmailWithTemplate(
-  env: Env,
-  templateId: string | null,
-  content: string,
-  subscriber: { name?: string; email: string },
-  unsubscribeUrl: string
-): Promise<string> {
-  // Get brand settings
-  const brand = await env.DB.prepare(
-    'SELECT * FROM brand_settings WHERE id = ?'
-  ).bind('default').first<BrandSettings>();
-
-  // Get template (default to 'newsletter' if not specified)
-  const template = getPresetTemplate(templateId || 'newsletter');
-  if (!template) {
-    throw new Error(`Template not found: ${templateId}`);
-  }
-
-  const context = buildTemplateContext(
-    linkifyUrls(content),
-    subscriber,
-    unsubscribeUrl,
-    env.SITE_URL,
-    { logo_url: brand?.logo_url || undefined, primary_color: brand?.primary_color }
-  );
-
-  return renderTemplate(template.html, context);
-}
+import type { Env, Campaign, Subscriber, BrandSettings } from '../types';
+import { isAuthorized } from '../lib/auth';
+import { sendBatchEmails } from '../lib/email';
+import { recordDeliveryLogs, getDeliveryStats } from '../lib/delivery';
+import { errorResponse, successResponse } from '../lib/response';
+import { renderEmail, getDefaultBrandSettings } from '../lib/templates';
 ```
 
-**Step 2: Update sendCampaign function**
+**Step 2: Remove old functions**
 
-Modify the email building part to use the new template-based approach.
+Delete `linkifyUrls` and `buildNewsletterEmail` functions.
 
-**Step 3: Test email sending**
+**Step 3: Update sendCampaign function**
 
-Run local test with `npm run dev` and send a test campaign.
-
-**Step 4: Commit**
-
-```bash
-git add workers/newsletter/src/routes/campaign-send.ts
-git commit -m "feat(templates): integrate template rendering into campaign send"
-```
-
----
-
-## Phase 6: 管理画面 UI
-
-### Task 6.1: テンプレート設定ページ
-
-**Files:**
-- Create: `src/pages/admin/templates/index.astro`
-- Create: `src/components/admin/TemplateManager.tsx`
-- Modify: `src/utils/admin-api.ts`
-- Modify: `src/layouts/AdminLayout.astro`
-
-**Step 1: Add API client functions**
+Replace email preparation section with:
 
 ```typescript
-// src/utils/admin-api.ts (append)
-export interface BrandSettings {
-  logo_url: string | null;
-  primary_color: string;
-  secondary_color: string;
-  footer_text: string | null;
-}
+    // Get brand settings
+    let brandSettings = await env.DB.prepare(
+      'SELECT * FROM brand_settings WHERE id = ?'
+    ).bind('default').first<BrandSettings>();
 
-export interface PresetTemplate {
-  id: string;
-  name: string;
-  description: string;
-  variables: string[];
-}
+    if (!brandSettings) {
+      brandSettings = getDefaultBrandSettings();
+    }
 
-export async function getBrandSettings() {
-  return apiRequest<BrandSettings>('/brand-settings');
-}
+    const templateId = campaign.template_id || brandSettings.default_template_id;
 
-export async function updateBrandSettings(data: Partial<BrandSettings>) {
-  return apiRequest<BrandSettings>('/brand-settings', { method: 'PUT', body: data });
-}
-
-export async function getPresetTemplates() {
-  return apiRequest<PresetTemplate[]>('/templates/presets');
-}
-
-export async function previewTemplate(data: { templateId?: string; html?: string; content: string }) {
-  return apiRequest<{ html: string }>('/templates/preview', { method: 'POST', body: data });
-}
+    const emails = subscribers.map((sub) => ({
+      to: sub.email,
+      subject: campaign.subject,
+      html: renderEmail({
+        templateId,
+        content: campaign.content,
+        subject: campaign.subject,
+        brandSettings,
+        subscriber: { name: sub.name, email: sub.email },
+        unsubscribeUrl: `${env.SITE_URL}/api/newsletter/unsubscribe/${sub.unsubscribe_token}`,
+        siteUrl: env.SITE_URL,
+      }),
+    }));
 ```
 
-**Step 2: Create React component**
+**Step 4: Run tests**
 
-Build `TemplateManager.tsx` with:
-- Brand settings form (logo URL, colors, footer)
-- Preset template list with preview
-- Live preview pane
-
-**Step 3: Create Astro page**
-
-```astro
----
-import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../components/admin/AuthProvider';
-import { TemplateManager } from '../../../components/admin/TemplateManager';
----
-
-<AdminLayout title="テンプレート設定">
-  <AuthProvider client:load>
-    <TemplateManager client:load />
-  </AuthProvider>
-</AdminLayout>
-```
-
-**Step 4: Add navigation link**
-
-Add "テンプレート" link to AdminLayout.astro navigation.
+Run: `cd workers/newsletter && npm test`
+Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add src/pages/admin/templates/ src/components/admin/TemplateManager.tsx src/utils/admin-api.ts src/layouts/AdminLayout.astro
-git commit -m "feat(templates): add admin UI for template and brand management"
+git add workers/newsletter/src/routes/campaign-send.ts
+git commit -m "refactor(templates): integrate template engine with campaign-send
+
+- Replace hardcoded buildNewsletterEmail with renderEmail
+- Support campaign.template_id with fallback to default
+- Fetch brand_settings for customization"
 ```
+
+---
+
+## Task 9: Integrate template engine with sequence-processor
+
+**Files:**
+- Modify: `workers/newsletter/src/lib/sequence-processor.ts`
+
+**Step 1: Update imports**
+
+Add at top:
+
+```typescript
+import type { BrandSettings } from '../types';
+import { renderEmail, getDefaultBrandSettings } from './templates';
+```
+
+**Step 2: Remove buildSequenceEmail function**
+
+Delete the `buildSequenceEmail` function.
+
+**Step 3: Update processSequenceEmails**
+
+Before sendEmail call, add brand settings and template handling:
+
+```typescript
+      let brandSettings = await env.DB.prepare(
+        'SELECT * FROM brand_settings WHERE id = ?'
+      ).bind('default').first<BrandSettings>();
+
+      if (!brandSettings) {
+        brandSettings = getDefaultBrandSettings();
+      }
+
+      const stepWithTemplate = await env.DB.prepare(
+        'SELECT template_id FROM sequence_steps WHERE id = ?'
+      ).bind(email.step_id).first<{ template_id: string | null }>();
+
+      const templateId = stepWithTemplate?.template_id || brandSettings.default_template_id;
+
+      const result = await sendEmail(
+        env.RESEND_API_KEY,
+        `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
+        {
+          to: email.email,
+          subject: email.subject,
+          html: renderEmail({
+            templateId,
+            content: email.content,
+            subject: email.subject,
+            brandSettings,
+            subscriber: { name: email.name, email: email.email },
+            unsubscribeUrl: `${env.SITE_URL}/api/newsletter/unsubscribe/${email.unsubscribe_token}`,
+            siteUrl: env.SITE_URL,
+          }),
+        }
+      );
+```
+
+**Step 4: Run tests**
+
+Run: `cd workers/newsletter && npm test`
+Expected: PASS
+
+**Step 5: Commit**
+
+```bash
+git add workers/newsletter/src/lib/sequence-processor.ts
+git commit -m "refactor(templates): integrate template engine with sequence-processor
+
+- Replace hardcoded buildSequenceEmail with renderEmail
+- Support step.template_id with fallback to default
+- Shared template rendering between campaigns and sequences"
+```
+
+---
+
+## Task 10-16: Frontend Implementation
+
+(See design document for detailed UI specifications)
+
+**Summary of remaining tasks:**
+- Task 10: Update Campaign/Sequence APIs for template_id
+- Task 11: Frontend Admin API functions
+- Task 12: Brand Settings Page
+- Task 13: Preview Modal Component
+- Task 14: Campaign Form Integration
+- Task 15: Production DB migration
+- Task 16: Final verification
 
 ---
 
 ## Summary
 
-| Phase | Description | Tasks |
-|-------|-------------|-------|
-| 1 | プリセットテンプレート定義 | 1.1, 1.2 |
-| 2 | 変数展開エンジン | 2.1 |
-| 3 | DB スキーマ | 3.1 |
-| 4 | API エンドポイント | 4.1 |
-| 5 | campaign-send.ts 統合 | 5.1 |
-| 6 | 管理画面 UI | 6.1 |
+**Total Tasks:** 16
+**Key Files Created:**
+- `workers/newsletter/src/lib/templates/` - Template engine
+- `workers/newsletter/src/routes/brand-settings.ts` - Brand settings API
+- `workers/newsletter/src/routes/templates.ts` - Templates API
+- `src/components/admin/BrandSettingsForm.tsx` - Admin UI
+- `src/components/admin/TemplatePreviewModal.tsx` - Preview modal
 
-**Total Tasks:** 6 major tasks with ~18 subtasks
-
-**Testing Strategy:**
-- Unit tests for template types and renderer
-- Integration tests for API endpoints
-- Manual E2E test for email sending with templates
+**Key Files Modified:**
+- `workers/newsletter/src/routes/campaign-send.ts` - Use template engine
+- `workers/newsletter/src/lib/sequence-processor.ts` - Use template engine
+- `workers/newsletter/src/index.ts` - Add routes
+- `src/utils/admin-api.ts` - Add API functions
