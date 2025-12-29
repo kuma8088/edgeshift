@@ -1,0 +1,201 @@
+---
+/**
+ * Newsletter Archive Detail Page
+ * Displays a single newsletter article by slug.
+ * SSR-enabled for dynamic content.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+interface Campaign {
+  id: string;
+  slug: string;
+  subject: string;
+  content_html: string;
+  sent_at: string;
+  created_at: string;
+}
+
+interface ArticleResponse {
+  success: boolean;
+  data?: {
+    article: Campaign;
+  };
+  error?: string;
+}
+
+// Get slug from params
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/newsletter/archive');
+}
+
+// Fetch article from API
+const apiUrl = `${Astro.site}api/archive/${slug}`;
+let article: Campaign | null = null;
+let notFound = false;
+
+try {
+  const response = await fetch(apiUrl);
+  if (response.status === 404) {
+    notFound = true;
+  } else if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  } else {
+    const data: ArticleResponse = await response.json();
+    if (data.success && data.data) {
+      article = data.data.article;
+    } else {
+      notFound = true;
+    }
+  }
+} catch (e) {
+  console.error('Failed to fetch article:', e);
+  notFound = true;
+}
+
+// Redirect to archive if not found
+if (notFound || !article) {
+  return Astro.redirect('/newsletter/archive');
+}
+
+// Format date
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+// Extract excerpt for OG description (first 160 chars)
+function extractExcerpt(html: string): string {
+  const text = html.replace(/<[^>]*>/g, '').trim();
+  return text.length > 160 ? text.substring(0, 160) + '...' : text;
+}
+
+const pageTitle = article.subject;
+const pageDescription = extractExcerpt(article.content_html);
+const ogImage = `${Astro.site}og-image.png`; // Default OG image
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} image={ogImage}>
+  <!-- Additional OG tags for article -->
+  <meta slot="head" property="og:type" content="article" />
+  <meta slot="head" property="article:published_time" content={article.sent_at} />
+  <meta slot="head" property="article:author" content="EdgeShift" />
+
+  <article class="py-24 bg-white min-h-screen">
+    <div class="max-w-3xl mx-auto px-6">
+      <!-- Breadcrumb -->
+      <nav class="mb-8 text-sm">
+        <ol class="flex items-center gap-2 text-[var(--color-text-muted)]">
+          <li>
+            <a href="/" class="hover:text-[var(--color-accent)] transition-colors">Home</a>
+          </li>
+          <li>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </li>
+          <li>
+            <a href="/newsletter/archive" class="hover:text-[var(--color-accent)] transition-colors">Archive</a>
+          </li>
+          <li>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </li>
+          <li class="text-[var(--color-text)]">{article.subject}</li>
+        </ol>
+      </nav>
+
+      <!-- Article Header -->
+      <header class="mb-12 pb-8 border-b border-[var(--color-border)]">
+        <h1 class="text-4xl md:text-5xl font-bold text-[var(--color-text)] mb-6 leading-tight">
+          {article.subject}
+        </h1>
+        <div class="flex items-center gap-4 text-[var(--color-text-muted)]">
+          <time datetime={article.sent_at}>
+            {formatDate(article.sent_at)}
+          </time>
+          <span>•</span>
+          <span>EdgeShift Newsletter</span>
+        </div>
+      </header>
+
+      <!-- Article Content -->
+      <div
+        class="prose prose-lg max-w-none
+          prose-headings:text-[var(--color-text)]
+          prose-p:text-[var(--color-text-secondary)]
+          prose-a:text-[var(--color-accent)]
+          prose-a:no-underline
+          hover:prose-a:underline
+          prose-strong:text-[var(--color-text)]
+          prose-code:text-[var(--color-accent)]
+          prose-code:bg-[var(--color-bg-tertiary)]
+          prose-code:px-1
+          prose-code:py-0.5
+          prose-code:rounded
+          prose-pre:bg-[var(--color-bg-secondary)]
+          prose-pre:border
+          prose-pre:border-[var(--color-border)]
+          prose-blockquote:border-l-[var(--color-accent)]
+          prose-blockquote:text-[var(--color-text-secondary)]
+          prose-ul:text-[var(--color-text-secondary)]
+          prose-ol:text-[var(--color-text-secondary)]
+          prose-li:text-[var(--color-text-secondary)]"
+        set:html={article.content_html}
+      />
+
+      <!-- Article Footer -->
+      <footer class="mt-16 pt-8 border-t border-[var(--color-border)]">
+        <!-- Share Buttons -->
+        <div class="mb-8">
+          <h3 class="text-sm font-semibold text-[var(--color-text)] mb-4">Share this article</h3>
+          <div class="flex gap-3">
+            <a
+              href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(Astro.url.href)}&text=${encodeURIComponent(article.subject)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-[#1DA1F2] text-white rounded hover:bg-[#1a8cd8] transition-colors"
+            >
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              Tweet
+            </a>
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(Astro.url.href)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-[#1877F2] text-white rounded hover:bg-[#166fe5] transition-colors"
+            >
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Share
+            </a>
+          </div>
+        </div>
+
+        <!-- Back to Archive -->
+        <div>
+          <a
+            href="/newsletter/archive"
+            class="inline-flex items-center gap-2 text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            アーカイブ一覧に戻る
+          </a>
+        </div>
+      </footer>
+    </div>
+  </article>
+</BaseLayout>

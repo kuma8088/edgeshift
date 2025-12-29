@@ -1,0 +1,186 @@
+---
+/**
+ * Newsletter Archive Index Page
+ * Displays paginated list of published newsletter articles.
+ * SSR-enabled for dynamic content.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+interface Campaign {
+  id: string;
+  slug: string;
+  subject: string;
+  content_html: string;
+  sent_at: string;
+  created_at: string;
+}
+
+interface ArchiveResponse {
+  success: boolean;
+  data: {
+    articles: Campaign[];
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
+// Get pagination params
+const url = new URL(Astro.request.url);
+const page = parseInt(url.searchParams.get('page') || '1', 10);
+const limit = 10;
+const offset = (page - 1) * limit;
+
+// Fetch articles from API
+const apiUrl = `${Astro.site}api/archive?limit=${limit}&offset=${offset}`;
+let articles: Campaign[] = [];
+let total = 0;
+let error: string | null = null;
+
+try {
+  const response = await fetch(apiUrl);
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  const data: ArchiveResponse = await response.json();
+  if (data.success) {
+    articles = data.data.articles;
+    total = data.data.total;
+  } else {
+    throw new Error('API returned error');
+  }
+} catch (e) {
+  console.error('Failed to fetch archive:', e);
+  error = 'アーカイブの読み込みに失敗しました。';
+}
+
+// Pagination calculations
+const totalPages = Math.ceil(total / limit);
+const hasNext = page < totalPages;
+const hasPrev = page > 1;
+
+// Extract excerpt from HTML content (first 200 chars of text)
+function extractExcerpt(html: string): string {
+  const text = html.replace(/<[^>]*>/g, '').trim();
+  return text.length > 200 ? text.substring(0, 200) + '...' : text;
+}
+
+// Format date to Japanese format
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+---
+
+<BaseLayout
+  title="Newsletter Archive"
+  description="EdgeShift のニュースレターアーカイブ。過去の技術情報やプロジェクトアップデートをご覧いただけます。"
+>
+  <section class="py-24 bg-white min-h-screen">
+    <div class="max-w-4xl mx-auto px-6">
+      <!-- Header -->
+      <div class="mb-12">
+        <h1 class="text-4xl font-bold text-[var(--color-text)] mb-4">Newsletter Archive</h1>
+        <p class="text-lg text-[var(--color-text-secondary)]">
+          EdgeShift のニュースレターアーカイブ。技術情報やプロジェクトのアップデートをお届けしています。
+        </p>
+        <div class="mt-6 flex gap-4">
+          <a
+            href="/newsletter/feed.xml"
+            class="inline-flex items-center gap-2 text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] transition-colors"
+          >
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20S4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1Z"/>
+            </svg>
+            RSS Feed
+          </a>
+        </div>
+      </div>
+
+      {error ? (
+        <!-- Error State -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p class="text-red-600">{error}</p>
+        </div>
+      ) : articles.length === 0 ? (
+        <!-- Empty State -->
+        <div class="bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg p-12 text-center">
+          <p class="text-[var(--color-text-muted)] text-lg">まだ記事が公開されていません。</p>
+        </div>
+      ) : (
+        <>
+          <!-- Articles List -->
+          <div class="space-y-8 mb-12">
+            {articles.map((article) => (
+              <article class="group border-b border-[var(--color-border)] pb-8 last:border-b-0">
+                <a href={`/newsletter/archive/${article.slug}`} class="block hover:opacity-80 transition-opacity">
+                  <div class="flex items-start justify-between gap-4 mb-3">
+                    <h2 class="text-2xl font-bold text-[var(--color-text)] group-hover:text-[var(--color-accent)] transition-colors">
+                      {article.subject}
+                    </h2>
+                    <time
+                      datetime={article.sent_at}
+                      class="text-sm text-[var(--color-text-muted)] whitespace-nowrap mt-1"
+                    >
+                      {formatDate(article.sent_at)}
+                    </time>
+                  </div>
+                  <p class="text-[var(--color-text-secondary)] leading-relaxed">
+                    {extractExcerpt(article.content_html)}
+                  </p>
+                  <div class="mt-4 inline-flex items-center gap-2 text-[var(--color-accent)] group-hover:gap-3 transition-all">
+                    続きを読む
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                  </div>
+                </a>
+              </article>
+            ))}
+          </div>
+
+          <!-- Pagination -->
+          {totalPages > 1 && (
+            <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
+              {hasPrev ? (
+                <a
+                  href={`/newsletter/archive?page=${page - 1}`}
+                  class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                >
+                  前へ
+                </a>
+              ) : (
+                <span class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-not-allowed">
+                  前へ
+                </span>
+              )}
+
+              <span class="px-4 py-2 text-[var(--color-text)]">
+                {page} / {totalPages}
+              </span>
+
+              {hasNext ? (
+                <a
+                  href={`/newsletter/archive?page=${page + 1}`}
+                  class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                >
+                  次へ
+                </a>
+              ) : (
+                <span class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-not-allowed">
+                  次へ
+                </span>
+              )}
+            </nav>
+          )}
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>
