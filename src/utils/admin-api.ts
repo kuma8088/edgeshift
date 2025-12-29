@@ -92,6 +92,7 @@ export interface CreateCampaignData {
   content: string;
   scheduled_at?: number;
   contact_list_id?: string;
+  template_id?: string;
   slug?: string;
   is_published?: boolean;
   excerpt?: string;
@@ -101,7 +102,7 @@ export async function createCampaign(data: CreateCampaignData) {
   return apiRequest('/campaigns', { method: 'POST', body: data });
 }
 
-export async function updateCampaign(id: string, data: { subject?: string; content?: string; status?: string; slug?: string; is_published?: boolean; excerpt?: string }) {
+export async function updateCampaign(id: string, data: { subject?: string; content?: string; status?: string; contact_list_id?: string; template_id?: string; slug?: string; is_published?: boolean; excerpt?: string }) {
   return apiRequest(`/campaigns/${id}`, { method: 'PUT', body: data });
 }
 
@@ -124,6 +125,7 @@ export interface SequenceStep {
   delay_minutes?: number | null;
   subject: string;
   content: string;
+  template_id?: string;
 }
 
 export interface Sequence {
@@ -456,4 +458,65 @@ export async function deleteMilestone(id: string) {
 
 export async function getReferralStats() {
   return apiRequest<ReferralStatsResponse>('/admin/referral-stats');
+}
+
+// Brand Settings API (Email Templates feature)
+export interface BrandSettings {
+  id: string;
+  logo_url: string | null;
+  primary_color: string;
+  secondary_color: string;
+  footer_text: string;
+  default_template_id: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface UpdateBrandSettingsData {
+  logo_url?: string | null;
+  primary_color?: string;
+  secondary_color?: string;
+  footer_text?: string;
+  default_template_id?: string;
+}
+
+export async function getBrandSettings() {
+  return apiRequest<BrandSettings>('/brand-settings');
+}
+
+export async function updateBrandSettings(data: UpdateBrandSettingsData) {
+  return apiRequest<BrandSettings>('/brand-settings', { method: 'PUT', body: data });
+}
+
+// Templates API (Email Templates feature)
+export interface TemplateInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export async function getTemplates() {
+  return apiRequest<TemplateInfo[]>('/templates');
+}
+
+export interface PreviewTemplateData {
+  template_id: string;
+  content: string;
+  subject?: string;
+  brand_settings?: Partial<BrandSettings>;
+}
+
+export async function previewTemplate(data: PreviewTemplateData) {
+  return apiRequest<{ html: string }>('/templates/preview', { method: 'POST', body: data });
+}
+
+export interface TestSendTemplateData {
+  template_id: string;
+  content: string;
+  subject?: string;
+  to: string;
+}
+
+export async function testSendTemplate(data: TestSendTemplateData) {
+  return apiRequest<{ message_id: string }>('/templates/test-send', { method: 'POST', body: data });
 }
