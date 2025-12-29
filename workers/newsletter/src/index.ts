@@ -63,6 +63,7 @@ import {
   handleGetReferralStats,
 } from './routes/referral';
 import { getBrandSettings, updateBrandSettings } from './routes/brand-settings';
+import { getTemplates, previewTemplate, testSendTemplate } from './routes/templates';
 import { isAuthorized } from './lib/auth';
 
 export default {
@@ -98,6 +99,14 @@ export default {
         response = await getBrandSettings(request, env);
       } else if (path === '/api/brand-settings' && request.method === 'PUT') {
         response = await updateBrandSettings(request, env);
+      }
+      // Templates routes (Email Templates)
+      else if (path === '/api/templates' && request.method === 'GET') {
+        response = await getTemplates(request, env);
+      } else if (path === '/api/templates/preview' && request.method === 'POST') {
+        response = await previewTemplate(request, env);
+      } else if (path === '/api/templates/test-send' && request.method === 'POST') {
+        response = await testSendTemplate(request, env);
       }
       // Contact Lists routes (Batch 4C)
       else
