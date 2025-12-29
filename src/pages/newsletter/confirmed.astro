@@ -5,10 +5,15 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 const url = new URL(Astro.request.url);
 const status = url.searchParams.get('status') || 'success';
 const message = url.searchParams.get('message');
+const referralCode = url.searchParams.get('ref');
 
 const isSuccess = status === 'success';
 const isInfo = status === 'info';
 const isError = status === 'error';
+
+// Build referral link if code is present
+const siteUrl = import.meta.env.SITE || 'https://edgeshift.tech';
+const referralLink = referralCode ? `${siteUrl}/newsletter?ref=${referralCode}` : null;
 ---
 
 <BaseLayout
@@ -61,6 +66,42 @@ const isError = status === 'error';
         {isError && (message || 'リンクが無効であるか、期限切れの可能性があります。')}
       </p>
 
+      <!-- Referral Section -->
+      {isSuccess && referralLink && (
+        <div class="mb-8 p-6 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)]">
+          <h2 class="text-lg font-semibold text-[var(--color-text)] mb-3">
+            友達を紹介してリワードを獲得
+          </h2>
+          <p class="text-sm text-[var(--color-text-secondary)] mb-4">
+            下記のリンクを友達にシェアすると、紹介数に応じてバッジやリワードがもらえます！
+          </p>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              readonly
+              value={referralLink}
+              id="referral-link"
+              class="flex-1 px-3 py-2 text-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-[var(--color-text)]"
+            />
+            <button
+              id="copy-btn"
+              class="px-4 py-2 bg-[var(--color-accent)] text-white text-sm rounded hover:bg-[var(--color-accent-hover)] transition-colors"
+            >
+              コピー
+            </button>
+          </div>
+          <p class="mt-3 text-xs text-[var(--color-text-muted)]">
+            あなたの紹介コード: <code class="bg-[var(--color-bg-secondary)] px-1.5 py-0.5 rounded">{referralCode}</code>
+          </p>
+          <a
+            href={`/newsletter/referrals/${referralCode}`}
+            class="inline-block mt-4 text-sm text-[var(--color-accent)] hover:underline"
+          >
+            紹介ダッシュボードを見る
+          </a>
+        </div>
+      )}
+
       <!-- Back to Home -->
       <a
         href="/"
@@ -76,4 +117,26 @@ const isError = status === 'error';
       )}
     </div>
   </section>
+
+  {referralLink && (
+    <script>
+      const copyBtn = document.getElementById('copy-btn');
+      const referralInput = document.getElementById('referral-link') as HTMLInputElement;
+
+      if (copyBtn && referralInput) {
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(referralInput.value);
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'コピー済み!';
+            setTimeout(() => {
+              copyBtn.textContent = originalText;
+            }, 2000);
+          } catch (err) {
+            console.error('Copy failed:', err);
+          }
+        });
+      }
+    </script>
+  )}
 </BaseLayout>

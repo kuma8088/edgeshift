@@ -14,6 +14,23 @@ function generateToken(): string {
   return crypto.randomUUID();
 }
 
+/**
+ * Find referrer by referral code
+ * Returns the subscriber ID if the referral code is valid and belongs to an active subscriber
+ */
+async function findReferrer(
+  db: D1Database,
+  referralCode: string | undefined
+): Promise<string | null> {
+  if (!referralCode) return null;
+
+  const referrer = await db.prepare(
+    "SELECT id FROM subscribers WHERE referral_code = ? AND status = 'active'"
+  ).bind(referralCode).first<{ id: string }>();
+
+  return referrer?.id || null;
+}
+
 function buildConfirmationEmail(
   name: string | undefined,
   confirmUrl: string,
@@ -64,7 +81,7 @@ export async function handleSubscribe(
 ): Promise<Response> {
   try {
     const body = await request.json<SubscribeRequest>();
-    const { email, name, turnstileToken, sequenceId, signupPageSlug } = body;
+    const { email, name, turnstileToken, sequenceId, signupPageSlug, ref } = body;
 
     // Validate required fields
     if (!email || !turnstileToken) {
@@ -242,10 +259,13 @@ export async function handleSubscribe(
     const unsubscribeToken = generateToken();
     const confirmUrl = `${env.SITE_URL}/api/newsletter/confirm/${confirmToken}`;
 
+    // Find referrer if referral code is provided
+    const referrerId = await findReferrer(env.DB, ref);
+
     await env.DB.prepare(`
-      INSERT INTO subscribers (id, email, name, status, confirm_token, unsubscribe_token, signup_page_slug)
-      VALUES (?, ?, ?, 'pending', ?, ?, ?)
-    `).bind(id, email, name || null, confirmToken, unsubscribeToken, signupPageSlug || null).run();
+      INSERT INTO subscribers (id, email, name, status, confirm_token, unsubscribe_token, signup_page_slug, referred_by)
+      VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)
+    `).bind(id, email, name || null, confirmToken, unsubscribeToken, signupPageSlug || null, referrerId).run();
 
     // Enroll in sequence if provided
     if (sequenceId) {

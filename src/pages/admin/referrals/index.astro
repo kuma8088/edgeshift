@@ -1,0 +1,17 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { ReferralDashboard } from '../../../components/admin/ReferralDashboard';
+---
+
+<AdminLayout title="リファラル管理">
+  <AuthProvider client:load>
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-[var(--color-text)]">リファラルプログラム</h1>
+      <p class="text-[var(--color-text-secondary)] mt-1">
+        紹介プログラムの統計とマイルストーンを管理
+      </p>
+    </div>
+    <ReferralDashboard client:load />
+  </AuthProvider>
+</AdminLayout>

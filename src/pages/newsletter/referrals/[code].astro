@@ -1,0 +1,218 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export const prerender = false;
+
+const { code } = Astro.params;
+const apiUrl = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+
+interface Achievement {
+  id: string;
+  milestone_name: string;
+  threshold: number;
+  achieved_at: number;
+  reward_type: string | null;
+  reward_value: string | null;
+}
+
+interface NextMilestone {
+  name: string;
+  threshold: number;
+  remaining: number;
+}
+
+interface DashboardData {
+  referral_code: string;
+  referral_link: string;
+  referral_count: number;
+  achievements: Achievement[];
+  next_milestone?: NextMilestone;
+}
+
+let data: DashboardData | null = null;
+let error: string | null = null;
+
+try {
+  const response = await fetch(`${apiUrl}/referral/dashboard/${code}`);
+  const json = await response.json();
+
+  if (json.success && json.data) {
+    data = json.data;
+  } else {
+    error = json.error || 'Failed to load referral dashboard';
+  }
+} catch (e) {
+  error = 'Failed to connect to server';
+}
+
+function formatDate(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function getBadgeColor(rewardValue: string | null): string {
+  switch (rewardValue) {
+    case 'bronze': return 'bg-amber-700';
+    case 'silver': return 'bg-gray-400';
+    case 'gold': return 'bg-yellow-500';
+    case 'platinum': return 'bg-purple-500';
+    default: return 'bg-[var(--color-accent)]';
+  }
+}
+---
+
+<BaseLayout
+  title="紹介ダッシュボード"
+  description="あなたの紹介実績を確認"
+>
+  <section class="py-24 px-4 bg-[var(--color-bg-secondary)]">
+    <div class="max-w-2xl mx-auto">
+      {error ? (
+        <div class="text-center">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-8">
+            <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-bold text-[var(--color-text)] mb-4">エラー</h1>
+          <p class="text-[var(--color-text-secondary)] mb-8">{error}</p>
+          <a href="/" class="inline-block bg-[var(--color-accent)] text-white px-6 py-3 rounded font-medium hover:bg-[var(--color-accent-hover)] transition-colors">
+            トップページへ戻る
+          </a>
+        </div>
+      ) : data && (
+        <>
+          <h1 class="text-3xl font-bold text-[var(--color-text)] text-center mb-8">
+            紹介ダッシュボード
+          </h1>
+
+          <!-- Stats Card -->
+          <div class="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] p-6 mb-8">
+            <div class="text-center">
+              <p class="text-5xl font-bold text-[var(--color-accent)] mb-2">
+                {data.referral_count}
+              </p>
+              <p class="text-[var(--color-text-secondary)]">人を紹介しました</p>
+            </div>
+
+            {data.next_milestone && (
+              <div class="mt-6 pt-6 border-t border-[var(--color-border)]">
+                <div class="flex justify-between text-sm mb-2">
+                  <span class="text-[var(--color-text-secondary)]">
+                    次のマイルストーン: {data.next_milestone.name}
+                  </span>
+                  <span class="text-[var(--color-text)]">
+                    {data.referral_count}/{data.next_milestone.threshold}
+                  </span>
+                </div>
+                <div class="w-full bg-[var(--color-bg-secondary)] rounded-full h-2">
+                  <div
+                    class="bg-[var(--color-accent)] h-2 rounded-full transition-all"
+                    style={`width: ${Math.min((data.referral_count / data.next_milestone.threshold) * 100, 100)}%`}
+                  ></div>
+                </div>
+                <p class="text-xs text-[var(--color-text-muted)] mt-2">
+                  あと{data.next_milestone.remaining}人で達成!
+                </p>
+              </div>
+            )}
+          </div>
+
+          <!-- Referral Link -->
+          <div class="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] p-6 mb-8">
+            <h2 class="text-lg font-semibold text-[var(--color-text)] mb-4">
+              あなたの紹介リンク
+            </h2>
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                readonly
+                value={data.referral_link}
+                id="referral-link"
+                class="flex-1 px-3 py-2 text-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded text-[var(--color-text)]"
+              />
+              <button
+                id="copy-btn"
+                class="px-4 py-2 bg-[var(--color-accent)] text-white text-sm rounded hover:bg-[var(--color-accent-hover)] transition-colors"
+              >
+                コピー
+              </button>
+            </div>
+          </div>
+
+          <!-- Achievements -->
+          <div class="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] p-6">
+            <h2 class="text-lg font-semibold text-[var(--color-text)] mb-4">
+              獲得したバッジ
+            </h2>
+
+            {data.achievements.length > 0 ? (
+              <div class="space-y-4">
+                {data.achievements.map((achievement) => (
+                  <div class="flex items-center gap-4 p-4 bg-[var(--color-bg-secondary)] rounded-lg">
+                    <div class={`w-12 h-12 rounded-full ${getBadgeColor(achievement.reward_value)} flex items-center justify-center`}>
+                      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-semibold text-[var(--color-text)]">
+                        {achievement.milestone_name}
+                      </p>
+                      <p class="text-sm text-[var(--color-text-secondary)]">
+                        {achievement.threshold}人紹介達成
+                      </p>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm text-[var(--color-text-muted)]">
+                        {formatDate(achievement.achieved_at)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="text-center py-8 text-[var(--color-text-secondary)]">
+                <p>まだバッジを獲得していません</p>
+                <p class="text-sm mt-2">友達を紹介してバッジをゲットしよう!</p>
+              </div>
+            )}
+          </div>
+
+          <!-- Back link -->
+          <div class="text-center mt-8">
+            <a
+              href="/"
+              class="text-[var(--color-accent)] hover:underline"
+            >
+              トップページへ戻る
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  </section>
+
+  <script>
+    const copyBtn = document.getElementById('copy-btn');
+    const referralInput = document.getElementById('referral-link') as HTMLInputElement;
+
+    if (copyBtn && referralInput) {
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(referralInput.value);
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+          }, 2000);
+        } catch (err) {
+          console.error('Copy failed:', err);
+        }
+      });
+    }
+  </script>
+</BaseLayout>
