@@ -62,6 +62,7 @@ import {
   handleDeleteMilestone,
   handleGetReferralStats,
 } from './routes/referral';
+import { getBrandSettings, updateBrandSettings } from './routes/brand-settings';
 import { isAuthorized } from './lib/auth';
 
 export default {
@@ -91,6 +92,12 @@ export default {
       } else if (path.match(/^\/api\/archive\/[^\/]+$/) && request.method === 'GET') {
         const slug = path.replace('/api/archive/', '');
         response = await getArchiveArticle(request, env, slug);
+      }
+      // Brand Settings routes (Email Templates)
+      else if (path === '/api/brand-settings' && request.method === 'GET') {
+        response = await getBrandSettings(request, env);
+      } else if (path === '/api/brand-settings' && request.method === 'PUT') {
+        response = await updateBrandSettings(request, env);
       }
       // Contact Lists routes (Batch 4C)
       else
