@@ -21,7 +21,7 @@ const page = pageData.data.page;
 
 // Redirect to embed page if page_type is 'embed'
 if (page.page_type === 'embed') {
-  return Astro.redirect(`/newsletter/embed/${slug}`, 307);
+  return Astro.redirect(`/newsletter/embed/${slug}${Astro.url.search}`, 307);
 }
 
 // Parse form fields with fallback (supports both CSV and JSON format)
