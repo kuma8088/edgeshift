@@ -86,7 +86,23 @@ export async function createCampaign(
 
   try {
     const body = await request.json<CreateCampaignRequest>();
-    const { subject, content, scheduled_at, schedule_type, schedule_config, contact_list_id, template_id, slug: providedSlug, excerpt: providedExcerpt, is_published } = body;
+    const {
+      subject,
+      content,
+      scheduled_at,
+      schedule_type,
+      schedule_config,
+      contact_list_id,
+      template_id,
+      slug: providedSlug,
+      excerpt: providedExcerpt,
+      is_published,
+      // A/B Testing fields
+      ab_test_enabled = false,
+      ab_subject_b = null,
+      ab_from_name_b = null,
+      ab_wait_hours = 4
+    } = body;
 
     if (!subject || !content) {
       return errorResponse('Subject and content are required', 400);
@@ -102,8 +118,8 @@ export async function createCampaign(
     const excerpt = providedExcerpt || generateExcerpt(content, 150);
 
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, template_id, slug, excerpt, is_published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, template_id, slug, excerpt, is_published, ab_test_enabled, ab_subject_b, ab_from_name_b, ab_wait_hours)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -119,7 +135,11 @@ export async function createCampaign(
       template_id || null,
       slug,
       excerpt,
-      is_published !== undefined ? (is_published ? 1 : 0) : 0  // Default to unpublished
+      is_published !== undefined ? (is_published ? 1 : 0) : 0,  // Default to unpublished
+      ab_test_enabled ? 1 : 0,
+      ab_subject_b,
+      ab_from_name_b,
+      ab_wait_hours
     ).run();
 
     const campaign = await env.DB.prepare(

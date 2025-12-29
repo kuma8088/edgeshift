@@ -54,7 +54,13 @@ export async function setupTestDb() {
       slug TEXT UNIQUE,
       is_published INTEGER DEFAULT 0,
       published_at INTEGER,
-      excerpt TEXT
+      excerpt TEXT,
+      ab_test_enabled INTEGER DEFAULT 0,
+      ab_subject_b TEXT,
+      ab_from_name_b TEXT,
+      ab_wait_hours INTEGER DEFAULT 4,
+      ab_test_sent_at TEXT,
+      ab_winner TEXT
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS delivery_logs (
       id TEXT PRIMARY KEY,
@@ -71,6 +77,7 @@ export async function setupTestDb() {
       opened_at INTEGER,
       clicked_at INTEGER,
       error_message TEXT,
+      ab_variant TEXT CHECK (ab_variant IN ('A', 'B')),
       created_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
       FOREIGN KEY (subscriber_id) REFERENCES subscribers(id)

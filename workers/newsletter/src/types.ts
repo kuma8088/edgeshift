@@ -140,6 +140,11 @@ export interface CreateCampaignRequest {
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
+  // A/B Testing fields
+  ab_test_enabled?: boolean;
+  ab_subject_b?: string;
+  ab_from_name_b?: string;
+  ab_wait_hours?: number;  // 1, 2, or 4
 }
 
 export interface UpdateCampaignRequest {
