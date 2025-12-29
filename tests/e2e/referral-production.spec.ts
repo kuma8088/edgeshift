@@ -37,32 +37,35 @@ test.describe('Referral Program - Production', () => {
   });
 
   test('should have milestones API endpoint', async ({ context }) => {
-    // This will return 401 without auth, but endpoint should exist
+    // Without auth header, should return 401
     const response = await context.request.get(`${BASE_URL}/api/admin/milestones`);
-    // 401 means endpoint exists but auth required
-    expect([200, 401]).toContain(response.status());
+    // Must be 401 (auth required) - not 200 (which would indicate broken auth)
+    expect(response.status()).toBe(401);
   });
 
   test('should have referral stats API endpoint', async ({ context }) => {
+    // Without auth header, should return 401
     const response = await context.request.get(`${BASE_URL}/api/admin/referral-stats`);
-    expect([200, 401]).toContain(response.status());
+    // Must be 401 (auth required) - not 200 (which would indicate broken auth)
+    expect(response.status()).toBe(401);
   });
 
   test('should return 404 for non-existent referral code', async ({ context }) => {
     const response = await context.request.get(`${BASE_URL}/api/referral/dashboard/NONEXISTENT`);
-    // Should return 404 or empty data for non-existent code
-    expect([200, 404]).toContain(response.status());
+    // Must return 404 for invalid code - not 200 (which would mask errors)
+    expect(response.status()).toBe(404);
   });
 
   test('should render referral page structure', async ({ page }) => {
     // Test the referral dashboard page for a non-existent code
     await page.goto(`${BASE_URL}/newsletter/referrals/TESTCODE`);
 
-    // Page should render (even if showing error/not found state)
+    // Page should render error state for invalid code
     await page.waitForLoadState('networkidle');
 
-    // Check basic page structure exists
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
+    // Check error message is displayed (not just body visibility)
+    // This ensures we're not passing on 404 or generic error pages
+    await expect(page.locator('h1')).toContainText('エラー');
+    await expect(page.locator('a[href="/"]')).toBeVisible();
   });
 });
