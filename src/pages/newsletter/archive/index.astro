@@ -12,7 +12,7 @@ interface Campaign {
   id: string;
   slug: string;
   subject: string;
-  content_html: string;
+  content: string;
   sent_at: string;
   created_at: string;
 }
@@ -132,7 +132,7 @@ function formatDate(dateStr: string): string {
                     </time>
                   </div>
                   <p class="text-[var(--color-text-secondary)] leading-relaxed">
-                    {extractExcerpt(article.content_html)}
+                    {extractExcerpt(article.content)}
                   </p>
                   <div class="mt-4 inline-flex items-center gap-2 text-[var(--color-accent)] group-hover:gap-3 transition-all">
                     続きを読む

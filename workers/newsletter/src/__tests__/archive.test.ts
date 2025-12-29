@@ -32,7 +32,7 @@ describe('Archive API', () => {
       const published = await publishedRes.json();
 
       // Mark as sent (published)
-      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ? WHERE id = ?")
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
         .bind(new Date().toISOString(), published.data.id).run();
 
       // Create draft campaign (should not appear)
@@ -102,7 +102,7 @@ describe('Archive API', () => {
         const res = await createCampaign(req, env);
         const created = await res.json();
 
-        await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ? WHERE id = ?")
+        await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
           .bind(campaign.sentAt, created.data.id).run();
       }
 
@@ -136,7 +136,7 @@ describe('Archive API', () => {
         const res = await createCampaign(req, env);
         const created = await res.json();
 
-        await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ? WHERE id = ?")
+        await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
           .bind(new Date(Date.now() - i * 1000).toISOString(), created.data.id).run();
       }
 
@@ -182,7 +182,7 @@ describe('Archive API', () => {
       const res = await createCampaign(req, env);
       const created = await res.json();
 
-      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ? WHERE id = ?")
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
         .bind(new Date().toISOString(), created.data.id).run();
 
       const request = new Request('http://localhost/api/archive');
@@ -222,7 +222,7 @@ describe('Archive API', () => {
       const res = await createCampaign(req, env);
       const created = await res.json();
 
-      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ? WHERE id = ?")
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
         .bind(new Date().toISOString(), created.data.id).run();
 
       const request = new Request('http://localhost/api/archive');
@@ -253,7 +253,7 @@ describe('Archive API', () => {
       const created = await res.json();
       const campaignId = created.data.id;
 
-      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ? WHERE id = ?")
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
         .bind(new Date().toISOString(), campaignId).run();
 
       // Get the slug
@@ -380,7 +380,7 @@ describe('Archive Routes Integration', () => {
     const createRes = await worker.fetch(createReq, env);
     const created = await createRes.json();
 
-    await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ? WHERE id = ?")
+    await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
       .bind(new Date().toISOString(), created.data.id).run();
 
     const campaign = await env.DB.prepare('SELECT slug FROM campaigns WHERE id = ?')

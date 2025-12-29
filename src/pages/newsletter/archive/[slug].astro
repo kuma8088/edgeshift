@@ -12,7 +12,7 @@ interface Campaign {
   id: string;
   slug: string;
   subject: string;
-  content_html: string;
+  content: string;
   sent_at: string;
   created_at: string;
 }
@@ -78,7 +78,7 @@ function extractExcerpt(html: string): string {
 }
 
 const pageTitle = article.subject;
-const pageDescription = extractExcerpt(article.content_html);
+const pageDescription = extractExcerpt(article.content);
 const ogImage = `${Astro.site}og-image.png`; // Default OG image
 ---
 
@@ -149,7 +149,7 @@ const ogImage = `${Astro.site}og-image.png`; // Default OG image
           prose-ul:text-[var(--color-text-secondary)]
           prose-ol:text-[var(--color-text-secondary)]
           prose-li:text-[var(--color-text-secondary)]"
-        set:html={article.content_html}
+        set:html={article.content}
       />
 
       <!-- Article Footer -->

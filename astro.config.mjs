@@ -12,7 +12,9 @@ export default defineConfig({
   adapter: cloudflare({
     mode: 'advanced',
     routes: {
-      exclude: ['/api/*']
+      extend: {
+        exclude: [{ pattern: '/api/*' }]
+      }
     }
   }),
   integrations: [sitemap(), react()],
