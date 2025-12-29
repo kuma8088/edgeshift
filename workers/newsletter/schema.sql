@@ -259,6 +259,14 @@ CREATE TABLE IF NOT EXISTS brand_settings (
 -- ALTER TABLE campaigns ADD COLUMN template_id TEXT DEFAULT NULL;
 -- ALTER TABLE sequence_steps ADD COLUMN template_id TEXT DEFAULT NULL;
 
+-- A/B Test remaining subscribers (temporary storage for winner phase)
+CREATE TABLE IF NOT EXISTS ab_test_remaining (
+  campaign_id TEXT PRIMARY KEY,
+  subscriber_ids TEXT NOT NULL,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+);
+
 -- A/B Testing (migration 007):
 -- ALTER TABLE campaigns ADD COLUMN ab_test_enabled INTEGER DEFAULT 0;
 -- ALTER TABLE campaigns ADD COLUMN ab_subject_b TEXT;

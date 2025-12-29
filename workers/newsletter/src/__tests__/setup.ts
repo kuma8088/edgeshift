@@ -198,6 +198,12 @@ export async function setupTestDb() {
       default_template_id TEXT DEFAULT 'simple',
       created_at INTEGER DEFAULT (unixepoch()),
       updated_at INTEGER DEFAULT (unixepoch())
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS ab_test_remaining (
+      campaign_id TEXT PRIMARY KEY,
+      subscriber_ids TEXT NOT NULL,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
     )`)
   ]);
 }
@@ -212,6 +218,7 @@ export async function cleanupTestDb() {
       env.DB.prepare('DELETE FROM subscriber_sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequence_steps WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
+      env.DB.prepare('DELETE FROM ab_test_remaining WHERE 1=1'),
       env.DB.prepare('DELETE FROM campaigns WHERE 1=1'),
       env.DB.prepare('DELETE FROM contact_list_members WHERE 1=1'),
       env.DB.prepare('DELETE FROM referral_achievements WHERE 1=1'),
