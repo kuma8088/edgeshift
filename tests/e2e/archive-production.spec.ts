@@ -41,8 +41,8 @@ test.describe('Newsletter Archive - Production', () => {
     // Article content is rendered in div.prose
     await expect(page.locator('article div.prose')).toBeVisible();
 
-    // Should have back link
-    await expect(page.locator('a[href="/newsletter/archive"]')).toBeVisible();
+    // Should have back link (use first() to avoid strict mode with multiple matches)
+    await expect(page.locator('a[href="/newsletter/archive"]').first()).toBeVisible();
   });
 
   test('should have valid RSS feed', async ({ page, context }) => {
