@@ -1,8 +1,80 @@
-import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse } from '../types';
+import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse, AbVariantStats, AbTestStats } from '../types';
 import { isAuthorized } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
 import { generateSlug } from '../lib/slug';
 import { generateExcerpt } from '../lib/excerpt';
+import { calculateAbScore, determineWinner } from '../utils/ab-testing';
+
+/**
+ * Get A/B test statistics for a campaign
+ */
+async function getAbStats(db: D1Database, campaignId: string): Promise<AbTestStats | null> {
+  const results = await db
+    .prepare(
+      `SELECT
+        ab_variant,
+        COUNT(*) as sent,
+        SUM(CASE WHEN status IN ('delivered', 'opened', 'clicked') THEN 1 ELSE 0 END) as delivered,
+        SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+        SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked
+      FROM delivery_logs
+      WHERE campaign_id = ? AND ab_variant IS NOT NULL
+      GROUP BY ab_variant`
+    )
+    .bind(campaignId)
+    .all();
+
+  if (!results.results || results.results.length === 0) {
+    return null;
+  }
+
+  const emptyStats: AbVariantStats = {
+    sent: 0,
+    delivered: 0,
+    opened: 0,
+    clicked: 0,
+    open_rate: 0,
+    click_rate: 0,
+    score: 0,
+  };
+  const statsMap: Record<string, AbVariantStats> = {};
+
+  for (const row of results.results) {
+    const variant = row.ab_variant as string;
+    const sent = row.sent as number;
+    const opened = row.opened as number;
+    const clicked = row.clicked as number;
+
+    const open_rate = sent > 0 ? opened / sent : 0;
+    const click_rate = sent > 0 ? clicked / sent : 0;
+    const score = calculateAbScore(open_rate, click_rate);
+
+    statsMap[variant] = {
+      sent,
+      delivered: row.delivered as number,
+      opened,
+      clicked,
+      open_rate,
+      click_rate,
+      score,
+    };
+  }
+
+  const variant_a = statsMap['A'] || emptyStats;
+  const variant_b = statsMap['B'] || emptyStats;
+
+  let winner: 'A' | 'B' | null = null;
+  let status: 'pending' | 'testing' | 'determined' = 'pending';
+
+  if (variant_a.sent > 0 || variant_b.sent > 0) {
+    status = 'testing';
+  }
+  if (variant_a.sent > 0 && variant_b.sent > 0) {
+    winner = determineWinner(variant_a, variant_b);
+  }
+
+  return { variant_a, variant_b, winner, status };
+}
 
 export async function createCampaign(
   request: Request,
@@ -80,6 +152,12 @@ export async function getCampaign(
 
     if (!campaign) {
       return errorResponse('Campaign not found', 404);
+    }
+
+    // Include A/B stats if A/B testing is enabled
+    if (campaign.ab_test_enabled) {
+      const ab_stats = await getAbStats(env.DB, id);
+      return successResponse({ campaign: { ...campaign, ab_stats } });
     }
 
     return successResponse({ campaign });
