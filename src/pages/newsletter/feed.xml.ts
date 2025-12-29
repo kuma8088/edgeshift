@@ -11,7 +11,7 @@ interface Campaign {
   id: string;
   slug: string;
   subject: string;
-  content_html: string;
+  content: string;
   sent_at: string;
   created_at: string;
 }
@@ -83,7 +83,7 @@ export const GET: APIRoute = async ({ site, url }) => {
     const rssItems = articles
       .map((article) => {
         const itemUrl = `${site}newsletter/archive/${article.slug}`;
-        const description = extractPlainText(article.content_html);
+        const description = extractPlainText(article.content);
         const excerpt = description.length > 300
           ? description.substring(0, 300) + '...'
           : description;
@@ -95,7 +95,7 @@ export const GET: APIRoute = async ({ site, url }) => {
       <guid isPermaLink="true">${escapeXml(itemUrl)}</guid>
       <pubDate>${toRFC822(article.sent_at)}</pubDate>
       <description>${escapeXml(excerpt)}</description>
-      <content:encoded><![CDATA[${article.content_html}]]></content:encoded>
+      <content:encoded><![CDATA[${article.content}]]></content:encoded>
     </item>`;
       })
       .join('');
