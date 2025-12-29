@@ -6,6 +6,7 @@ export const prerender = false;
 
 const { slug } = Astro.params;
 const status = Astro.url.searchParams.get('status');
+const referralCode = Astro.url.searchParams.get('ref');
 
 // Fetch page data at request time
 const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
@@ -20,7 +21,7 @@ const page = pageData.data.page;
 
 // Redirect to embed page if page_type is 'embed'
 if (page.page_type === 'embed') {
-  return Astro.redirect(`/newsletter/embed/${slug}`, 307);
+  return Astro.redirect(`/newsletter/embed/${slug}${Astro.url.search}`, 307);
 }
 
 // Parse form fields with fallback (supports both CSV and JSON format)
@@ -173,7 +174,7 @@ const pageDescription = isPending ? pendingMessage : isConfirmed ? confirmedMess
     <!-- Turnstile Script -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-    <script define:vars={{ slug, sequenceId: page.sequence_id, successMsg: successMessage, defaultButtonText: buttonText }}>
+    <script define:vars={{ slug, sequenceId: page.sequence_id, successMsg: successMessage, defaultButtonText: buttonText, referralCode }}>
       const form = document.getElementById('signup-form');
       const submitBtn = document.getElementById('submit-btn');
       const btnText = document.getElementById('btn-text');
@@ -203,6 +204,14 @@ const pageDescription = isPending ? pendingMessage : isConfirmed ? confirmedMess
         errorElement.classList.add('hidden');
       }
 
+      // Get referral code from URL or props
+      function getReferralCode() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRef = urlParams.get('ref');
+        if (urlRef) return urlRef;
+        return referralCode || undefined;
+      }
+
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideStatus();
@@ -224,6 +233,7 @@ const pageDescription = isPending ? pendingMessage : isConfirmed ? confirmedMess
           turnstileToken,
           sequenceId: sequenceId || undefined,
           signupPageSlug: slug,
+          ref: getReferralCode(),
         };
 
         try {

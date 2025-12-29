@@ -18,6 +18,7 @@ const page = pageData.data.page;
 // Read query params for theme/size override
 const themeParam = Astro.url.searchParams.get('theme');
 const sizeParam = Astro.url.searchParams.get('size');
+const referralCode = Astro.url.searchParams.get('ref');
 
 // Redirect if not an embed page
 if (page.page_type !== 'embed') {
@@ -320,7 +321,7 @@ const sizeClass = embedSize === 'compact'
   <!-- Turnstile Script -->
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-  <script define:vars={{ slug, sequenceId: page.sequence_id, successMessage: page.success_message }}>
+  <script define:vars={{ slug, sequenceId: page.sequence_id, successMessage: page.success_message, referralCode }}>
     const form = document.getElementById('signup-form');
     const submitBtn = document.getElementById('submit-btn');
     const btnText = document.getElementById('btn-text');
@@ -350,6 +351,14 @@ const sizeClass = embedSize === 'compact'
       errorEl.classList.add('hidden');
     }
 
+    // Get referral code from URL or props
+    function getReferralCode() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlRef = urlParams.get('ref');
+      if (urlRef) return urlRef;
+      return referralCode || undefined;
+    }
+
     // Store original button text
     submitBtn.setAttribute('data-original-text', btnText.textContent);
 
@@ -374,6 +383,7 @@ const sizeClass = embedSize === 'compact'
         turnstileToken,
         sequenceId: sequenceId || undefined,
         signupPageSlug: slug,
+        ref: getReferralCode(),
       };
 
       try {

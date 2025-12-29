@@ -2,9 +2,10 @@
 interface Props {
   endpoint?: string;
   turnstileSiteKey: string;
+  referralCode?: string;
 }
 
-const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props;
+const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey, referralCode } = Astro.props;
 ---
 
 <div class="max-w-md mx-auto">
@@ -77,7 +78,7 @@ const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props
 <!-- Turnstile Script -->
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-<script define:vars={{ endpoint }}>
+<script define:vars={{ endpoint, referralCode }}>
   const form = document.getElementById('newsletter-form');
   const submitBtn = document.getElementById('newsletter-submit-btn');
   const btnText = document.getElementById('newsletter-btn-text');
@@ -107,6 +108,16 @@ const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props
     errorMessage.classList.add('hidden');
   }
 
+  // Get referral code from URL or props
+  function getReferralCode() {
+    // First check URL params (for direct navigation with ?ref=CODE)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRef = urlParams.get('ref');
+    if (urlRef) return urlRef;
+    // Fall back to props-provided code
+    return referralCode || undefined;
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideStatus();
@@ -127,6 +138,7 @@ const { endpoint = '/api/newsletter/subscribe', turnstileSiteKey } = Astro.props
       email: formData.get('email'),
       name: formData.get('name') || undefined,
       turnstileToken,
+      ref: getReferralCode(),
     };
 
     try {
