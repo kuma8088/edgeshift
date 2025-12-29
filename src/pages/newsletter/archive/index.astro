@@ -27,14 +27,11 @@ interface ArchiveResponse {
   };
 }
 
-// Get pagination params
-const url = new URL(Astro.request.url);
-const page = parseInt(url.searchParams.get('page') || '1', 10);
-const limit = 10;
-const offset = (page - 1) * limit;
-
 // Fetch articles from API
-const apiUrl = `${Astro.site}api/archive?limit=${limit}&offset=${offset}`;
+// Note: Query params disabled due to Cloudflare Pages routing issue
+// (Pages intercepts requests with query strings before Workers)
+// TODO: Implement path-based pagination (e.g., /api/archive/page/2)
+const apiUrl = `${Astro.site}api/archive`;
 let articles: Campaign[] = [];
 let total = 0;
 let error: string | null = null;
@@ -55,11 +52,6 @@ try {
   console.error('Failed to fetch archive:', e);
   error = 'アーカイブの読み込みに失敗しました。';
 }
-
-// Pagination calculations
-const totalPages = Math.ceil(total / limit);
-const hasNext = page < totalPages;
-const hasPrev = page > 1;
 
 // Extract excerpt from HTML content (first 200 chars of text)
 function extractExcerpt(html: string): string {
@@ -145,40 +137,7 @@ function formatDate(dateStr: string): string {
             ))}
           </div>
 
-          <!-- Pagination -->
-          {totalPages > 1 && (
-            <nav class="flex items-center justify-center gap-2" aria-label="Pagination">
-              {hasPrev ? (
-                <a
-                  href={`/newsletter/archive?page=${page - 1}`}
-                  class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                >
-                  前へ
-                </a>
-              ) : (
-                <span class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-not-allowed">
-                  前へ
-                </span>
-              )}
-
-              <span class="px-4 py-2 text-[var(--color-text)]">
-                {page} / {totalPages}
-              </span>
-
-              {hasNext ? (
-                <a
-                  href={`/newsletter/archive?page=${page + 1}`}
-                  class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                >
-                  次へ
-                </a>
-              ) : (
-                <span class="px-4 py-2 border border-[var(--color-border)] rounded text-[var(--color-text-muted)] cursor-not-allowed">
-                  次へ
-                </span>
-              )}
-            </nav>
-          )}
+          <!-- Pagination disabled due to Cloudflare routing limitations -->
         </>
       )}
     </div>
