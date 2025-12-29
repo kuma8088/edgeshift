@@ -58,10 +58,11 @@ describe('Dashboard Stats API', () => {
       env.DB.prepare(`INSERT INTO campaigns (id, subject, content, status) VALUES (?, ?, ?, ?)`).bind('c3', 'Sent1', 'c', 'sent'),
       env.DB.prepare(`INSERT INTO campaigns (id, subject, content, status) VALUES (?, ?, ?, ?)`).bind('c4', 'Sent2', 'c', 'sent'),
       // Delivery logs: 2 delivered, 1 opened, 1 clicked
-      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status) VALUES (?, ?, ?, ?, ?)`).bind('d1', 'c3', 's1', 'a1@test.com', 'delivered'),
-      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status) VALUES (?, ?, ?, ?, ?)`).bind('d2', 'c3', 's2', 'a2@test.com', 'delivered'),
-      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status) VALUES (?, ?, ?, ?, ?)`).bind('d3', 'c4', 's1', 'a1@test.com', 'opened'),
-      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status) VALUES (?, ?, ?, ?, ?)`).bind('d4', 'c4', 's2', 'a2@test.com', 'clicked'),
+      // Note: Dashboard counts timestamp fields, not status
+      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, delivered_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('d1', 'c3', 's1', 'a1@test.com', 'delivered', '2024-01-01 10:00:00'),
+      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, delivered_at) VALUES (?, ?, ?, ?, ?, ?)`).bind('d2', 'c3', 's2', 'a2@test.com', 'delivered', '2024-01-01 10:00:00'),
+      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, delivered_at, opened_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).bind('d3', 'c4', 's1', 'a1@test.com', 'opened', '2024-01-01 10:00:00', '2024-01-01 10:05:00'),
+      env.DB.prepare(`INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, delivered_at, opened_at, clicked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind('d4', 'c4', 's2', 'a2@test.com', 'clicked', '2024-01-01 10:00:00', '2024-01-01 10:05:00', '2024-01-01 10:10:00'),
     ]);
 
     const request = new Request('http://localhost/api/dashboard/stats', {
@@ -92,8 +93,8 @@ describe('Dashboard Stats API', () => {
     expect(campaigns.sent).toBe(2);
 
     expect(delivery.total).toBe(4);
-    expect(delivery.delivered).toBe(2);
-    expect(delivery.opened).toBe(1);
-    expect(delivery.clicked).toBe(1);
+    expect(delivery.delivered).toBe(4); // All 4 have delivered_at timestamps
+    expect(delivery.opened).toBe(2); // 2 have opened_at (d3, d4)
+    expect(delivery.clicked).toBe(1); // 1 has clicked_at (d4)
   });
 });
