@@ -17,11 +17,28 @@ interface Campaign {
   slug?: string;
   is_published?: boolean;
   excerpt?: string;
+  ab_test_enabled?: boolean;
+  ab_subject_b?: string | null;
+  ab_from_name_b?: string | null;
+  ab_wait_hours?: number | null;
 }
 
 interface CampaignFormProps {
   campaign?: Campaign;
-  onSubmit: (data: { subject: string; content: string; contact_list_id?: string; template_id?: string; scheduled_at?: number; slug?: string; is_published?: boolean; excerpt?: string }) => Promise<void>;
+  onSubmit: (data: {
+    subject: string;
+    content: string;
+    contact_list_id?: string;
+    template_id?: string;
+    scheduled_at?: number;
+    slug?: string;
+    is_published?: boolean;
+    excerpt?: string;
+    ab_test_enabled?: boolean;
+    ab_subject_b?: string | null;
+    ab_from_name_b?: string | null;
+    ab_wait_hours?: number | null;
+  }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -41,6 +58,14 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
   const [isPublished, setIsPublished] = useState(campaign?.is_published || false);
   const [excerpt, setExcerpt] = useState(campaign?.excerpt || '');
   const [error, setError] = useState('');
+
+  // A/B test state
+  const [abTestEnabled, setAbTestEnabled] = useState(campaign?.ab_test_enabled || false);
+  const [abSubjectB, setAbSubjectB] = useState(campaign?.ab_subject_b || '');
+  const [abFromNameB, setAbFromNameB] = useState(campaign?.ab_from_name_b || '');
+  const [abWaitHours, setAbWaitHours] = useState<1 | 2 | 4>(
+    (campaign?.ab_wait_hours as 1 | 2 | 4) || 4
+  );
 
   const generateSlug = () => {
     if (!subject.trim()) {
@@ -69,6 +94,28 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
     setExcerpt(generated);
   };
 
+  // A/B test time formatting helpers
+  const formatTime = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatTestTime = (dateStr: string, waitHours: number): string => {
+    const date = new Date(dateStr);
+    date.setHours(date.getHours() - waitHours);
+    return date.toLocaleString('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -83,7 +130,26 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
       return;
     }
 
-    const data: { subject: string; content: string; contact_list_id?: string; template_id?: string; scheduled_at?: number; slug?: string; is_published?: boolean; excerpt?: string } = {
+    // Validate A/B test settings
+    if (abTestEnabled && !abSubjectB.trim()) {
+      setError('A/Bテストを有効にする場合は件名Bを入力してください');
+      return;
+    }
+
+    const data: {
+      subject: string;
+      content: string;
+      contact_list_id?: string;
+      template_id?: string;
+      scheduled_at?: number;
+      slug?: string;
+      is_published?: boolean;
+      excerpt?: string;
+      ab_test_enabled?: boolean;
+      ab_subject_b?: string | null;
+      ab_from_name_b?: string | null;
+      ab_wait_hours?: number | null;
+    } = {
       subject: subject.trim(),
       content: content.trim(),
       contact_list_id: contactListId || undefined,
@@ -104,6 +170,12 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
     if (excerpt.trim()) {
       data.excerpt = excerpt.trim();
     }
+
+    // Add A/B test settings
+    data.ab_test_enabled = abTestEnabled;
+    data.ab_subject_b = abTestEnabled ? abSubjectB.trim() : null;
+    data.ab_from_name_b = abTestEnabled && abFromNameB.trim() ? abFromNameB.trim() : null;
+    data.ab_wait_hours = abTestEnabled ? abWaitHours : null;
 
     await onSubmit(data);
   };
@@ -182,6 +254,88 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
           未設定の場合は下書きとして保存されます
         </p>
       </div>
+
+      {/* A/B Test Settings - only show when scheduled */}
+      {scheduledAt && (
+        <div className="space-y-4 border-t border-[var(--color-border)] pt-4 mt-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={abTestEnabled}
+              onChange={(e) => setAbTestEnabled(e.target.checked)}
+              className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+            <span className="font-medium text-[var(--color-text-primary)]">A/Bテストを有効にする</span>
+          </label>
+
+          {abTestEnabled && (
+            <div className="ml-6 space-y-4 p-4 bg-[var(--color-bg-secondary)] rounded-lg">
+              <div>
+                <label htmlFor="abSubjectB" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  件名B <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="abSubjectB"
+                  value={abSubjectB}
+                  onChange={(e) => setAbSubjectB(e.target.value)}
+                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                  placeholder="テストする別の件名"
+                  required={abTestEnabled}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="abFromNameB" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                  送信者名B（オプション）
+                </label>
+                <input
+                  type="text"
+                  id="abFromNameB"
+                  value={abFromNameB}
+                  onChange={(e) => setAbFromNameB(e.target.value)}
+                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                  placeholder="テストする別の送信者名"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  待機時間
+                </label>
+                <div className="flex gap-4">
+                  {([1, 2, 4] as const).map((hours) => (
+                    <label key={hours} className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="abWaitHours"
+                        value={hours}
+                        checked={abWaitHours === hours}
+                        onChange={() => setAbWaitHours(hours)}
+                        className="mr-2 text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
+                      />
+                      <span className="text-sm text-[var(--color-text-secondary)]">{hours}時間</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  テスト配信から本配信までの待機時間
+                </p>
+              </div>
+
+              <div className="text-sm text-[var(--color-text-secondary)] bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p className="font-medium text-blue-800 mb-1">配信スケジュール</p>
+                <p className="text-blue-700">
+                  テスト配信: {formatTestTime(scheduledAt, abWaitHours)}
+                </p>
+                <p className="text-blue-700">
+                  本配信: {formatTime(scheduledAt)}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border-t border-[var(--color-border)] pt-6">
         <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
