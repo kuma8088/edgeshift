@@ -47,6 +47,9 @@ export interface Campaign {
   sent_at: number | null;
   recipient_count: number | null;
   contact_list_id: string | null;
+  slug: string;
+  excerpt: string;
+  is_published: number;  // 0 or 1
   created_at: number;
 }
 
@@ -97,6 +100,9 @@ export interface CreateCampaignRequest {
   schedule_type?: ScheduleType;
   schedule_config?: ScheduleConfig;
   contact_list_id?: string;
+  slug?: string;
+  excerpt?: string;
+  is_published?: boolean;
 }
 
 export interface UpdateCampaignRequest {
@@ -104,6 +110,9 @@ export interface UpdateCampaignRequest {
   content?: string;
   status?: CampaignStatus;
   contact_list_id?: string;
+  slug?: string;
+  excerpt?: string;
+  is_published?: boolean;
 }
 
 export interface Sequence {
