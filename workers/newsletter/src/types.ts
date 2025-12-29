@@ -328,3 +328,30 @@ export interface UpdateSignupPageRequest {
   embed_theme?: EmbedTheme;
   embed_size?: EmbedSize;
 }
+
+// Archive API types
+export interface ArchiveArticle {
+  id: string;
+  slug: string;
+  subject: string;
+  excerpt: string;
+  published_at: number;
+  is_subscriber_only: boolean; // Future use
+}
+
+export interface ArchiveListResponse {
+  articles: ArchiveArticle[];
+  pagination: {
+    page: number;
+    total_pages: number;
+    total_count: number;
+  };
+}
+
+export interface ArchiveDetailResponse {
+  id: string;
+  slug: string;
+  subject: string;
+  content: string;
+  published_at: number;
+}
