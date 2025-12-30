@@ -19,6 +19,14 @@ export interface MagicLinkVerifyResponse {
   secret?: string;
 }
 
+export interface AuthSession {
+  email: string;
+  is_first_time: boolean;
+  temp_token: string;
+  qr_code_url?: string;
+  totp_secret?: string;
+}
+
 interface AuthResponse<T = unknown> {
   success: boolean;
   data?: T;
@@ -144,4 +152,46 @@ export async function getCurrentUser(): Promise<AuthResponse<User>> {
  */
 export async function logout(): Promise<AuthResponse<{ message: string }>> {
   return authRequest('/auth/logout', { method: 'POST' });
+}
+
+/**
+ * Validate Magic Link token
+ * Alias for verifyMagicLink for backward compatibility
+ */
+export async function validateMagicLink(token: string): Promise<AuthResponse<AuthSession>> {
+  try {
+    const url = new URL(`${PREMIUM_BASE}/auth/verify`);
+    url.searchParams.set('token', token);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || `Request failed: ${response.status}`,
+      };
+    }
+
+    // Transform API response to AuthSession format
+    const session: AuthSession = {
+      email: data.email || '',
+      is_first_time: data.status === 'totp_setup_required',
+      temp_token: data.temp_token,
+      qr_code_url: data.qr_code_url,
+      totp_secret: data.secret,
+    };
+
+    return { success: true, data: session };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: `Network error: ${message}` };
+  }
 }
