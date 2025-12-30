@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 const BASE_URL = 'https://edgeshift.tech';
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
