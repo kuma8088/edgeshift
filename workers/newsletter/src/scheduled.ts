@@ -216,12 +216,13 @@ async function processAbTestPhase(env: Env): Promise<{ processed: number; failed
     // Find A/B test campaigns ready for test phase
     // scheduled_at - wait_hours <= now AND status = 'scheduled' AND ab_test_enabled = 1
     // AND ab_test_sent_at IS NULL (not already sent)
+    // Note: scheduled_at is stored as Unix seconds (INTEGER), so use 'unixepoch' modifier
     const testPhaseCampaigns = await env.DB.prepare(`
       SELECT * FROM campaigns
       WHERE status = 'scheduled'
         AND ab_test_enabled = 1
         AND ab_test_sent_at IS NULL
-        AND datetime(scheduled_at, '-' || COALESCE(ab_wait_hours, 1) || ' hours') <= datetime(?)
+        AND datetime(scheduled_at, 'unixepoch', '-' || COALESCE(ab_wait_hours, 1) || ' hours') <= datetime(?)
     `).bind(now).all<Campaign>();
 
     const campaigns = testPhaseCampaigns.results || [];

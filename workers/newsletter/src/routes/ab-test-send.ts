@@ -57,7 +57,7 @@ export async function sendAbTest(
 
   const templateId = campaign.template_id || brandSettings.default_template_id;
 
-  // Send to group A with original subject
+  // Send to group A with original subject (uses default SENDER_NAME)
   let groupASent = 0;
   for (const sub of groupA) {
     const html = renderEmail({
@@ -70,6 +70,7 @@ export async function sendAbTest(
       siteUrl: env.SITE_URL,
     });
 
+    // Variant A uses default SENDER_NAME (no fromName override)
     const result = await sendEmail(env, sub.email, campaign.subject, html);
     if (result) {
       await recordAbDeliveryLog(env, campaign.id, sub.id, sub.email, campaign.subject, result.id, 'A');
@@ -80,6 +81,7 @@ export async function sendAbTest(
   // Send to group B with variant subject/from_name
   let groupBSent = 0;
   const subjectB = campaign.ab_subject_b || campaign.subject;
+  const fromNameB = campaign.ab_from_name_b || undefined;
   for (const sub of groupB) {
     const html = renderEmail({
       templateId,
@@ -91,7 +93,8 @@ export async function sendAbTest(
       siteUrl: env.SITE_URL,
     });
 
-    const result = await sendEmail(env, sub.email, subjectB, html);
+    // Variant B uses ab_from_name_b if set, otherwise default SENDER_NAME
+    const result = await sendEmail(env, sub.email, subjectB, html, fromNameB);
     if (result) {
       await recordAbDeliveryLog(env, campaign.id, sub.id, sub.email, subjectB, result.id, 'B');
       groupBSent++;
@@ -141,6 +144,8 @@ export async function sendAbTestWinner(
 
   // Use winner's settings
   const subject = winner === 'A' ? campaign.subject : (campaign.ab_subject_b || campaign.subject);
+  // Winner's fromName: A uses default (undefined), B uses ab_from_name_b
+  const fromName = winner === 'B' ? (campaign.ab_from_name_b || undefined) : undefined;
 
   // Send to remaining with winner's settings
   let sentCount = 0;
@@ -155,7 +160,7 @@ export async function sendAbTestWinner(
       siteUrl: env.SITE_URL,
     });
 
-    const result = await sendEmail(env, sub.email, subject, html);
+    const result = await sendEmail(env, sub.email, subject, html, fromName);
     if (result) {
       await recordAbDeliveryLog(env, campaign.id, sub.id, sub.email, subject, result.id, winner);
       sentCount++;

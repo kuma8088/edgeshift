@@ -7,8 +7,11 @@ import { calculateAbScore, determineWinner } from '../utils/ab-testing';
 
 /**
  * Get A/B test statistics for a campaign
+ * @param db - D1 database instance
+ * @param campaignId - Campaign ID
+ * @param campaignAbWinner - The ab_winner field from campaign (if already determined)
  */
-async function getAbStats(db: D1Database, campaignId: string): Promise<AbTestStats | null> {
+async function getAbStats(db: D1Database, campaignId: string, campaignAbWinner?: 'A' | 'B' | null): Promise<AbTestStats | null> {
   const results = await db
     .prepare(
       `SELECT
@@ -66,11 +69,16 @@ async function getAbStats(db: D1Database, campaignId: string): Promise<AbTestSta
   let winner: 'A' | 'B' | null = null;
   let status: 'pending' | 'testing' | 'determined' = 'pending';
 
-  if (variant_a.sent > 0 || variant_b.sent > 0) {
+  // If campaign has ab_winner set, the test is determined
+  if (campaignAbWinner) {
+    status = 'determined';
+    winner = campaignAbWinner;
+  } else if (variant_a.sent > 0 || variant_b.sent > 0) {
     status = 'testing';
-  }
-  if (variant_a.sent > 0 && variant_b.sent > 0) {
-    winner = determineWinner(variant_a, variant_b);
+    // Calculate current winner based on stats (for display purposes)
+    if (variant_a.sent > 0 && variant_b.sent > 0) {
+      winner = determineWinner(variant_a, variant_b);
+    }
   }
 
   return { variant_a, variant_b, winner, status };
@@ -176,7 +184,7 @@ export async function getCampaign(
 
     // Include A/B stats if A/B testing is enabled
     if (campaign.ab_test_enabled) {
-      const ab_stats = await getAbStats(env.DB, id);
+      const ab_stats = await getAbStats(env.DB, id, campaign.ab_winner);
       return successResponse({ campaign: { ...campaign, ab_stats } });
     }
 
@@ -352,6 +360,23 @@ export async function updateCampaign(
     if (body.is_published !== undefined) {
       updates.push('is_published = ?');
       bindings.push(body.is_published ? 1 : 0);
+    }
+    // A/B Testing fields
+    if (body.ab_test_enabled !== undefined) {
+      updates.push('ab_test_enabled = ?');
+      bindings.push(body.ab_test_enabled ? 1 : 0);
+    }
+    if (body.ab_subject_b !== undefined) {
+      updates.push('ab_subject_b = ?');
+      bindings.push(body.ab_subject_b);
+    }
+    if (body.ab_from_name_b !== undefined) {
+      updates.push('ab_from_name_b = ?');
+      bindings.push(body.ab_from_name_b);
+    }
+    if (body.ab_wait_hours !== undefined) {
+      updates.push('ab_wait_hours = ?');
+      bindings.push(body.ab_wait_hours);
     }
 
     if (updates.length === 0) {

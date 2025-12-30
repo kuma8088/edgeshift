@@ -156,6 +156,11 @@ export interface UpdateCampaignRequest {
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
+  // A/B Testing fields
+  ab_test_enabled?: boolean;
+  ab_subject_b?: string | null;
+  ab_from_name_b?: string | null;
+  ab_wait_hours?: number;
 }
 
 export interface Sequence {

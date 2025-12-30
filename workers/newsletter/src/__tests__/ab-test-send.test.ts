@@ -270,12 +270,14 @@ describe('A/B Test Send Logic', () => {
       ).bind(campaignId).first();
       expect(remainingRow).toBeNull();
 
-      // Check winner's subject was used
+      // Check winner's subject was used (with fromName as 5th param)
+      // Winner is B, but ab_from_name_b is not set, so fromName is undefined
       expect(mockSendEmail).toHaveBeenCalledWith(
         env,
         expect.any(String),
         'Better Subject',
-        expect.any(String)
+        expect.any(String),
+        undefined
       );
     });
 
