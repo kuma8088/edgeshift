@@ -601,3 +601,75 @@ export async function updateProduct(id: string, data: Partial<CreateProductData>
 export async function deleteProduct(id: string) {
   return apiRequest<{ success: boolean }>(`/premium/products/${id}`, { method: 'DELETE' });
 }
+
+// Subscriber Billing APIs
+export interface SubscriptionWithSubscriber {
+  id: string;
+  subscriber_id: string;
+  subscriber_email: string;
+  subscriber_name: string | null;
+  plan_id: string;
+  plan_name: string;
+  plan_type: string;
+  stripe_subscription_id: string | null;
+  status: 'active' | 'past_due' | 'canceled' | 'unpaid' | 'lifetime';
+  current_period_start: number | null;
+  current_period_end: number | null;
+  created_at: number;
+}
+
+export interface PaymentHistoryItem {
+  id: string;
+  subscriber_id: string;
+  subscription_id: string | null;
+  product_id: string | null;
+  amount_cents: number;
+  currency: string;
+  payment_type: 'subscription' | 'one_time' | 'refund';
+  status: string;
+  created_at: number;
+}
+
+export interface PurchaseWithProduct {
+  id: string;
+  subscriber_id: string;
+  product_id: string;
+  product_name: string;
+  product_type: string;
+  status: 'pending' | 'completed' | 'refunded';
+  access_token: string | null;
+  created_at: number;
+}
+
+export interface SubscriberBillingInfo {
+  subscriptions: SubscriptionWithSubscriber[];
+  payments: PaymentHistoryItem[];
+  purchases: PurchaseWithProduct[];
+}
+
+export async function listSubscriptions(params?: { status?: string; limit?: number; offset?: number }) {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.limit) query.set('limit', params.limit.toString());
+  if (params?.offset) query.set('offset', params.offset.toString());
+  const queryString = query.toString();
+  return apiRequest<SubscriptionWithSubscriber[]>(`/premium/subscriptions${queryString ? `?${queryString}` : ''}`);
+}
+
+export async function getSubscriberBilling(subscriberId: string) {
+  return apiRequest<SubscriberBillingInfo>(`/premium/subscriptions/${subscriberId}`);
+}
+
+export async function refundSubscription(subscriptionId: string, reason?: string) {
+  return apiRequest<{ success: boolean; refund_id: string }>(`/premium/subscriptions/${subscriptionId}/refund`, {
+    method: 'POST',
+    body: { reason },
+  });
+}
+
+export async function refundPurchase(purchaseId: string, reason?: string) {
+  return apiRequest<{ success: boolean; refund_id: string }>(`/premium/purchases/${purchaseId}/refund`, {
+    method: 'POST',
+    body: { reason },
+  });
+}
