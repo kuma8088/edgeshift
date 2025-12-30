@@ -1,0 +1,35 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const fullTitle = `${title} | EdgeShift`;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{fullTitle}</title>
+  </head>
+  <body class="min-h-screen bg-[var(--color-bg-tertiary)]">
+    <div class="min-h-screen flex items-center justify-center p-4">
+      <div class="w-full max-w-md">
+        <div class="bg-white rounded-2xl shadow-lg p-8">
+          <slot />
+        </div>
+        <div class="text-center mt-4">
+          <a href="/" class="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors">
+            EdgeShift トップへ戻る
+          </a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
