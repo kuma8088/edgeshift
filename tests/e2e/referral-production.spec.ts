@@ -66,6 +66,6 @@ test.describe('Referral Program - Production', () => {
     // Check error message is displayed (not just body visibility)
     // This ensures we're not passing on 404 or generic error pages
     await expect(page.locator('h1')).toContainText('エラー');
-    await expect(page.locator('a[href="/"]')).toBeVisible();
+    await expect(page.locator('a[href="/"]').first()).toBeVisible();
   });
 });
