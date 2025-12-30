@@ -6,14 +6,14 @@ interface Props {
   email: string;
   qrCodeUrl: string;
   secret: string;
-  onSuccess?: (backupCodes: string[]) => void;
+  onSuccess?: () => void;
 }
 
 export function TOTPSetupForm({ token, email, qrCodeUrl, secret, onSuccess }: Props) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [success, setSuccess] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -36,8 +36,8 @@ export function TOTPSetupForm({ token, email, qrCodeUrl, secret, onSuccess }: Pr
     const result = await setupTOTP(token, cleanCode);
 
     if (result.success && result.data) {
-      setBackupCodes(result.data.backupCodes);
-      onSuccess?.(result.data.backupCodes);
+      setSuccess(true);
+      onSuccess?.();
     } else {
       setError(result.error || '認証に失敗しました。コードを確認してください。');
     }
@@ -51,8 +51,8 @@ export function TOTPSetupForm({ token, email, qrCodeUrl, secret, onSuccess }: Pr
     setCode(cleaned);
   };
 
-  // Show backup codes after successful setup
-  if (backupCodes) {
+  // Show success message after successful setup
+  if (success) {
     return (
       <div>
         <div className="text-center mb-6">
@@ -75,37 +75,9 @@ export function TOTPSetupForm({ token, email, qrCodeUrl, secret, onSuccess }: Pr
             2段階認証を設定しました
           </h2>
           <p className="text-[var(--color-text-secondary)]">
-            以下のバックアップコードを安全な場所に保存してください。
+            次回ログイン時から認証アプリのコードが必要になります。
           </p>
         </div>
-
-        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 mb-6">
-          <p className="text-sm text-[var(--color-text-muted)] mb-3">
-            認証アプリにアクセスできなくなった場合に使用できます。
-            各コードは1回のみ使用可能です。
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {backupCodes.map((backupCode, index) => (
-              <code
-                key={index}
-                className="bg-white px-3 py-2 rounded text-center text-sm font-mono border border-[var(--color-border)]"
-              >
-                {backupCode}
-              </code>
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            const text = backupCodes.join('\n');
-            navigator.clipboard.writeText(text);
-          }}
-          className="w-full py-2 mb-3 border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium rounded-lg
-                   hover:bg-[var(--color-bg-secondary)] transition-colors"
-        >
-          コードをコピー
-        </button>
 
         <a
           href="/auth/dashboard"
