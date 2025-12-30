@@ -1,16 +1,37 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 const BASE_URL = 'https://edgeshift.tech';
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 
+// Helper to set up admin authentication
+async function setupAdminAuth(page: Page, url: string) {
+  await page.goto(url);
+  await page.evaluate((apiKey) => {
+    localStorage.setItem('edgeshift_admin_api_key', apiKey);
+  }, ADMIN_API_KEY);
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('astro-island', { state: 'attached' });
+}
+
+// Helper to wait for campaign form to be fully rendered
+async function waitForCampaignForm(page: Page) {
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('astro-island', { state: 'attached' });
+  // Wait for the subject input to be visible, which indicates the form is rendered
+  await page.waitForSelector('input#subject', { state: 'visible', timeout: 10000 });
+}
+
 test.describe('A/B Testing - Production', () => {
   test.describe('Campaign New Page (/admin/campaigns/new)', () => {
-    test('should not show A/B test toggle without scheduled date', async ({ page }) => {
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
+    test.skip(!ADMIN_API_KEY, 'ADMIN_API_KEY is required for admin page tests');
 
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
+    test.beforeEach(async ({ page }) => {
+      await setupAdminAuth(page, `${BASE_URL}/admin/campaigns/new`);
+      await waitForCampaignForm(page);
+    });
+
+    test('should not show A/B test toggle without scheduled date', async ({ page }) => {
 
       // A/B test section should not be visible without scheduled date
       const abTestCheckbox = page.getByText('A/Bテストを有効にする');
@@ -18,219 +39,187 @@ test.describe('A/B Testing - Production', () => {
     });
 
     test('should show A/B test toggle when scheduled date is set', async ({ page }) => {
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
-
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
-
       // Set a scheduled date (tomorrow at 18:00)
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(18, 0, 0, 0);
       const dateStr = tomorrow.toISOString().slice(0, 16);
 
+      // Scheduled input must exist - fail test if not found
       const scheduledInput = page.locator('input[type="datetime-local"]');
-      const inputExists = await scheduledInput.count();
+      await expect(scheduledInput).toBeVisible({ timeout: 5000 });
 
-      if (inputExists > 0) {
-        await scheduledInput.fill(dateStr);
+      await scheduledInput.fill(dateStr);
 
-        // Now A/B test toggle should be visible
-        const abTestCheckbox = page.getByText('A/Bテストを有効にする');
-        await expect(abTestCheckbox).toBeVisible();
-      }
+      // Now A/B test toggle should be visible
+      const abTestCheckbox = page.getByText('A/Bテストを有効にする');
+      await expect(abTestCheckbox).toBeVisible();
     });
 
     test('should expand A/B test settings when enabled', async ({ page }) => {
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
-
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
-
       // Set scheduled date first
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(18, 0, 0, 0);
       const dateStr = tomorrow.toISOString().slice(0, 16);
 
+      // Scheduled input must exist - fail test if not found
       const scheduledInput = page.locator('input[type="datetime-local"]');
-      const inputExists = await scheduledInput.count();
+      await expect(scheduledInput).toBeVisible({ timeout: 5000 });
 
-      if (inputExists > 0) {
-        await scheduledInput.fill(dateStr);
+      await scheduledInput.fill(dateStr);
 
-        // Enable A/B test
-        const abTestCheckbox = page.getByText('A/Bテストを有効にする');
-        await abTestCheckbox.click();
+      // Enable A/B test
+      const abTestCheckbox = page.getByText('A/Bテストを有効にする');
+      await abTestCheckbox.click();
 
-        // Check A/B test fields are visible
-        await expect(page.locator('input#abSubjectB')).toBeVisible();
-        await expect(page.locator('input#abFromNameB')).toBeVisible();
+      // Check A/B test fields are visible
+      await expect(page.locator('input#abSubjectB')).toBeVisible();
+      await expect(page.locator('input#abFromNameB')).toBeVisible();
 
-        // Check placeholders
-        await expect(page.locator('input#abSubjectB')).toHaveAttribute('placeholder', 'テストする別の件名');
-        await expect(page.locator('input#abFromNameB')).toHaveAttribute('placeholder', 'テストする別の送信者名');
+      // Check placeholders
+      await expect(page.locator('input#abSubjectB')).toHaveAttribute('placeholder', 'テストする別の件名');
+      await expect(page.locator('input#abFromNameB')).toHaveAttribute('placeholder', 'テストする別の送信者名');
 
-        // Check wait time options
-        await expect(page.getByText('1時間')).toBeVisible();
-        await expect(page.getByText('2時間')).toBeVisible();
-        await expect(page.getByText('4時間')).toBeVisible();
-      }
+      // Check wait time options
+      await expect(page.getByText('1時間')).toBeVisible();
+      await expect(page.getByText('2時間')).toBeVisible();
+      await expect(page.getByText('4時間')).toBeVisible();
     });
 
     test('should show test timing preview when A/B enabled', async ({ page }) => {
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
-
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
-
       // Set scheduled date
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(18, 0, 0, 0);
       const dateStr = tomorrow.toISOString().slice(0, 16);
 
+      // Scheduled input must exist - fail test if not found
       const scheduledInput = page.locator('input[type="datetime-local"]');
-      const inputExists = await scheduledInput.count();
+      await expect(scheduledInput).toBeVisible({ timeout: 5000 });
 
-      if (inputExists > 0) {
-        await scheduledInput.fill(dateStr);
+      await scheduledInput.fill(dateStr);
 
-        // Enable A/B test
-        const abTestCheckbox = page.getByText('A/Bテストを有効にする');
-        await abTestCheckbox.click();
+      // Enable A/B test
+      const abTestCheckbox = page.getByText('A/Bテストを有効にする');
+      await abTestCheckbox.click();
 
-        // Check timing preview is shown
-        await expect(page.getByText('配信スケジュール')).toBeVisible();
-        await expect(page.getByText(/テスト配信:/)).toBeVisible();
-        await expect(page.getByText(/本配信:/)).toBeVisible();
-      }
+      // Check timing preview is shown
+      await expect(page.getByText('配信スケジュール')).toBeVisible();
+      await expect(page.getByText(/テスト配信:/)).toBeVisible();
+      await expect(page.getByText(/本配信:/)).toBeVisible();
     });
 
     test('should allow changing wait time options', async ({ page }) => {
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
-
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
-
       // Set scheduled date
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(18, 0, 0, 0);
       const dateStr = tomorrow.toISOString().slice(0, 16);
 
+      // Scheduled input must exist - fail test if not found
       const scheduledInput = page.locator('input[type="datetime-local"]');
-      const inputExists = await scheduledInput.count();
+      await expect(scheduledInput).toBeVisible({ timeout: 5000 });
 
-      if (inputExists > 0) {
-        await scheduledInput.fill(dateStr);
+      await scheduledInput.fill(dateStr);
 
-        // Enable A/B test
-        await page.getByText('A/Bテストを有効にする').click();
+      // Enable A/B test
+      await page.getByText('A/Bテストを有効にする').click();
 
-        // Default should be 4 hours, verify it's checked
-        const fourHoursRadio = page.locator('input[name="abWaitHours"][value="4"]');
-        await expect(fourHoursRadio).toBeChecked();
+      // Default should be 4 hours, verify it's checked
+      const fourHoursRadio = page.locator('input[name="abWaitHours"][value="4"]');
+      await expect(fourHoursRadio).toBeChecked();
 
-        // Select 1 hour option
-        await page.getByText('1時間').click();
-        const oneHourRadio = page.locator('input[name="abWaitHours"][value="1"]');
-        await expect(oneHourRadio).toBeChecked();
+      // Select 1 hour option
+      await page.getByText('1時間').click();
+      const oneHourRadio = page.locator('input[name="abWaitHours"][value="1"]');
+      await expect(oneHourRadio).toBeChecked();
 
-        // Select 2 hours option
-        await page.getByText('2時間').click();
-        const twoHoursRadio = page.locator('input[name="abWaitHours"][value="2"]');
-        await expect(twoHoursRadio).toBeChecked();
-      }
+      // Select 2 hours option
+      await page.getByText('2時間').click();
+      const twoHoursRadio = page.locator('input[name="abWaitHours"][value="2"]');
+      await expect(twoHoursRadio).toBeChecked();
     });
 
     test('should collapse A/B settings when disabled', async ({ page }) => {
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
-
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
-
       // Set scheduled date
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateStr = tomorrow.toISOString().slice(0, 16);
 
+      // Scheduled input must exist - fail test if not found
       const scheduledInput = page.locator('input[type="datetime-local"]');
-      const inputExists = await scheduledInput.count();
+      await expect(scheduledInput).toBeVisible({ timeout: 5000 });
 
-      if (inputExists > 0) {
-        await scheduledInput.fill(dateStr);
+      await scheduledInput.fill(dateStr);
 
-        // Enable A/B test
-        await page.getByText('A/Bテストを有効にする').click();
+      // Enable A/B test
+      await page.getByText('A/Bテストを有効にする').click();
 
-        // Fields should be visible
-        await expect(page.locator('input#abSubjectB')).toBeVisible();
+      // Fields should be visible
+      await expect(page.locator('input#abSubjectB')).toBeVisible();
 
-        // Disable A/B test
-        await page.getByText('A/Bテストを有効にする').click();
+      // Disable A/B test
+      await page.getByText('A/Bテストを有効にする').click();
 
-        // Fields should be hidden
-        await expect(page.locator('input#abSubjectB')).not.toBeVisible();
-      }
+      // Fields should be hidden
+      await expect(page.locator('input#abSubjectB')).not.toBeVisible();
     });
 
     test('should hide A/B section when scheduled date is cleared', async ({ page }) => {
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
-
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
-
       // Set scheduled date
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateStr = tomorrow.toISOString().slice(0, 16);
 
+      // Scheduled input must exist - fail test if not found
       const scheduledInput = page.locator('input[type="datetime-local"]');
-      const inputExists = await scheduledInput.count();
+      await expect(scheduledInput).toBeVisible({ timeout: 5000 });
 
-      if (inputExists > 0) {
-        await scheduledInput.fill(dateStr);
+      await scheduledInput.fill(dateStr);
 
-        // A/B test toggle should be visible
-        await expect(page.getByText('A/Bテストを有効にする')).toBeVisible();
+      // A/B test toggle should be visible
+      await expect(page.getByText('A/Bテストを有効にする')).toBeVisible();
 
-        // Clear scheduled date
-        await scheduledInput.clear();
+      // Clear scheduled date
+      await scheduledInput.clear();
 
-        // A/B test toggle should be hidden
-        await expect(page.getByText('A/Bテストを有効にする')).not.toBeVisible();
-      }
+      // A/B test toggle should be hidden
+      await expect(page.getByText('A/Bテストを有効にする')).not.toBeVisible();
     });
   });
 
   test.describe('Campaign Edit Page', () => {
-    test('should load campaign edit page with potential A/B settings', async ({ page }) => {
-      // First, get an existing campaign ID from the campaigns list
-      await page.goto(`${BASE_URL}/admin/campaigns`);
-      await page.waitForLoadState('networkidle');
+    test.skip(!ADMIN_API_KEY, 'ADMIN_API_KEY is required for admin page tests');
 
-      // Look for any campaign link
-      const campaignLink = page.locator('a[href^="/admin/campaigns/"][href$="/edit"]').first();
-      const linkExists = await campaignLink.count();
+    test('should load campaign edit page with potential A/B settings', async ({ page, context }) => {
+      // Create a test campaign via API first to ensure we have something to edit
+      const createResponse = await context.request.post(`${BASE_URL}/api/campaigns`, {
+        headers: {
+          'Authorization': `Bearer ${ADMIN_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        data: {
+          subject: `E2E Edit Test ${Date.now()}`,
+          content: '<p>Test content</p>',
+        },
+      });
+      expect([200, 201]).toContain(createResponse.status());
+      const createData = await createResponse.json();
+      const campaignId = createData.data.id;
 
-      if (linkExists > 0) {
-        await campaignLink.click();
-        await page.waitForLoadState('networkidle');
+      // Navigate to the edit page with authentication (uses query param ?id=xxx)
+      await setupAdminAuth(page, `${BASE_URL}/admin/campaigns/edit?id=${campaignId}`);
+      await waitForCampaignForm(page);
 
-        // Verify the page has A/B test toggle capability
-        await page.waitForSelector('astro-island', { state: 'attached' });
+      // The page should have the scheduled date input
+      const scheduledInput = page.locator('input[type="datetime-local"]');
+      await expect(scheduledInput).toBeVisible();
 
-        // The page should have the scheduled date input
-        const scheduledInput = page.locator('input[type="datetime-local"]');
-        await expect(scheduledInput).toBeVisible();
-      }
+      // Cleanup
+      await context.request.delete(`${BASE_URL}/api/campaigns/${campaignId}`, {
+        headers: { 'Authorization': `Bearer ${ADMIN_API_KEY}` },
+      });
     });
   });
 
@@ -254,40 +243,40 @@ test.describe('A/B Testing - Production', () => {
   });
 
   test.describe('Mobile Responsiveness', () => {
-    test('A/B test settings should be accessible on mobile', async ({ page }) => {
+    test.skip(!ADMIN_API_KEY, 'ADMIN_API_KEY is required for admin page tests');
+
+    test.beforeEach(async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 });
-      await page.goto(`${BASE_URL}/admin/campaigns/new`);
-      await page.waitForLoadState('networkidle');
+      await setupAdminAuth(page, `${BASE_URL}/admin/campaigns/new`);
+      await waitForCampaignForm(page);
+    });
 
-      // Wait for React component to load
-      await page.waitForSelector('astro-island', { state: 'attached' });
-
+    test('A/B test settings should be accessible on mobile', async ({ page }) => {
       // Set scheduled date
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateStr = tomorrow.toISOString().slice(0, 16);
 
+      // Scheduled input must exist on mobile - fail test if not found
       const scheduledInput = page.locator('input[type="datetime-local"]');
-      const inputExists = await scheduledInput.count();
+      await expect(scheduledInput).toBeVisible({ timeout: 5000 });
 
-      if (inputExists > 0) {
-        await scheduledInput.fill(dateStr);
+      await scheduledInput.fill(dateStr);
 
-        // A/B test toggle should be visible and tappable
-        const abTestLabel = page.getByText('A/Bテストを有効にする');
-        await expect(abTestLabel).toBeVisible();
+      // A/B test toggle should be visible and tappable
+      const abTestLabel = page.getByText('A/Bテストを有効にする');
+      await expect(abTestLabel).toBeVisible();
 
-        // Enable A/B test
-        await abTestLabel.click();
+      // Enable A/B test
+      await abTestLabel.click();
 
-        // A/B test fields should be visible on mobile
-        await expect(page.locator('input#abSubjectB')).toBeVisible();
+      // A/B test fields should be visible on mobile
+      await expect(page.locator('input#abSubjectB')).toBeVisible();
 
-        // Wait time options should be visible
-        await expect(page.getByText('1時間')).toBeVisible();
-        await expect(page.getByText('2時間')).toBeVisible();
-        await expect(page.getByText('4時間')).toBeVisible();
-      }
+      // Wait time options should be visible
+      await expect(page.getByText('1時間')).toBeVisible();
+      await expect(page.getByText('2時間')).toBeVisible();
+      await expect(page.getByText('4時間')).toBeVisible();
     });
   });
 
