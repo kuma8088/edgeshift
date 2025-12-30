@@ -12,11 +12,11 @@ export interface User {
   role: 'owner' | 'admin' | 'subscriber';
 }
 
-export interface AuthSession {
-  email: string;
-  is_first_time: boolean;
-  totp_secret?: string;
+export interface MagicLinkVerifyResponse {
+  status: 'totp_setup_required' | 'totp_verify_required';
+  temp_token: string;
   qr_code_url?: string;
+  secret?: string;
 }
 
 interface AuthResponse<T = unknown> {
@@ -74,25 +74,48 @@ export async function requestMagicLink(email: string): Promise<AuthResponse<{ me
 }
 
 /**
- * Validate Magic Link token and get session info
+ * Verify Magic Link token and get TOTP status
+ * Returns temp_token and TOTP setup/verify instructions
  */
-export async function validateMagicLink(token: string): Promise<AuthResponse<AuthSession>> {
-  return authRequest('/auth/validate-magic-link', {
-    method: 'POST',
-    body: { token },
-  });
+export async function verifyMagicLink(token: string): Promise<AuthResponse<MagicLinkVerifyResponse>> {
+  try {
+    const url = new URL(`${PREMIUM_BASE}/auth/verify`);
+    url.searchParams.set('token', token);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || `Request failed: ${response.status}`,
+      };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: `Network error: ${message}` };
+  }
 }
 
 /**
  * Setup TOTP for first-time users
  */
 export async function setupTOTP(
-  token: string,
+  tempToken: string,
   totpCode: string
-): Promise<AuthResponse<{ backupCodes: string[] }>> {
+): Promise<AuthResponse<User>> {
   return authRequest('/auth/totp/setup', {
     method: 'POST',
-    body: { token, totpCode },
+    body: { temp_token: tempToken, totp_code: totpCode },
   });
 }
 
@@ -100,12 +123,12 @@ export async function setupTOTP(
  * Verify TOTP for returning users
  */
 export async function verifyTOTP(
-  token: string,
+  tempToken: string,
   totpCode: string
-): Promise<AuthResponse<{ message: string }>> {
+): Promise<AuthResponse<User>> {
   return authRequest('/auth/totp/verify', {
     method: 'POST',
-    body: { token, totpCode },
+    body: { temp_token: tempToken, totp_code: totpCode },
   });
 }
 
