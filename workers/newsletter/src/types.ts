@@ -32,6 +32,26 @@ export interface Subscriber {
 export type CampaignStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
 export type ScheduleType = 'none' | 'daily' | 'weekly' | 'monthly';
 export type DeliveryStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed';
+export type AbVariant = 'A' | 'B';
+export type AbTestStatus = 'pending' | 'testing' | 'determined';
+
+// A/B Testing types
+export interface AbVariantStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  open_rate: number;
+  click_rate: number;
+  score: number;
+}
+
+export interface AbTestStats {
+  variant_a: AbVariantStats;
+  variant_b: AbVariantStats;
+  winner: AbVariant | null;
+  status: AbTestStatus;
+}
 
 export interface ScheduleConfig {
   hour?: number;
@@ -57,6 +77,13 @@ export interface Campaign {
   excerpt: string;
   is_published: number;  // 0 or 1
   created_at: number;
+  // A/B Testing fields
+  ab_test_enabled: number;  // 0 or 1
+  ab_subject_b: string | null;
+  ab_from_name_b: string | null;
+  ab_wait_hours: number | null;
+  ab_test_sent_at: string | null;
+  ab_winner: 'A' | 'B' | null;
 }
 
 export interface DeliveryLog {
@@ -75,6 +102,8 @@ export interface DeliveryLog {
   clicked_at: number | null;
   error_message: string | null;
   created_at: number;
+  // A/B Testing field
+  ab_variant: 'A' | 'B' | null;
 }
 
 export interface ClickEvent {
@@ -111,6 +140,11 @@ export interface CreateCampaignRequest {
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
+  // A/B Testing fields
+  ab_test_enabled?: boolean;
+  ab_subject_b?: string;
+  ab_from_name_b?: string;
+  ab_wait_hours?: number;  // 1, 2, or 4
 }
 
 export interface UpdateCampaignRequest {
@@ -122,6 +156,11 @@ export interface UpdateCampaignRequest {
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
+  // A/B Testing fields
+  ab_test_enabled?: boolean;
+  ab_subject_b?: string | null;
+  ab_from_name_b?: string | null;
+  ab_wait_hours?: number;
 }
 
 export interface Sequence {

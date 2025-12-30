@@ -11,6 +11,27 @@ interface Campaign {
   status: string;
   sent_at?: number;
   created_at: number;
+  ab_test_enabled?: number | boolean;
+  ab_subject_b?: string | null;
+  ab_from_name_b?: string | null;
+  ab_stats?: AbTestStats;
+}
+
+interface AbVariantStats {
+  sent: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  open_rate: number;
+  click_rate: number;
+  score: number;
+}
+
+interface AbTestStats {
+  variant_a: AbVariantStats;
+  variant_b: AbVariantStats;
+  winner: 'A' | 'B' | null;
+  status: 'pending' | 'testing' | 'determined';
 }
 
 interface TrackingStats {
@@ -40,6 +61,84 @@ interface ClicksSummary {
 
 interface CampaignDetailProps {
   campaignId: string;
+}
+
+function AbTestResults({ stats, campaign }: { stats: AbTestStats; campaign: Campaign }) {
+  const getStatusBadge = () => {
+    switch (stats.status) {
+      case 'pending':
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">待機中</span>;
+      case 'testing':
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded-full">テスト中</span>;
+      case 'determined':
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">完了</span>;
+    }
+  };
+
+  const VariantCard = ({ variant, label, subject, isWinner }: {
+    variant: AbVariantStats;
+    label: string;
+    subject: string;
+    isWinner: boolean;
+  }) => (
+    <div className={`p-4 rounded-lg ${isWinner ? 'bg-green-50 border-2 border-green-500' : 'bg-gray-50 border border-gray-200'}`}>
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-semibold text-gray-900">パターン{label}</span>
+        {isWinner && <span className="text-lg">&#x1F3C6;</span>}
+      </div>
+      <p className="text-sm text-gray-600 mb-3 truncate" title={subject}>
+        件名: {subject}
+      </p>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-500">送信数</span>
+          <span className="font-medium">{variant.sent}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">開封率</span>
+          <span className="font-medium">{(variant.open_rate * 100).toFixed(1)}%</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">クリック率</span>
+          <span className="font-medium">{(variant.click_rate * 100).toFixed(1)}%</span>
+        </div>
+        <div className="flex justify-between pt-2 border-t border-gray-200">
+          <span className="text-gray-700 font-medium">スコア</span>
+          <span className="font-bold text-blue-600">{variant.score.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">A/Bテスト結果</h3>
+        {getStatusBadge()}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <VariantCard
+          variant={stats.variant_a}
+          label="A"
+          subject={campaign.subject}
+          isWinner={stats.winner === 'A'}
+        />
+        <VariantCard
+          variant={stats.variant_b}
+          label="B"
+          subject={campaign.ab_subject_b || ''}
+          isWinner={stats.winner === 'B'}
+        />
+      </div>
+
+      {stats.status === 'testing' && (
+        <p className="mt-4 text-sm text-gray-500 text-center">
+          &#x23F3; テスト中... 本配信時に勝者が決定されます
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function CampaignDetail({ campaignId }: CampaignDetailProps) {
@@ -200,6 +299,11 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
             </div>
           </div>
         </section>
+      )}
+
+      {/* A/B Test Results */}
+      {campaign.ab_test_enabled && campaign.ab_stats && (
+        <AbTestResults stats={campaign.ab_stats} campaign={campaign} />
       )}
 
       {/* Click Details */}

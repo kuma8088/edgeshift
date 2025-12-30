@@ -60,3 +60,4 @@ playwright/.cache/
 SESSION_NOTES.md
 TASK_*.md
 TODO_*.md
+.worktrees/

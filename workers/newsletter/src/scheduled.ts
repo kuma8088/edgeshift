@@ -1,7 +1,8 @@
 import type { Env, Campaign, Subscriber, ScheduleConfig, ScheduleType } from './types';
-import { sendBatchEmails } from './lib/email';
+import { sendBatchEmails, sendEmail } from './lib/email';
 import { recordDeliveryLogs } from './lib/delivery';
 import { processSequenceEmails } from './lib/sequence-processor';
+import { sendAbTest, sendAbTestWinner, type SendEmailFn } from './routes/ab-test-send';
 
 /**
  * Convert plain text URLs to clickable links
@@ -156,6 +157,173 @@ export interface ScheduledProcessResult {
   failed: number;
 }
 
+/**
+ * Create a sendEmail function for A/B testing that wraps the email lib
+ */
+function createSendEmailFn(env: Env): SendEmailFn {
+  return async (
+    envParam: Env,
+    to: string,
+    subject: string,
+    html: string,
+    fromName?: string
+  ): Promise<{ id: string } | null> => {
+    const from = fromName
+      ? `${fromName} <${envParam.SENDER_EMAIL}>`
+      : `${envParam.SENDER_NAME} <${envParam.SENDER_EMAIL}>`;
+
+    const result = await sendEmail(envParam.RESEND_API_KEY, from, {
+      to,
+      subject,
+      html,
+    });
+
+    return result.success && result.id ? { id: result.id } : null;
+  };
+}
+
+/**
+ * Get active subscribers for a campaign
+ * If campaign has contact_list_id, get from list
+ * Otherwise get all active subscribers
+ */
+async function getActiveSubscribers(env: Env, campaign: Campaign): Promise<Subscriber[]> {
+  if (campaign.contact_list_id) {
+    const result = await env.DB.prepare(`
+      SELECT s.* FROM subscribers s
+      JOIN contact_list_members clm ON s.id = clm.subscriber_id
+      WHERE clm.contact_list_id = ? AND s.status = 'active'
+    `).bind(campaign.contact_list_id).all<Subscriber>();
+    return result.results || [];
+  }
+
+  const result = await env.DB.prepare(
+    "SELECT * FROM subscribers WHERE status = 'active'"
+  ).all<Subscriber>();
+  return result.results || [];
+}
+
+/**
+ * Process A/B test campaigns that are ready for test phase
+ * Test phase starts at: scheduled_at - ab_wait_hours
+ */
+async function processAbTestPhase(env: Env): Promise<{ processed: number; failed: number }> {
+  const now = new Date().toISOString();
+  let processed = 0;
+  let failed = 0;
+
+  try {
+    // Find A/B test campaigns ready for test phase
+    // scheduled_at - wait_hours <= now AND status = 'scheduled' AND ab_test_enabled = 1
+    // AND ab_test_sent_at IS NULL (not already sent)
+    // Note: scheduled_at is stored as Unix seconds (INTEGER), so use 'unixepoch' modifier
+    const testPhaseCampaigns = await env.DB.prepare(`
+      SELECT * FROM campaigns
+      WHERE status = 'scheduled'
+        AND ab_test_enabled = 1
+        AND ab_test_sent_at IS NULL
+        AND datetime(scheduled_at, 'unixepoch', '-' || COALESCE(ab_wait_hours, 1) || ' hours') <= datetime(?)
+    `).bind(now).all<Campaign>();
+
+    const campaigns = testPhaseCampaigns.results || [];
+
+    if (campaigns.length === 0) {
+      console.log('No A/B test campaigns ready for test phase');
+      return { processed: 0, failed: 0 };
+    }
+
+    console.log(`Processing ${campaigns.length} A/B test campaign(s) for test phase`);
+
+    const sendEmailFn = createSendEmailFn(env);
+
+    for (const campaign of campaigns) {
+      try {
+        const subscribers = await getActiveSubscribers(env, campaign);
+
+        if (subscribers.length === 0) {
+          console.log(`No subscribers for A/B test campaign ${campaign.id}`);
+          continue;
+        }
+
+        const result = await sendAbTest(env, campaign, subscribers, sendEmailFn);
+        console.log(
+          `A/B test phase for campaign ${campaign.id}: Group A sent ${result.groupASent}, Group B sent ${result.groupBSent}`
+        );
+        processed++;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Error processing A/B test phase for campaign ${campaign.id}:`, errorMessage);
+        failed++;
+      }
+    }
+
+    return { processed, failed };
+  } catch (error) {
+    console.error('Error in processAbTestPhase:', error);
+    throw error;
+  }
+}
+
+/**
+ * Process A/B test campaigns that are ready for winner phase
+ * Winner phase starts at: scheduled_at (original scheduled time)
+ */
+async function processAbTestWinnerPhase(env: Env): Promise<{ processed: number; failed: number }> {
+  const now = Math.floor(Date.now() / 1000);
+  let processed = 0;
+  let failed = 0;
+
+  try {
+    // Find A/B test campaigns ready for winner phase
+    // ab_test_sent_at IS NOT NULL (test phase completed)
+    // AND scheduled_at <= now
+    // AND status = 'scheduled' (not yet sent)
+    const winnerPhaseCampaigns = await env.DB.prepare(`
+      SELECT * FROM campaigns
+      WHERE status = 'scheduled'
+        AND ab_test_enabled = 1
+        AND ab_test_sent_at IS NOT NULL
+        AND scheduled_at <= ?
+    `).bind(now).all<Campaign>();
+
+    const campaigns = winnerPhaseCampaigns.results || [];
+
+    if (campaigns.length === 0) {
+      console.log('No A/B test campaigns ready for winner phase');
+      return { processed: 0, failed: 0 };
+    }
+
+    console.log(`Processing ${campaigns.length} A/B test campaign(s) for winner phase`);
+
+    const sendEmailFn = createSendEmailFn(env);
+
+    for (const campaign of campaigns) {
+      try {
+        const result = await sendAbTestWinner(env, campaign, sendEmailFn);
+        console.log(
+          `A/B test winner for campaign ${campaign.id}: Winner=${result.winner}, Remaining sent=${result.remainingSent}`
+        );
+        processed++;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Error processing A/B test winner for campaign ${campaign.id}:`, errorMessage);
+
+        // Mark campaign as failed
+        await env.DB.prepare(`
+          UPDATE campaigns SET status = 'failed' WHERE id = ?
+        `).bind(campaign.id).run();
+
+        failed++;
+      }
+    }
+
+    return { processed, failed };
+  } catch (error) {
+    console.error('Error in processAbTestWinnerPhase:', error);
+    throw error;
+  }
+}
+
 export async function processScheduledCampaigns(env: Env): Promise<ScheduledProcessResult> {
   const now = Math.floor(Date.now() / 1000);
   const result: ScheduledProcessResult = {
@@ -169,10 +337,22 @@ export async function processScheduledCampaigns(env: Env): Promise<ScheduledProc
     console.log('Processing sequence emails...');
     await processSequenceEmails(env);
 
-    // Get campaigns that are scheduled for now or earlier
+    // Process A/B test phases
+    console.log('Processing A/B test campaigns...');
+    const abTestPhaseResult = await processAbTestPhase(env);
+    result.processed += abTestPhaseResult.processed;
+    result.failed += abTestPhaseResult.failed;
+
+    const abWinnerPhaseResult = await processAbTestWinnerPhase(env);
+    result.processed += abWinnerPhaseResult.processed;
+    result.sent += abWinnerPhaseResult.processed - abWinnerPhaseResult.failed;
+    result.failed += abWinnerPhaseResult.failed;
+
+    // Get non-A/B test campaigns that are scheduled for now or earlier
     const campaignsResult = await env.DB.prepare(`
       SELECT * FROM campaigns
       WHERE status = 'scheduled' AND scheduled_at <= ?
+        AND (ab_test_enabled = 0 OR ab_test_enabled IS NULL)
       ORDER BY scheduled_at ASC
     `).bind(now).all<Campaign>();
 

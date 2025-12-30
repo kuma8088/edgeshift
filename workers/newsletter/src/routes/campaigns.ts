@@ -1,8 +1,88 @@
-import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse } from '../types';
+import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse, AbVariantStats, AbTestStats } from '../types';
 import { isAuthorized } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
 import { generateSlug } from '../lib/slug';
 import { generateExcerpt } from '../lib/excerpt';
+import { calculateAbScore, determineWinner } from '../utils/ab-testing';
+
+/**
+ * Get A/B test statistics for a campaign
+ * @param db - D1 database instance
+ * @param campaignId - Campaign ID
+ * @param campaignAbWinner - The ab_winner field from campaign (if already determined)
+ */
+async function getAbStats(db: D1Database, campaignId: string, campaignAbWinner?: 'A' | 'B' | null): Promise<AbTestStats | null> {
+  const results = await db
+    .prepare(
+      `SELECT
+        ab_variant,
+        COUNT(*) as sent,
+        SUM(CASE WHEN status IN ('delivered', 'opened', 'clicked') THEN 1 ELSE 0 END) as delivered,
+        SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+        SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked
+      FROM delivery_logs
+      WHERE campaign_id = ? AND ab_variant IS NOT NULL
+      GROUP BY ab_variant`
+    )
+    .bind(campaignId)
+    .all();
+
+  if (!results.results || results.results.length === 0) {
+    return null;
+  }
+
+  const emptyStats: AbVariantStats = {
+    sent: 0,
+    delivered: 0,
+    opened: 0,
+    clicked: 0,
+    open_rate: 0,
+    click_rate: 0,
+    score: 0,
+  };
+  const statsMap: Record<string, AbVariantStats> = {};
+
+  for (const row of results.results) {
+    const variant = row.ab_variant as string;
+    const sent = row.sent as number;
+    const opened = row.opened as number;
+    const clicked = row.clicked as number;
+
+    const open_rate = sent > 0 ? opened / sent : 0;
+    const click_rate = sent > 0 ? clicked / sent : 0;
+    const score = calculateAbScore(open_rate, click_rate);
+
+    statsMap[variant] = {
+      sent,
+      delivered: row.delivered as number,
+      opened,
+      clicked,
+      open_rate,
+      click_rate,
+      score,
+    };
+  }
+
+  const variant_a = statsMap['A'] || emptyStats;
+  const variant_b = statsMap['B'] || emptyStats;
+
+  let winner: 'A' | 'B' | null = null;
+  let status: 'pending' | 'testing' | 'determined' = 'pending';
+
+  // If campaign has ab_winner set, the test is determined
+  if (campaignAbWinner) {
+    status = 'determined';
+    winner = campaignAbWinner;
+  } else if (variant_a.sent > 0 || variant_b.sent > 0) {
+    status = 'testing';
+    // Calculate current winner based on stats (for display purposes)
+    if (variant_a.sent > 0 && variant_b.sent > 0) {
+      winner = determineWinner(variant_a, variant_b);
+    }
+  }
+
+  return { variant_a, variant_b, winner, status };
+}
 
 export async function createCampaign(
   request: Request,
@@ -14,7 +94,23 @@ export async function createCampaign(
 
   try {
     const body = await request.json<CreateCampaignRequest>();
-    const { subject, content, scheduled_at, schedule_type, schedule_config, contact_list_id, template_id, slug: providedSlug, excerpt: providedExcerpt, is_published } = body;
+    const {
+      subject,
+      content,
+      scheduled_at,
+      schedule_type,
+      schedule_config,
+      contact_list_id,
+      template_id,
+      slug: providedSlug,
+      excerpt: providedExcerpt,
+      is_published,
+      // A/B Testing fields
+      ab_test_enabled = false,
+      ab_subject_b = null,
+      ab_from_name_b = null,
+      ab_wait_hours = 4
+    } = body;
 
     if (!subject || !content) {
       return errorResponse('Subject and content are required', 400);
@@ -30,8 +126,8 @@ export async function createCampaign(
     const excerpt = providedExcerpt || generateExcerpt(content, 150);
 
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, template_id, slug, excerpt, is_published)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, template_id, slug, excerpt, is_published, ab_test_enabled, ab_subject_b, ab_from_name_b, ab_wait_hours)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -47,7 +143,11 @@ export async function createCampaign(
       template_id || null,
       slug,
       excerpt,
-      is_published !== undefined ? (is_published ? 1 : 0) : 0  // Default to unpublished
+      is_published !== undefined ? (is_published ? 1 : 0) : 0,  // Default to unpublished
+      ab_test_enabled ? 1 : 0,
+      ab_subject_b,
+      ab_from_name_b,
+      ab_wait_hours
     ).run();
 
     const campaign = await env.DB.prepare(
@@ -80,6 +180,12 @@ export async function getCampaign(
 
     if (!campaign) {
       return errorResponse('Campaign not found', 404);
+    }
+
+    // Include A/B stats if A/B testing is enabled
+    if (campaign.ab_test_enabled) {
+      const ab_stats = await getAbStats(env.DB, id, campaign.ab_winner);
+      return successResponse({ campaign: { ...campaign, ab_stats } });
     }
 
     return successResponse({ campaign });
@@ -254,6 +360,23 @@ export async function updateCampaign(
     if (body.is_published !== undefined) {
       updates.push('is_published = ?');
       bindings.push(body.is_published ? 1 : 0);
+    }
+    // A/B Testing fields
+    if (body.ab_test_enabled !== undefined) {
+      updates.push('ab_test_enabled = ?');
+      bindings.push(body.ab_test_enabled ? 1 : 0);
+    }
+    if (body.ab_subject_b !== undefined) {
+      updates.push('ab_subject_b = ?');
+      bindings.push(body.ab_subject_b);
+    }
+    if (body.ab_from_name_b !== undefined) {
+      updates.push('ab_from_name_b = ?');
+      bindings.push(body.ab_from_name_b);
+    }
+    if (body.ab_wait_hours !== undefined) {
+      updates.push('ab_wait_hours = ?');
+      bindings.push(body.ab_wait_hours);
     }
 
     if (updates.length === 0) {

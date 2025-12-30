@@ -42,7 +42,14 @@ CREATE TABLE IF NOT EXISTS campaigns (
   slug TEXT UNIQUE,
   is_published INTEGER DEFAULT 0,
   published_at INTEGER,
-  excerpt TEXT
+  excerpt TEXT,
+  -- A/B Testing fields
+  ab_test_enabled INTEGER DEFAULT 0,
+  ab_subject_b TEXT,
+  ab_from_name_b TEXT,
+  ab_wait_hours INTEGER DEFAULT 4,
+  ab_test_sent_at TEXT,
+  ab_winner TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_campaigns_slug ON campaigns(slug);
@@ -67,6 +74,8 @@ CREATE TABLE IF NOT EXISTS delivery_logs (
   clicked_at INTEGER,
   error_message TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
+  -- A/B Testing variant tracking
+  ab_variant TEXT,
   FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
   FOREIGN KEY (sequence_id) REFERENCES sequences(id),
   FOREIGN KEY (sequence_step_id) REFERENCES sequence_steps(id),
@@ -249,3 +258,20 @@ CREATE TABLE IF NOT EXISTS brand_settings (
 -- Note: Run these ALTER TABLE commands manually for existing database:
 -- ALTER TABLE campaigns ADD COLUMN template_id TEXT DEFAULT NULL;
 -- ALTER TABLE sequence_steps ADD COLUMN template_id TEXT DEFAULT NULL;
+
+-- A/B Test remaining subscribers (temporary storage for winner phase)
+CREATE TABLE IF NOT EXISTS ab_test_remaining (
+  campaign_id TEXT PRIMARY KEY,
+  subscriber_ids TEXT NOT NULL,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+);
+
+-- A/B Testing (migration 007):
+-- ALTER TABLE campaigns ADD COLUMN ab_test_enabled INTEGER DEFAULT 0;
+-- ALTER TABLE campaigns ADD COLUMN ab_subject_b TEXT;
+-- ALTER TABLE campaigns ADD COLUMN ab_from_name_b TEXT;
+-- ALTER TABLE campaigns ADD COLUMN ab_wait_hours INTEGER DEFAULT 4;
+-- ALTER TABLE campaigns ADD COLUMN ab_test_sent_at TEXT;
+-- ALTER TABLE campaigns ADD COLUMN ab_winner TEXT;
+-- ALTER TABLE delivery_logs ADD COLUMN ab_variant TEXT;
