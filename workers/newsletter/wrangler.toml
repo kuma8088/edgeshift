@@ -25,6 +25,10 @@ pattern = "edgeshift.tech/api/sequences/*"
 zone_name = "edgeshift.tech"
 
 [[routes]]
+pattern = "edgeshift.tech/api/subscribers"
+zone_name = "edgeshift.tech"
+
+[[routes]]
 pattern = "edgeshift.tech/api/subscribers/*"
 zone_name = "edgeshift.tech"
 

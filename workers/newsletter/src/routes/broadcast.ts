@@ -150,7 +150,7 @@ export async function handleGetSubscribers(
     const status = url.searchParams.get('status') || 'active';
 
     const result = await env.DB.prepare(
-      'SELECT id, email, name, status, subscribed_at, created_at FROM subscribers WHERE status = ?'
+      'SELECT id, email, name, status, subscribed_at, created_at, referral_code, referred_by, referral_count FROM subscribers WHERE status = ?'
     ).bind(status).all();
 
     const total = await env.DB.prepare(

@@ -520,3 +520,156 @@ export interface TestSendTemplateData {
 export async function testSendTemplate(data: TestSendTemplateData) {
   return apiRequest<{ message_id: string }>('/templates/test-send', { method: 'POST', body: data });
 }
+
+// Premium Payment APIs
+export interface Plan {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  plan_type: 'monthly' | 'yearly' | 'lifetime';
+  stripe_price_id: string | null;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreatePlanData {
+  name: string;
+  description?: string;
+  price_cents: number;
+  plan_type: 'monthly' | 'yearly' | 'lifetime';
+  stripe_price_id?: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  product_type: 'pdf' | 'course' | 'other';
+  stripe_price_id: string | null;
+  download_url: string | null;
+  external_url: string | null;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateProductData {
+  name: string;
+  description?: string;
+  price_cents: number;
+  product_type: 'pdf' | 'course' | 'other';
+  stripe_price_id?: string;
+  download_url?: string;
+  external_url?: string;
+}
+
+// Plans
+export async function listPlans() {
+  return apiRequest<Plan[]>('/premium/plans');
+}
+
+export async function createPlan(data: CreatePlanData) {
+  return apiRequest<Plan>('/premium/plans', { method: 'POST', body: data });
+}
+
+export async function updatePlan(id: string, data: Partial<CreatePlanData> & { is_active?: number }) {
+  return apiRequest<{ success: boolean }>(`/premium/plans/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deletePlan(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/plans/${id}`, { method: 'DELETE' });
+}
+
+// Products
+export async function listProducts() {
+  return apiRequest<Product[]>('/premium/products');
+}
+
+export async function createProduct(data: CreateProductData) {
+  return apiRequest<Product>('/premium/products', { method: 'POST', body: data });
+}
+
+export async function updateProduct(id: string, data: Partial<CreateProductData> & { is_active?: number }) {
+  return apiRequest<{ success: boolean }>(`/premium/products/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteProduct(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/products/${id}`, { method: 'DELETE' });
+}
+
+// Subscriber Billing APIs
+export interface SubscriptionWithSubscriber {
+  id: string;
+  subscriber_id: string;
+  subscriber_email: string;
+  subscriber_name: string | null;
+  plan_id: string;
+  plan_name: string;
+  plan_type: string;
+  stripe_subscription_id: string | null;
+  status: 'active' | 'past_due' | 'canceled' | 'unpaid' | 'lifetime';
+  current_period_start: number | null;
+  current_period_end: number | null;
+  created_at: number;
+}
+
+export interface PaymentHistoryItem {
+  id: string;
+  subscriber_id: string;
+  subscription_id: string | null;
+  product_id: string | null;
+  amount_cents: number;
+  currency: string;
+  payment_type: 'subscription' | 'one_time' | 'refund';
+  status: string;
+  created_at: number;
+}
+
+export interface PurchaseWithProduct {
+  id: string;
+  subscriber_id: string;
+  product_id: string;
+  product_name: string;
+  product_type: string;
+  status: 'pending' | 'completed' | 'refunded';
+  access_token: string | null;
+  created_at: number;
+}
+
+export interface SubscriberBillingInfo {
+  subscriptions: SubscriptionWithSubscriber[];
+  payments: PaymentHistoryItem[];
+  purchases: PurchaseWithProduct[];
+}
+
+export async function listSubscriptions(params?: { status?: string; limit?: number; offset?: number }) {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.limit) query.set('limit', params.limit.toString());
+  if (params?.offset) query.set('offset', params.offset.toString());
+  const queryString = query.toString();
+  return apiRequest<SubscriptionWithSubscriber[]>(`/premium/subscriptions${queryString ? `?${queryString}` : ''}`);
+}
+
+export async function getSubscriberBilling(subscriberId: string) {
+  return apiRequest<SubscriberBillingInfo>(`/premium/subscriptions/${subscriberId}`);
+}
+
+export async function refundSubscription(subscriptionId: string, reason?: string) {
+  return apiRequest<{ success: boolean; refund_id: string }>(`/premium/subscriptions/${subscriptionId}/refund`, {
+    method: 'POST',
+    body: { reason },
+  });
+}
+
+export async function refundPurchase(purchaseId: string, reason?: string) {
+  return apiRequest<{ success: boolean; refund_id: string }>(`/premium/purchases/${purchaseId}/refund`, {
+    method: 'POST',
+    body: { reason },
+  });
+}
