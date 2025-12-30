@@ -1,0 +1,29 @@
+---
+import AuthLayout from '../../layouts/AuthLayout.astro';
+import { MagicLinkForm } from '../../components/auth/MagicLinkForm';
+
+// Check for error params
+const errorParam = Astro.url.searchParams.get('error');
+let errorMessage = '';
+
+switch (errorParam) {
+  case 'invalid_token':
+    errorMessage = 'リンクが無効です。再度ログインしてください。';
+    break;
+  case 'token_expired':
+    errorMessage = 'リンクの有効期限が切れました。再度ログインしてください。';
+    break;
+  case 'unauthorized':
+    errorMessage = 'ログインが必要です。';
+    break;
+}
+---
+
+<AuthLayout title="ログイン">
+  {errorMessage && (
+    <div class="mb-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+      {errorMessage}
+    </div>
+  )}
+  <MagicLinkForm client:load />
+</AuthLayout>

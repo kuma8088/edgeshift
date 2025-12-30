@@ -1,0 +1,15 @@
+---
+import AuthLayout from '../../layouts/AuthLayout.astro';
+import { VerifyPageClient } from '../../components/auth/VerifyPageClient';
+
+// Get token from URL
+const token = Astro.url.searchParams.get('token');
+
+if (!token) {
+  return Astro.redirect('/auth/login?error=invalid_token');
+}
+---
+
+<AuthLayout title="認証確認">
+  <VerifyPageClient token={token} client:load />
+</AuthLayout>
