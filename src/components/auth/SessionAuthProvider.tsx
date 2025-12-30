@@ -41,6 +41,8 @@ export function SessionAuthProvider({
       // Check role if required
       if (requiredRole && !requiredRole.includes(result.data.role)) {
         // User doesn't have required role, redirect to login
+        setUser(null);
+        setIsLoading(false);
         window.location.href = redirectTo;
         return;
       }
