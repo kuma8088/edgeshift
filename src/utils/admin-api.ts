@@ -520,3 +520,84 @@ export interface TestSendTemplateData {
 export async function testSendTemplate(data: TestSendTemplateData) {
   return apiRequest<{ message_id: string }>('/templates/test-send', { method: 'POST', body: data });
 }
+
+// Premium Payment APIs
+export interface Plan {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  plan_type: 'monthly' | 'yearly' | 'lifetime';
+  stripe_price_id: string | null;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreatePlanData {
+  name: string;
+  description?: string;
+  price_cents: number;
+  plan_type: 'monthly' | 'yearly' | 'lifetime';
+  stripe_price_id?: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  product_type: 'pdf' | 'course' | 'other';
+  stripe_price_id: string | null;
+  download_url: string | null;
+  external_url: string | null;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateProductData {
+  name: string;
+  description?: string;
+  price_cents: number;
+  product_type: 'pdf' | 'course' | 'other';
+  stripe_price_id?: string;
+  download_url?: string;
+  external_url?: string;
+}
+
+// Plans
+export async function listPlans() {
+  return apiRequest<Plan[]>('/premium/plans');
+}
+
+export async function createPlan(data: CreatePlanData) {
+  return apiRequest<Plan>('/premium/plans', { method: 'POST', body: data });
+}
+
+export async function updatePlan(id: string, data: Partial<CreatePlanData> & { is_active?: number }) {
+  return apiRequest<{ success: boolean }>(`/premium/plans/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deletePlan(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/plans/${id}`, { method: 'DELETE' });
+}
+
+// Products
+export async function listProducts() {
+  return apiRequest<Product[]>('/premium/products');
+}
+
+export async function createProduct(data: CreateProductData) {
+  return apiRequest<Product>('/premium/products', { method: 'POST', body: data });
+}
+
+export async function updateProduct(id: string, data: Partial<CreateProductData> & { is_active?: number }) {
+  return apiRequest<{ success: boolean }>(`/premium/products/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteProduct(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/products/${id}`, { method: 'DELETE' });
+}

@@ -1,0 +1,24 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../../components/admin/AuthProvider';
+import ProductEditFormWrapper from '../../../../components/admin/ProductEditFormWrapper';
+---
+
+<AdminLayout title="商品編集">
+  <AuthProvider client:load>
+    <div class="space-y-6">
+      <div class="flex items-center gap-4">
+        <a
+          href="/admin/payments/products"
+          class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+        >
+          ← 商品一覧
+        </a>
+      </div>
+      <h1 class="text-2xl font-bold text-[var(--color-text)]">商品編集</h1>
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
+        <ProductEditFormWrapper client:load />
+      </div>
+    </div>
+  </AuthProvider>
+</AdminLayout>

@@ -1,0 +1,24 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../../components/admin/AuthProvider';
+import PlanEditFormWrapper from '../../../../components/admin/PlanEditFormWrapper';
+---
+
+<AdminLayout title="プラン編集">
+  <AuthProvider client:load>
+    <div class="space-y-6">
+      <div class="flex items-center gap-4">
+        <a
+          href="/admin/payments"
+          class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+        >
+          ← プラン一覧
+        </a>
+      </div>
+      <h1 class="text-2xl font-bold text-[var(--color-text)]">プラン編集</h1>
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
+        <PlanEditFormWrapper client:load />
+      </div>
+    </div>
+  </AuthProvider>
+</AdminLayout>
