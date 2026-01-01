@@ -673,3 +673,26 @@ export async function refundPurchase(purchaseId: string, reason?: string) {
     body: { reason },
   });
 }
+
+// AI Content Generation (Phase 11)
+export interface AIGenerateResponse {
+  content: string;
+}
+
+export interface AISuggestSubjectsResponse {
+  subjects: string[];
+}
+
+export async function generateContent(prompt: string, maxTokens?: number) {
+  return apiRequest<AIGenerateResponse>('/v1/ai/generate', {
+    method: 'POST',
+    body: { prompt, max_tokens: maxTokens },
+  });
+}
+
+export async function suggestSubjects(topic: string, count: number = 5) {
+  return apiRequest<AISuggestSubjectsResponse>('/v1/ai/suggest-subjects', {
+    method: 'POST',
+    body: { topic, count },
+  });
+}
