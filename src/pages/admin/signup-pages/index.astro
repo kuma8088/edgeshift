@@ -1,8 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
 import { SignupPageList } from '../../../components/admin/SignupPageList';
 ---
 
 <AdminLayout title="登録ページ管理">
-  <SignupPageList client:load />
+  <AuthProvider client:load>
+    <SignupPageList client:load />
+  </AuthProvider>
 </AdminLayout>
