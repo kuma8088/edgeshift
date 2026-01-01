@@ -32,6 +32,7 @@ export function SessionAuthProvider({
 }: SessionAuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const fetchUser = async () => {
     setIsLoading(true);
@@ -59,13 +60,15 @@ export function SessionAuthProvider({
   }, []);
 
   // Redirect to login if not authenticated (after loading completes)
+  // Skip redirect if user is logging out (logout handles its own redirect)
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !isLoggingOut) {
       window.location.href = redirectTo;
     }
-  }, [isLoading, user, redirectTo]);
+  }, [isLoading, user, isLoggingOut, redirectTo]);
 
   const logout = async () => {
+    setIsLoggingOut(true);  // Prevent auto-redirect to ?error=unauthorized
     await logoutApi();
     setUser(null);
     window.location.href = '/auth/login';
