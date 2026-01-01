@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, forwardRef, useImperativeHandle, type FormEvent } from 'react';
 import { RichTextEditor } from './RichTextEditor';
 import { ListSelector } from './ListSelector';
 import { TemplateSelector } from './TemplateSelector';
 import { EmailPreviewModal } from './EmailPreviewModal';
+
+export interface CampaignFormRef {
+  setSubject: (subject: string) => void;
+  setContent: (content: string) => void;
+}
 
 interface Campaign {
   id?: string;
@@ -43,9 +48,18 @@ interface CampaignFormProps {
   loading?: boolean;
 }
 
-export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: CampaignFormProps) {
+export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(function CampaignForm(
+  { campaign, onSubmit, onCancel, loading = false },
+  ref
+) {
   const [subject, setSubject] = useState(campaign?.subject || '');
   const [content, setContent] = useState(campaign?.content || '');
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    setSubject: (newSubject: string) => setSubject(newSubject),
+    setContent: (newContent: string) => setContent(newContent),
+  }), []);
   const [contactListId, setContactListId] = useState<string | null>(campaign?.contact_list_id || null);
   const [templateId, setTemplateId] = useState<string | undefined>(campaign?.template_id || undefined);
   const [showPreview, setShowPreview] = useState(false);
@@ -441,4 +455,4 @@ export function CampaignForm({ campaign, onSubmit, onCancel, loading = false }: 
       />
     </form>
   );
-}
+});
