@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { createCampaign } from '../../utils/admin-api';
-import { CampaignForm, CampaignFormRef } from './CampaignForm';
+import { CampaignForm, type CampaignFormRef } from './CampaignForm';
 import { AIContentGenerator } from './AIContentGenerator';
 
 export default function CampaignNewForm() {
