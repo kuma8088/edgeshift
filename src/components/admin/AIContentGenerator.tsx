@@ -98,7 +98,12 @@ export function AIContentGenerator({
             onChange={(e) => setTopic(e.target.value)}
             placeholder="ニュースレターのトピックを入力..."
             className="flex-1 px-3 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent text-sm"
-            onKeyDown={(e) => e.key === 'Enter' && handleSuggestSubjects()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSuggestSubjects();
+              }
+            }}
           />
           <button
             type="button"
@@ -113,7 +118,7 @@ export function AIContentGenerator({
           <ul className="space-y-2">
             {subjects.map((subject, index) => (
               <li
-                key={index}
+                key={`subject-${index}-${subject.slice(0, 20)}`}
                 className="flex items-center justify-between bg-[var(--color-bg-primary)] p-3 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent)] cursor-pointer transition-colors"
                 onClick={() => handleSelectSubject(subject)}
               >
