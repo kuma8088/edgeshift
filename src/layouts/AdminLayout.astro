@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { LogoutButton } from '../components/admin/LogoutButton';
 
 interface Props {
   title: string;
@@ -21,11 +22,11 @@ const fullTitle = `${title} | EdgeShift Admin`;
   <body class="min-h-screen bg-[var(--color-bg-secondary)]">
     <div class="flex min-h-screen">
       <!-- Sidebar - Light theme -->
-      <aside class="w-64 bg-[var(--color-bg)] border-r border-[var(--color-border)] flex-shrink-0">
+      <aside class="w-64 bg-[var(--color-bg)] border-r border-[var(--color-border)] flex-shrink-0 flex flex-col">
         <div class="p-4 border-b border-[var(--color-border)]">
           <a href="/admin" class="text-xl font-bold text-[var(--color-accent)]">EdgeShift Admin</a>
         </div>
-        <nav class="p-4">
+        <nav class="p-4 flex-1">
           <ul class="space-y-2">
             <li>
               <a href="/admin" class="block px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
@@ -74,6 +75,9 @@ const fullTitle = `${title} | EdgeShift Admin`;
             </li>
           </ul>
         </nav>
+        <div class="p-4 border-t border-[var(--color-border)]">
+          <LogoutButton client:load />
+        </div>
       </aside>
 
       <!-- Main content -->

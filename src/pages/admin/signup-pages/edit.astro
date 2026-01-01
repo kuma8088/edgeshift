@@ -1,5 +1,6 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { AuthProvider } from '../../../components/admin/AuthProvider';
 import { SignupPageEditForm } from '../../../components/admin/SignupPageEditForm';
 
 const url = new URL(Astro.request.url);
@@ -11,5 +12,7 @@ if (!pageId) {
 ---
 
 <AdminLayout title="ページを編集">
-  <SignupPageEditForm client:load pageId={pageId} />
+  <AuthProvider client:load>
+    <SignupPageEditForm client:load pageId={pageId} />
+  </AuthProvider>
 </AdminLayout>

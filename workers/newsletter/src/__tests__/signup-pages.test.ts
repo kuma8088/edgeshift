@@ -119,5 +119,43 @@ describe('Signup Pages API', () => {
       // Try to create duplicate
       await expect(createSignupPage(env, page)).rejects.toThrow('Slug already exists');
     });
+
+    it('should reject non-existent contact_list_id', async () => {
+      const env = getTestEnv();
+      const { createSignupPage } = await import('../routes/signup-pages');
+
+      const newPage = {
+        slug: 'test-contact-list',
+        title: 'Test',
+        content: '<p>Test</p>',
+        contact_list_id: 'non-existent-id',
+      };
+
+      await expect(createSignupPage(env, newPage)).rejects.toThrow('Contact list not found');
+    });
+
+    it('should accept valid contact_list_id', async () => {
+      const env = getTestEnv();
+      const { createSignupPage } = await import('../routes/signup-pages');
+      const { createContactList } = await import('../routes/contact-lists');
+
+      // Create a valid contact list first
+      const contactList = await createContactList(env, {
+        name: 'Test List',
+        description: 'Test description',
+      });
+
+      const newPage = {
+        slug: 'test-with-list',
+        title: 'Test with List',
+        content: '<p>Test</p>',
+        contact_list_id: contactList.id,
+      };
+
+      const result = await createSignupPage(env, newPage);
+
+      expect(result.id).toBeTruthy();
+      expect(result.contact_list_id).toBe(contactList.id);
+    });
   });
 });

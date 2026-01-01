@@ -167,6 +167,19 @@ export async function createSignupPage(env: Env, input: SignupPageInput): Promis
     }
   }
 
+  // Validate contact_list_id if provided
+  if (input.contact_list_id) {
+    const contactList = await env.DB.prepare(
+      'SELECT id FROM contact_lists WHERE id = ?'
+    )
+      .bind(input.contact_list_id)
+      .first();
+
+    if (!contactList) {
+      throw new Error('Contact list not found');
+    }
+  }
+
   // Generate ID
   const id = crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
@@ -291,6 +304,19 @@ export async function updateSignupPage(
 
     if (!sequence) {
       throw new Error('Sequence not found');
+    }
+  }
+
+  // Validate contact_list_id if provided
+  if (input.contact_list_id) {
+    const contactList = await env.DB.prepare(
+      'SELECT id FROM contact_lists WHERE id = ?'
+    )
+      .bind(input.contact_list_id)
+      .first();
+
+    if (!contactList) {
+      throw new Error('Contact list not found');
     }
   }
 
@@ -547,7 +573,8 @@ export async function handleCreateSignupPage(
         error.message.includes('Missing required') ||
         error.message.includes('already exists') ||
         error.message.includes('Content size exceeds') ||
-        error.message.includes('Sequence not found')
+        error.message.includes('Sequence not found') ||
+        error.message.includes('Contact list not found')
       ) {
         return errorResponse(error.message, 400);
       }
@@ -585,7 +612,8 @@ export async function handleUpdateSignupPage(
         error.message.includes('Invalid slug') ||
         error.message.includes('already exists') ||
         error.message.includes('Content size exceeds') ||
-        error.message.includes('Sequence not found')
+        error.message.includes('Sequence not found') ||
+        error.message.includes('Contact list not found')
       ) {
         return errorResponse(error.message, 400);
       }
