@@ -314,6 +314,7 @@ export function SignupPageEditForm({ pageId, initialPageType }: SignupPageEditFo
                 シーケンス
               </label>
               <select
+                id="sequence_id"
                 value={sequenceId}
                 onChange={(e) => setSequenceId(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-800"
