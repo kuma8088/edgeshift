@@ -48,7 +48,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 id="apiKey"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk_..."
+                placeholder="管理者 API キーを入力"
                 className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg
                        focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent
                        transition-all"
