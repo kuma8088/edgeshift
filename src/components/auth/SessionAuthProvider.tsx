@@ -32,6 +32,7 @@ export function SessionAuthProvider({
 }: SessionAuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const fetchUser = async () => {
     setIsLoading(true);
@@ -58,10 +59,24 @@ export function SessionAuthProvider({
     fetchUser();
   }, []);
 
+  // Redirect to login if not authenticated (after loading completes)
+  // Skip redirect if user is logging out (logout handles its own redirect)
+  useEffect(() => {
+    if (!isLoading && !user && !isLoggingOut) {
+      window.location.href = redirectTo;
+    }
+  }, [isLoading, user, isLoggingOut, redirectTo]);
+
   const logout = async () => {
-    await logoutApi();
-    setUser(null);
-    window.location.href = '/auth/login';
+    setIsLoggingOut(true);  // Prevent auto-redirect to ?error=unauthorized
+    try {
+      await logoutApi();
+    } finally {
+      // Always redirect to login, even if logoutApi fails
+      // (user should still be logged out client-side)
+      setUser(null);
+      window.location.href = '/auth/login';
+    }
   };
 
   const refresh = async () => {
@@ -77,16 +92,11 @@ export function SessionAuthProvider({
     );
   }
 
-  // If not authenticated, redirect (handled in Astro page for SSR)
-  // This is for client-side protection
+  // If not authenticated, show redirect message (useEffect handles actual redirect)
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-[var(--color-text-secondary)]">
-          <a href={redirectTo} className="text-[var(--color-accent)] hover:underline">
-            ログインしてください
-          </a>
-        </div>
+        <div className="text-[var(--color-text-secondary)]">リダイレクト中...</div>
       </div>
     );
   }
