@@ -58,6 +58,13 @@ export function SessionAuthProvider({
     fetchUser();
   }, []);
 
+  // Redirect to login if not authenticated (after loading completes)
+  useEffect(() => {
+    if (!isLoading && !user) {
+      window.location.href = redirectTo;
+    }
+  }, [isLoading, user, redirectTo]);
+
   const logout = async () => {
     await logoutApi();
     setUser(null);
@@ -77,16 +84,11 @@ export function SessionAuthProvider({
     );
   }
 
-  // If not authenticated, redirect (handled in Astro page for SSR)
-  // This is for client-side protection
+  // If not authenticated, show redirect message (useEffect handles actual redirect)
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <div className="text-[var(--color-text-secondary)]">
-          <a href={redirectTo} className="text-[var(--color-accent)] hover:underline">
-            ログインしてください
-          </a>
-        </div>
+        <div className="text-[var(--color-text-secondary)]">リダイレクト中...</div>
       </div>
     );
   }

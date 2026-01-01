@@ -13,7 +13,7 @@ function DashboardContent() {
 
 export function DashboardPageClient() {
   return (
-    <SessionAuthProvider>
+    <SessionAuthProvider redirectTo="/auth/login?error=unauthorized">
       <DashboardContent />
     </SessionAuthProvider>
   );
