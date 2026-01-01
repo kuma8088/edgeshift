@@ -69,9 +69,14 @@ export function SessionAuthProvider({
 
   const logout = async () => {
     setIsLoggingOut(true);  // Prevent auto-redirect to ?error=unauthorized
-    await logoutApi();
-    setUser(null);
-    window.location.href = '/auth/login';
+    try {
+      await logoutApi();
+    } finally {
+      // Always redirect to login, even if logoutApi fails
+      // (user should still be logged out client-side)
+      setUser(null);
+      window.location.href = '/auth/login';
+    }
   };
 
   const refresh = async () => {
