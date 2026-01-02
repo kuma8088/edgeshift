@@ -1,9 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://edgeshift.tech';
+/**
+ * Debug-only tests for auth flow investigation.
+ * These tests hit live endpoints and should NOT run in CI.
+ *
+ * To run: DEBUG_AUTH_FLOW=true BASE_URL=https://your-preview.pages.dev npx playwright test auth-flow
+ */
+const DEBUG_AUTH_FLOW = process.env.DEBUG_AUTH_FLOW === 'true';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:4321';
 const API_URL = `${BASE_URL}/api/premium`;
 
 test.describe('Auth Flow Debug', () => {
+  // Skip all tests unless explicitly enabled
+  test.skip(!DEBUG_AUTH_FLOW, 'Debug tests - set DEBUG_AUTH_FLOW=true to run');
   test('should verify CORS headers on auth endpoints', async ({ request }) => {
     // Check CORS preflight
     const preflight = await request.fetch(`${API_URL}/auth/me`, {
