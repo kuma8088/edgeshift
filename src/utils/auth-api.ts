@@ -213,6 +213,14 @@ export async function validateMagicLink(token: string): Promise<AuthResponse<Aut
       };
     }
 
+    // Check for success: false in 200 response
+    if (typeof rawData === 'object' && rawData !== null && rawData.success === false) {
+      return {
+        success: false,
+        error: rawData.error || 'Request failed',
+      };
+    }
+
     // Normalize: backend returns { success, data: {...} }
     const data = (typeof rawData === 'object' && rawData !== null && 'data' in rawData)
       ? rawData.data
