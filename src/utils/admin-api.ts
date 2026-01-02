@@ -56,7 +56,12 @@ export async function apiRequest<T>(
       return { success: false, error: data.error || `Request failed: ${response.status}` };
     }
 
-    return data;
+    // Normalize response format: some endpoints (e.g., AI) return raw data
+    // while others return { success: true, data }
+    if (typeof data === 'object' && data !== null && 'success' in data) {
+      return data;
+    }
+    return { success: true, data };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: `Network error: ${message}` };
