@@ -1,5 +1,5 @@
 import type { Env, Sequence, SequenceStep, CreateSequenceRequest, UpdateSequenceRequest, ApiResponse } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { errorResponse, successResponse, jsonResponse } from '../lib/response';
 import { enrollSubscriberInSequence } from '../lib/sequence-processor';
 import { isValidTime } from '../lib/validation';
@@ -8,7 +8,7 @@ export async function createSequence(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -78,7 +78,7 @@ export async function getSequence(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -100,7 +100,7 @@ export async function listSequences(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -124,7 +124,7 @@ export async function updateSequence(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -231,7 +231,7 @@ export async function deleteSequence(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -259,7 +259,7 @@ export async function enrollSubscriber(
   env: Env,
   sequenceId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -296,7 +296,7 @@ export async function getSubscriberProgress(
   env: Env,
   subscriberId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -330,7 +330,7 @@ export async function getSequenceSubscribers(
   env: Env,
   sequenceId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 

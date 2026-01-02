@@ -11,7 +11,7 @@
  */
 
 import type { Env } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
 
 // Validation constants
@@ -460,7 +460,7 @@ export async function handleGetSignupPages(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -481,7 +481,7 @@ export async function handleGetSignupPage(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -555,7 +555,7 @@ export async function handleCreateSignupPage(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -592,7 +592,7 @@ export async function handleUpdateSignupPage(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -631,7 +631,7 @@ export async function handleDeleteSignupPage(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 

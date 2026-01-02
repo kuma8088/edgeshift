@@ -1,5 +1,5 @@
 import type { Env, BroadcastRequest, ApiResponse, Subscriber } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { sendBatchEmails } from '../lib/email';
 
 function buildNewsletterEmail(
@@ -39,7 +39,7 @@ export async function handleBroadcast(
   env: Env
 ): Promise<Response> {
   // Check authorization
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return jsonResponse<ApiResponse>(
       { success: false, error: 'Unauthorized' },
       401
@@ -138,7 +138,7 @@ export async function handleGetSubscribers(
   env: Env
 ): Promise<Response> {
   // Check authorization
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return jsonResponse<ApiResponse>(
       { success: false, error: 'Unauthorized' },
       401
@@ -179,7 +179,7 @@ export async function handleGetSubscriber(
   id: string
 ): Promise<Response> {
   // Check authorization
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return jsonResponse<ApiResponse>(
       { success: false, error: 'Unauthorized' },
       401
@@ -217,7 +217,7 @@ export async function handleUpdateSubscriber(
   id: string
 ): Promise<Response> {
   // Check authorization
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return jsonResponse<ApiResponse>(
       { success: false, error: 'Unauthorized' },
       401

@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { errorResponse } from '../lib/response';
 
 interface CampaignSummary {
@@ -149,7 +149,7 @@ export async function handleGetAnalyticsOverview(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 

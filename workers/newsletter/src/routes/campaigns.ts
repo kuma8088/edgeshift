@@ -1,5 +1,5 @@
 import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse, AbVariantStats, AbTestStats } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
 import { generateSlug } from '../lib/slug';
 import { generateExcerpt } from '../lib/excerpt';
@@ -88,7 +88,7 @@ export async function createCampaign(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -169,7 +169,7 @@ export async function getCampaign(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -211,7 +211,7 @@ export async function listCampaigns(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -301,7 +301,7 @@ export async function updateCampaign(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -404,7 +404,7 @@ export async function deleteCampaign(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
