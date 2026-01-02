@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react';
 import { isAuthenticated, clearApiKey, apiRequest } from '../../utils/admin-api';
 
 interface AuthContextType {
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const verifyAuth = () => {
+  const verifyAuth = useCallback(() => {
     setLoading(true);
     setError(null);
 
@@ -39,6 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } else if (result.error?.includes('Authentication failed') || result.error === 'Not authenticated') {
           // 401 error or invalid/empty key - clear and redirect to login
           clearApiKey();
+          setAuthenticated(false);
           setLoading(false);
           window.location.href = '/auth/login?error=unauthorized';
         } else {
@@ -49,14 +50,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
     } else {
       // Not authenticated, redirect to Magic Link login
+      setAuthenticated(false);
       setLoading(false);
       window.location.href = '/auth/login?error=unauthorized';
     }
-  };
+  }, []);
 
   useEffect(() => {
     verifyAuth();
-  }, []);
+  }, [verifyAuth]);
 
   const logout = () => {
     clearApiKey();
