@@ -1,11 +1,18 @@
 'use client';
 
 import { clearApiKey } from '../../utils/admin-api';
+import { logout as logoutApi } from '../../utils/auth-api';
 
 export function LogoutButton() {
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Clear API key from localStorage
     clearApiKey();
-    window.location.href = '/admin';
+    try {
+      await logoutApi();
+    } finally {
+      // Always redirect, even if logoutApi fails (network error)
+      window.location.href = '/auth/login';
+    }
   };
 
   return (
