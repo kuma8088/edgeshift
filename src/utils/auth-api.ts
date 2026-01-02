@@ -135,28 +135,54 @@ export async function verifyMagicLink(token: string): Promise<AuthResponse<Magic
 
 /**
  * Setup TOTP for first-time users
+ * Backend returns { success: true, data: { user: {...} } }
+ * We extract just the user for the frontend
  */
 export async function setupTOTP(
   tempToken: string,
   totpCode: string
 ): Promise<AuthResponse<User>> {
-  return authRequest('/auth/totp/setup', {
+  const result = await authRequest<{ user: User }>('/auth/totp/setup', {
     method: 'POST',
     body: { temp_token: tempToken, totp_code: totpCode },
   });
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  // Extract user from nested response
+  if (result.data && 'user' in result.data) {
+    return { success: true, data: result.data.user };
+  }
+
+  return { success: true, data: result.data as unknown as User };
 }
 
 /**
  * Verify TOTP for returning users
+ * Backend returns { success: true, data: { user: {...} } }
+ * We extract just the user for the frontend
  */
 export async function verifyTOTP(
   tempToken: string,
   totpCode: string
 ): Promise<AuthResponse<User>> {
-  return authRequest('/auth/totp/verify', {
+  const result = await authRequest<{ user: User }>('/auth/totp/verify', {
     method: 'POST',
     body: { temp_token: tempToken, totp_code: totpCode },
   });
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  // Extract user from nested response
+  if (result.data && 'user' in result.data) {
+    return { success: true, data: result.data.user };
+  }
+
+  return { success: true, data: result.data as unknown as User };
 }
 
 /**
