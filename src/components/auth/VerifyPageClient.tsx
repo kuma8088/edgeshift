@@ -94,7 +94,7 @@ export function VerifyPageClient({ token }: Props) {
   if (status === 'setup' && session) {
     return (
       <TOTPSetupForm
-        token={token}
+        token={session.temp_token}
         email={session.email}
         qrCodeUrl={session.qr_code_url || ''}
         secret={session.totp_secret || ''}
@@ -105,7 +105,7 @@ export function VerifyPageClient({ token }: Props) {
   if (status === 'verify' && session) {
     return (
       <TOTPVerifyForm
-        token={token}
+        token={session.temp_token}
         email={session.email}
       />
     );
