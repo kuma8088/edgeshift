@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import CampaignNewForm from '../../../components/admin/CampaignNewForm';
 ---
 
 <AdminLayout title="新規ニュースレター">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <div class="space-y-6">
       <div class="flex items-center gap-4">
         <a
@@ -20,5 +20,5 @@ import CampaignNewForm from '../../../components/admin/CampaignNewForm';
         <CampaignNewForm client:load />
       </div>
     </div>
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>

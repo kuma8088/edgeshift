@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { PlanList } from '../../../components/admin/PlanList';
 ---
 
 <AdminLayout title="決済管理">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-[var(--color-text)]">サブスクリプションプラン</h1>
@@ -32,5 +32,5 @@ import { PlanList } from '../../../components/admin/PlanList';
       </div>
       <PlanList client:load />
     </div>
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>

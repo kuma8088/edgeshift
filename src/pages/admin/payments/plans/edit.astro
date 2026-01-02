@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../../components/auth/SessionAuthProvider';
 import PlanEditFormWrapper from '../../../../components/admin/PlanEditFormWrapper';
 ---
 
 <AdminLayout title="プラン編集">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <div class="space-y-6">
       <div class="flex items-center gap-4">
         <a
@@ -20,5 +20,5 @@ import PlanEditFormWrapper from '../../../../components/admin/PlanEditFormWrappe
         <PlanEditFormWrapper client:load />
       </div>
     </div>
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>

@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { SequenceDetailWrapper } from '../../../components/admin/SequenceDetailWrapper';
 ---
 
 <AdminLayout title="シーケンス詳細">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <SequenceDetailWrapper client:load />
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>

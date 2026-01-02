@@ -1,6 +1,6 @@
 ---
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../../components/auth/SessionAuthProvider';
 import { SubscriberBillingDetail } from '../../../../components/admin/SubscriberBillingDetail';
 
 export const prerender = false;
@@ -9,7 +9,7 @@ const { id } = Astro.params;
 ---
 
 <AdminLayout title="購読者の請求詳細">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <SubscriberBillingDetail subscriberId={id || ''} client:load />
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>

@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import SequenceEditForm from '../../../components/admin/SequenceEditForm';
 ---
 
 <AdminLayout title="シーケンス編集">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <div class="space-y-6">
       <div>
         <a
@@ -21,5 +21,5 @@ import SequenceEditForm from '../../../components/admin/SequenceEditForm';
         <SequenceEditForm client:load />
       </div>
     </div>
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>

@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { ReferralDashboard } from '../../../components/admin/ReferralDashboard';
 ---
 
 <AdminLayout title="リファラル管理">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-[var(--color-text)]">リファラルプログラム</h1>
       <p class="text-[var(--color-text-secondary)] mt-1">
@@ -13,5 +13,5 @@ import { ReferralDashboard } from '../../../components/admin/ReferralDashboard';
       </p>
     </div>
     <ReferralDashboard client:load />
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>
