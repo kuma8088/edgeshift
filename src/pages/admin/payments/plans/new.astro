@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
-import { AuthProvider } from '../../../../components/admin/AuthProvider';
+import { SessionAuthProvider } from '../../../../components/auth/SessionAuthProvider';
 import PlanNewForm from '../../../../components/admin/PlanNewForm';
 ---
 
 <AdminLayout title="新規プラン">
-  <AuthProvider client:load>
+  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
     <div class="space-y-6">
       <div class="flex items-center gap-4">
         <a
@@ -20,5 +20,5 @@ import PlanNewForm from '../../../../components/admin/PlanNewForm';
         <PlanNewForm client:load />
       </div>
     </div>
-  </AuthProvider>
+  </SessionAuthProvider>
 </AdminLayout>

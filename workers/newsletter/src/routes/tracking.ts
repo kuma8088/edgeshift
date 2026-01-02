@@ -1,5 +1,5 @@
 import type { Env, Campaign } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { errorResponse } from '../lib/response';
 
 interface TrackingStats {
@@ -105,7 +105,7 @@ export async function handleGetCampaignTracking(
   env: Env,
   campaignId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -210,7 +210,7 @@ export async function handleGetCampaignClicks(
   env: Env,
   campaignId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -410,7 +410,7 @@ export async function handleGetSubscriberEngagement(
   env: Env,
   subscriberId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -569,7 +569,7 @@ export async function handleGetSequenceStats(
   env: Env,
   sequenceId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 

@@ -1,5 +1,5 @@
 import type { Env } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 
 interface DashboardStats {
   subscribers: {
@@ -36,7 +36,7 @@ export async function getDashboardStats(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },

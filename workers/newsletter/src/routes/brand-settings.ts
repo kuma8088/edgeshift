@@ -1,5 +1,5 @@
 import type { Env, BrandSettings, UpdateBrandSettingsRequest } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { errorResponse, successResponse } from '../lib/response';
 import { getDefaultBrandSettings } from '../lib/templates';
 
@@ -7,7 +7,7 @@ export async function getBrandSettings(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -31,7 +31,7 @@ export async function updateBrandSettings(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 

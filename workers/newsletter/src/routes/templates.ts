@@ -1,5 +1,5 @@
 import type { Env, BrandSettings, PreviewRequest, TestSendRequest } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { errorResponse, successResponse } from '../lib/response';
 import { renderEmail, getDefaultBrandSettings, getTemplateList } from '../lib/templates';
 import { sendEmail } from '../lib/email';
@@ -8,7 +8,7 @@ export async function getTemplates(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -19,7 +19,7 @@ export async function previewTemplate(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -63,7 +63,7 @@ export async function testSendTemplate(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 

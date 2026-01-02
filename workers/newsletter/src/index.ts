@@ -64,7 +64,7 @@ import {
 } from './routes/referral';
 import { getBrandSettings, updateBrandSettings } from './routes/brand-settings';
 import { getTemplates, previewTemplate, testSendTemplate } from './routes/templates';
-import { isAuthorized } from './lib/auth';
+import { isAuthorizedAsync } from './lib/auth';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -269,7 +269,7 @@ export default {
       }
       // Referral admin routes (auth required)
       else if (path === '/api/admin/milestones' && request.method === 'GET') {
-        if (!isAuthorized(request, env)) {
+        if (!(await isAuthorizedAsync(request, env))) {
           response = new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
             { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -278,7 +278,7 @@ export default {
           response = await handleGetMilestones(request, env);
         }
       } else if (path === '/api/admin/milestones' && request.method === 'POST') {
-        if (!isAuthorized(request, env)) {
+        if (!(await isAuthorizedAsync(request, env))) {
           response = new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
             { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -287,7 +287,7 @@ export default {
           response = await handleCreateMilestone(request, env);
         }
       } else if (path.match(/^\/api\/admin\/milestones\/[^\/]+$/) && request.method === 'PUT') {
-        if (!isAuthorized(request, env)) {
+        if (!(await isAuthorizedAsync(request, env))) {
           response = new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
             { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -297,7 +297,7 @@ export default {
           response = await handleUpdateMilestone(request, env, id);
         }
       } else if (path.match(/^\/api\/admin\/milestones\/[^\/]+$/) && request.method === 'DELETE') {
-        if (!isAuthorized(request, env)) {
+        if (!(await isAuthorizedAsync(request, env))) {
           response = new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
             { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -307,7 +307,7 @@ export default {
           response = await handleDeleteMilestone(request, env, id);
         }
       } else if (path === '/api/admin/referral-stats' && request.method === 'GET') {
-        if (!isAuthorized(request, env)) {
+        if (!(await isAuthorizedAsync(request, env))) {
           response = new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
             { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -318,7 +318,7 @@ export default {
       }
       // Manual cron trigger endpoint for E2E testing
       else if (path === '/api/admin/trigger-cron' && request.method === 'POST') {
-        if (!isAuthorized(request, env)) {
+        if (!(await isAuthorizedAsync(request, env))) {
           response = new Response(
             JSON.stringify({ success: false, error: 'Unauthorized' }),
             { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }

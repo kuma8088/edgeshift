@@ -1,5 +1,5 @@
 import type { Env, ContactList, CreateContactListRequest, UpdateContactListRequest, ContactListMember, AddMembersRequest } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
 
 /**
@@ -129,7 +129,7 @@ export async function handleGetContactList(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -154,7 +154,7 @@ export async function handleGetContactLists(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -174,7 +174,7 @@ export async function handleCreateContactList(
   request: Request,
   env: Env
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -202,7 +202,7 @@ export async function handleUpdateContactList(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -235,7 +235,7 @@ export async function handleDeleteContactList(
   env: Env,
   id: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -324,7 +324,7 @@ export async function handleGetListMembers(
   env: Env,
   listId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -352,7 +352,7 @@ export async function handleAddMembers(
   env: Env,
   listId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -383,7 +383,7 @@ export async function handleRemoveMember(
   listId: string,
   subscriberId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -472,7 +472,7 @@ export async function handleGetSubscriberLists(
   env: Env,
   subscriberId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -493,7 +493,7 @@ export async function handleAddSubscriberToList(
   env: Env,
   subscriberId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -526,7 +526,7 @@ export async function handleRemoveSubscriberFromList(
   subscriberId: string,
   listId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 

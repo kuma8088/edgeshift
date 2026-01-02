@@ -29,20 +29,23 @@ export async function apiRequest<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<{ success: boolean; data?: T; error?: string }> {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    return { success: false, error: 'Not authenticated' };
-  }
-
   const { method = 'GET', body } = options;
+
+  // Build headers - only include Authorization if API key is present
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  const apiKey = getApiKey();
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
 
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers,
+      credentials: 'include', // Include session cookies for session-based auth
       body: body ? JSON.stringify(body) : undefined,
     });
 
