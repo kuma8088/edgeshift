@@ -161,9 +161,23 @@ export async function verifyTOTP(
 
 /**
  * Get current user session
+ * Backend returns { success: true, data: { user, authMethod } }
+ * We extract just the user for the frontend
  */
 export async function getCurrentUser(): Promise<AuthResponse<User>> {
-  return authRequest('/auth/me');
+  const result = await authRequest<{ user: User; authMethod: string }>('/auth/me');
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  // Extract user from nested response
+  if (result.data && 'user' in result.data) {
+    return { success: true, data: result.data.user };
+  }
+
+  // Fallback: if data is already User object (shouldn't happen but handle gracefully)
+  return { success: true, data: result.data as unknown as User };
 }
 
 /**
@@ -196,6 +210,14 @@ export async function validateMagicLink(token: string): Promise<AuthResponse<Aut
       return {
         success: false,
         error: rawData.error || `Request failed: ${response.status}`,
+      };
+    }
+
+    // Check for success: false in 200 response
+    if (typeof rawData === 'object' && rawData !== null && rawData.success === false) {
+      return {
+        success: false,
+        error: rawData.error || 'Request failed',
       };
     }
 
