@@ -64,6 +64,17 @@ async function authRequest<T>(
       };
     }
 
+    // Normalize response format: backend returns { success: true, data: { user, ... } }
+    // Don't double-wrap if already in standard format
+    if (typeof data === 'object' && data !== null && 'success' in data) {
+      // Check for error field in 200 response
+      if ('error' in data && typeof data.error === 'string') {
+        return { success: false, error: data.error };
+      }
+      // Return normalized: { success: true, data: actualData }
+      return { success: data.success, data: data.data };
+    }
+
     return { success: true, data };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -105,6 +116,14 @@ export async function verifyMagicLink(token: string): Promise<AuthResponse<Magic
         success: false,
         error: data.error || `Request failed: ${response.status}`,
       };
+    }
+
+    // Normalize response format
+    if (typeof data === 'object' && data !== null && 'success' in data) {
+      if ('error' in data && typeof data.error === 'string') {
+        return { success: false, error: data.error };
+      }
+      return { success: data.success, data: data.data };
     }
 
     return { success: true, data };
@@ -171,14 +190,19 @@ export async function validateMagicLink(token: string): Promise<AuthResponse<Aut
       credentials: 'include',
     });
 
-    const data = await response.json();
+    const rawData = await response.json();
 
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || `Request failed: ${response.status}`,
+        error: rawData.error || `Request failed: ${response.status}`,
       };
     }
+
+    // Normalize: backend returns { success, data: {...} }
+    const data = (typeof rawData === 'object' && rawData !== null && 'data' in rawData)
+      ? rawData.data
+      : rawData;
 
     // Transform API response to AuthSession format
     const session: AuthSession = {
