@@ -50,6 +50,7 @@ async function authRequest<T>(
       method,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json', // Request JSON response from API
       },
       credentials: 'include', // Include HTTPOnly cookies
       body: body ? JSON.stringify(body) : undefined,
