@@ -105,6 +105,7 @@ export async function verifyMagicLink(token: string): Promise<AuthResponse<Magic
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json', // Request JSON response from API
       },
       credentials: 'include',
     });
@@ -226,6 +227,7 @@ export async function validateMagicLink(token: string): Promise<AuthResponse<Aut
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json', // Request JSON response from API
       },
       credentials: 'include',
     });
