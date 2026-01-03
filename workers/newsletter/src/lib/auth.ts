@@ -133,7 +133,12 @@ async function getCFAccessJWKS(): Promise<jose.JWTVerifyGetKey> {
 /**
  * Validate CF Access JWT and return email if valid
  */
-async function validateCFAccessJWT(request: Request): Promise<string | null> {
+async function validateCFAccessJWT(request: Request, env: Env): Promise<string | null> {
+  // CF_ACCESS_AUD must be configured for CF Access JWT validation
+  if (!env.CF_ACCESS_AUD) {
+    return null;
+  }
+
   // Try Cf-Access-Jwt-Assertion header first (recommended)
   let token = request.headers.get('Cf-Access-Jwt-Assertion');
 
@@ -153,7 +158,7 @@ async function validateCFAccessJWT(request: Request): Promise<string | null> {
     const JWKS = await getCFAccessJWKS();
     const { payload } = await jose.jwtVerify(token, JWKS, {
       issuer: `https://${CF_ACCESS_TEAM_DOMAIN}.cloudflareaccess.com`,
-      audience: CF_ACCESS_TEAM_DOMAIN,
+      audience: env.CF_ACCESS_AUD,
     });
 
     // Return email from JWT payload
@@ -191,7 +196,7 @@ export async function isAuthorizedAsync(request: Request, env: Env): Promise<boo
   }
 
   // Check CF Access JWT (for admin pages protected by Cloudflare Access)
-  const cfAccessEmail = await validateCFAccessJWT(request);
+  const cfAccessEmail = await validateCFAccessJWT(request, env);
   if (cfAccessEmail && isAuthorizedAdmin(cfAccessEmail)) {
     return true;
   }
