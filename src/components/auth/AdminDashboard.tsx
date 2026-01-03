@@ -1,8 +1,4 @@
-import { useSessionAuth } from './SessionAuthProvider';
-
 export function AdminDashboard() {
-  const { user, logout } = useSessionAuth();
-
   const menuItems = [
     {
       title: 'ダッシュボード',
@@ -42,12 +38,6 @@ export function AdminDashboard() {
         <h1 className="text-2xl font-bold text-[var(--color-text)]">
           管理ダッシュボード
         </h1>
-        <p className="text-[var(--color-text-secondary)] mt-1">
-          ようこそ、{user?.email}
-        </p>
-        <p className="text-sm text-[var(--color-text-muted)] mt-1">
-          ロール: {user?.role === 'owner' ? 'オーナー' : user?.role === 'admin' ? '管理者' : '購読者'}
-        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -66,17 +56,6 @@ export function AdminDashboard() {
             </p>
           </a>
         ))}
-      </div>
-
-      <div className="border-t border-[var(--color-border)] pt-6">
-        <button
-          onClick={logout}
-          className="px-4 py-2 text-[var(--color-text-secondary)] hover:text-[var(--color-error)]
-                   border border-[var(--color-border)] rounded-lg hover:border-[var(--color-error)]
-                   transition-colors"
-        >
-          ログアウト
-        </button>
       </div>
     </div>
   );
