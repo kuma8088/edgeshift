@@ -1,36 +1,33 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { PlanList } from '../../../components/admin/PlanList';
 ---
 
 <AdminLayout title="決済管理">
-  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
-    <div class="space-y-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-[var(--color-text)]">サブスクリプションプラン</h1>
-        <div class="flex gap-4">
-          <a
-            href="/admin/payments/billing"
-            class="px-6 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          >
-            請求状況
-          </a>
-          <a
-            href="/admin/payments/products"
-            class="px-6 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
-          >
-            商品一覧
-          </a>
-          <a
-            href="/admin/payments/plans/new"
-            class="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
-          >
-            新規プラン作成
-          </a>
-        </div>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-[var(--color-text)]">サブスクリプションプラン</h1>
+      <div class="flex gap-4">
+        <a
+          href="/admin/payments/billing"
+          class="px-6 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
+        >
+          請求状況
+        </a>
+        <a
+          href="/admin/payments/products"
+          class="px-6 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
+        >
+          商品一覧
+        </a>
+        <a
+          href="/admin/payments/plans/new"
+          class="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
+        >
+          新規プラン作成
+        </a>
       </div>
-      <PlanList client:load />
     </div>
-  </SessionAuthProvider>
+    <PlanList client:load />
+  </div>
 </AdminLayout>

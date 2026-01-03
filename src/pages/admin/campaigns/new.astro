@@ -1,24 +1,21 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import CampaignNewForm from '../../../components/admin/CampaignNewForm';
 ---
 
 <AdminLayout title="新規ニュースレター">
-  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
-    <div class="space-y-6">
-      <div class="flex items-center gap-4">
-        <a
-          href="/admin/campaigns"
-          class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
-        >
-          ← ニュースレター一覧
-        </a>
-      </div>
-      <h1 class="text-2xl font-bold text-[var(--color-text)]">新規ニュースレター作成</h1>
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
-        <CampaignNewForm client:load />
-      </div>
+  <div class="space-y-6">
+    <div class="flex items-center gap-4">
+      <a
+        href="/admin/campaigns"
+        class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+      >
+        ← ニュースレター一覧
+      </a>
     </div>
-  </SessionAuthProvider>
+    <h1 class="text-2xl font-bold text-[var(--color-text)]">新規ニュースレター作成</h1>
+    <div class="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
+      <CampaignNewForm client:load />
+    </div>
+  </div>
 </AdminLayout>

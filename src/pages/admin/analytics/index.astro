@@ -1,11 +1,8 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { AnalyticsDashboard } from '../../../components/admin/AnalyticsDashboard';
 ---
 
 <AdminLayout title="分析ダッシュボード">
-  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
-    <AnalyticsDashboard client:load />
-  </SessionAuthProvider>
+  <AnalyticsDashboard client:load />
 </AdminLayout>

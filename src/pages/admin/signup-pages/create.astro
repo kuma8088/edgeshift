@@ -1,6 +1,5 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { SignupPageEditForm } from '../../../components/admin/SignupPageEditForm';
 
 const url = new URL(Astro.request.url);
@@ -13,7 +12,5 @@ if (!pageType || (pageType !== 'landing' && pageType !== 'embed')) {
 ---
 
 <AdminLayout title="新しいページを作成">
-  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
-    <SignupPageEditForm client:load initialPageType={pageType} />
-  </SessionAuthProvider>
+  <SignupPageEditForm client:load initialPageType={pageType} />
 </AdminLayout>

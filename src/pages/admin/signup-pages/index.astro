@@ -1,11 +1,8 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { SignupPageList } from '../../../components/admin/SignupPageList';
 ---
 
 <AdminLayout title="登録ページ管理">
-  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
-    <SignupPageList client:load />
-  </SessionAuthProvider>
+  <SignupPageList client:load />
 </AdminLayout>
