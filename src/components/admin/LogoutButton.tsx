@@ -3,6 +3,9 @@
 import { clearApiKey } from '../../utils/admin-api';
 import { logout as logoutApi } from '../../utils/auth-api';
 
+// CF Access logout URL
+const CF_ACCESS_LOGOUT_URL = 'https://kuma8088.cloudflareaccess.com/cdn-cgi/access/logout';
+
 export function LogoutButton() {
   const handleLogout = async () => {
     // Clear API key from localStorage
@@ -10,8 +13,8 @@ export function LogoutButton() {
     try {
       await logoutApi();
     } finally {
-      // Always redirect, even if logoutApi fails (network error)
-      window.location.href = '/auth/login';
+      // Redirect to CF Access logout to clear CF session
+      window.location.href = CF_ACCESS_LOGOUT_URL;
     }
   };
 
