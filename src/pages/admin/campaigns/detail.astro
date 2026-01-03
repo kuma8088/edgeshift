@@ -1,11 +1,8 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
-import { SessionAuthProvider } from '../../../components/auth/SessionAuthProvider';
 import { CampaignDetailWrapper } from '../../../components/admin/CampaignDetailWrapper';
 ---
 
 <AdminLayout title="ニュースレター詳細">
-  <SessionAuthProvider client:load requiredRole={['owner', 'admin']}>
-    <CampaignDetailWrapper client:load />
-  </SessionAuthProvider>
+  <CampaignDetailWrapper client:load />
 </AdminLayout>
