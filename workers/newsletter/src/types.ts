@@ -10,6 +10,7 @@ export interface Env {
   RESEND_WEBHOOK_SECRET: string;
   ADMIN_EMAIL?: string; // Optional: for milestone achievement notifications
   RATE_LIMIT_KV?: KVNamespace; // Optional: only required when rate limiting is enabled
+  CF_ACCESS_AUD?: string; // Optional: Cloudflare Access Application Audience Tag
 }
 
 export interface Subscriber {

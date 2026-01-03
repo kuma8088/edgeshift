@@ -1,4 +1,5 @@
 import type { Env } from '../types';
+import * as jose from 'jose';
 
 /**
  * Admin user from session (shared with premium worker via D1)
@@ -105,11 +106,88 @@ function hasAdminRole(user: AdminUser): boolean {
 }
 
 /**
- * Check authorization - supports both API key and session cookie
+ * CF Access configuration
+ */
+const CF_ACCESS_TEAM_DOMAIN = 'kuma8088';
+const CF_ACCESS_CERTS_URL = `https://${CF_ACCESS_TEAM_DOMAIN}.cloudflareaccess.com/cdn-cgi/access/certs`;
+
+// Cache for JWKS to avoid fetching on every request
+let cachedJWKS: jose.JWTVerifyGetKey | null = null;
+let jwksCacheTime = 0;
+const JWKS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Get CF Access JWKS (cached)
+ */
+async function getCFAccessJWKS(): Promise<jose.JWTVerifyGetKey> {
+  const now = Date.now();
+  if (cachedJWKS && now - jwksCacheTime < JWKS_CACHE_TTL) {
+    return cachedJWKS;
+  }
+
+  cachedJWKS = jose.createRemoteJWKSet(new URL(CF_ACCESS_CERTS_URL));
+  jwksCacheTime = now;
+  return cachedJWKS;
+}
+
+/**
+ * Validate CF Access JWT and return email if valid
+ */
+async function validateCFAccessJWT(request: Request, env: Env): Promise<string | null> {
+  // CF_ACCESS_AUD must be configured for CF Access JWT validation
+  if (!env.CF_ACCESS_AUD) {
+    return null;
+  }
+
+  // Try Cf-Access-Jwt-Assertion header first (recommended)
+  let token = request.headers.get('Cf-Access-Jwt-Assertion');
+
+  // Fallback to CF_Authorization cookie for browser requests
+  if (!token) {
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+      token = parseCookie(cookieHeader, 'CF_Authorization');
+    }
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const JWKS = await getCFAccessJWKS();
+    const { payload } = await jose.jwtVerify(token, JWKS, {
+      issuer: `https://${CF_ACCESS_TEAM_DOMAIN}.cloudflareaccess.com`,
+      audience: env.CF_ACCESS_AUD,
+    });
+
+    // Return email from JWT payload
+    return (payload.email as string) || null;
+  } catch (error) {
+    // JWT validation failed - could be expired, invalid signature, etc.
+    console.error('CF Access JWT validation failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if email is an authorized admin
+ * For now, we trust CF Access to only allow configured users
+ * In the future, we could check against admin_users table
+ */
+function isAuthorizedAdmin(email: string): boolean {
+  // CF Access policy is configured to only allow specific Google accounts
+  // If they passed CF Access, they are authorized admins
+  return !!email;
+}
+
+/**
+ * Check authorization - supports API key, session cookie, and CF Access JWT
  *
  * Priority:
  * 1. API key (system-to-system, backwards compatible)
- * 2. Session cookie (admin users via Magic Link + TOTP)
+ * 2. CF Access JWT (admin users via Cloudflare Access + Google OAuth)
+ * 3. Session cookie (admin users via Magic Link + TOTP)
  */
 export async function isAuthorizedAsync(request: Request, env: Env): Promise<boolean> {
   // Check API key first (highest priority for backwards compatibility)
@@ -117,7 +195,13 @@ export async function isAuthorizedAsync(request: Request, env: Env): Promise<boo
     return true;
   }
 
-  // Check session cookie
+  // Check CF Access JWT (for admin pages protected by Cloudflare Access)
+  const cfAccessEmail = await validateCFAccessJWT(request, env);
+  if (cfAccessEmail && isAuthorizedAdmin(cfAccessEmail)) {
+    return true;
+  }
+
+  // Check session cookie (for Magic Link + TOTP authentication)
   const cookieHeader = request.headers.get('Cookie');
   if (cookieHeader) {
     const sessionToken = parseCookie(cookieHeader, 'session');
