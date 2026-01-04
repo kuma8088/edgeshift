@@ -81,11 +81,11 @@ export function TOTPSetupForm({ token, email, qrCodeUrl, secret, onSuccess }: Pr
         </div>
 
         <a
-          href="/auth/dashboard"
+          href="/my/"
           className="block w-full py-3 bg-[var(--color-accent)] text-white font-medium rounded-lg
                    hover:bg-[var(--color-accent-hover)] transition-colors text-center"
         >
-          ダッシュボードへ
+          マイページへ
         </a>
       </div>
     );

@@ -33,8 +33,8 @@ export function TOTPVerifyForm({ token, email, onSuccess }: Props) {
 
     if (result.success) {
       onSuccess?.();
-      // Redirect to dashboard
-      window.location.href = '/auth/dashboard';
+      // Redirect to subscriber portal
+      window.location.href = '/my/';
     } else {
       setError(result.error || '認証に失敗しました。コードを確認してください。');
     }
