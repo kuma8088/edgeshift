@@ -17,6 +17,7 @@ export function SubscriberTagSection({ subscriberId }: Props) {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [subscriberTags, setSubscriberTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [newTagName, setNewTagName] = useState('');
 
@@ -24,38 +25,55 @@ export function SubscriberTagSection({ subscriberId }: Props) {
 
   async function loadData() {
     setLoading(true);
+    setError(null);
     const [allResult, subResult] = await Promise.all([
       listTags(),
       getSubscriberTags(subscriberId),
     ]);
     if (allResult.success && allResult.data) setAllTags(allResult.data.tags);
     if (subResult.success && subResult.data) setSubscriberTags(subResult.data.tags);
+    if (!allResult.success || !subResult.success) {
+      setError('タグの読み込みに失敗しました');
+    }
     setLoading(false);
   }
 
   async function handleAddTag(tagId: string) {
-    await addSubscriberTag(subscriberId, { tag_id: tagId });
-    setShowDropdown(false);
-    loadData();
+    const result = await addSubscriberTag(subscriberId, { tag_id: tagId });
+    if (result.success) {
+      setShowDropdown(false);
+      loadData();
+    } else {
+      alert(result.error || 'タグの追加に失敗しました');
+    }
   }
 
   async function handleCreateAndAdd() {
     if (!newTagName.trim()) return;
-    await addSubscriberTag(subscriberId, { tag_name: newTagName.trim() });
-    setNewTagName('');
-    setShowDropdown(false);
-    loadData();
+    const result = await addSubscriberTag(subscriberId, { tag_name: newTagName.trim() });
+    if (result.success) {
+      setNewTagName('');
+      setShowDropdown(false);
+      loadData();
+    } else {
+      alert(result.error || 'タグの作成に失敗しました');
+    }
   }
 
   async function handleRemoveTag(tagId: string) {
-    await removeSubscriberTag(subscriberId, tagId);
-    loadData();
+    const result = await removeSubscriberTag(subscriberId, tagId);
+    if (result.success) {
+      loadData();
+    } else {
+      alert(result.error || 'タグの削除に失敗しました');
+    }
   }
 
   const subscriberTagIds = new Set(subscriberTags.map((t) => t.id));
   const availableTags = allTags.filter((t) => !subscriberTagIds.has(t.id));
 
   if (loading) return <div className="text-gray-500">Loading tags...</div>;
+  if (error) return <div className="text-red-600 text-sm">{error}</div>;
 
   return (
     <div className="space-y-3">

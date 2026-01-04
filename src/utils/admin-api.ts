@@ -723,35 +723,35 @@ export interface Tag {
 
 // Tag API functions
 export async function listTags() {
-  return apiRequest<{ tags: Tag[] }>('/premium/api/v1/tags');
+  return apiRequest<{ tags: Tag[] }>('/v1/tags');
 }
 
 export async function createTag(data: { name: string; description?: string }) {
-  return apiRequest<{ tag: Tag }>('/premium/api/v1/tags', {
+  return apiRequest<{ tag: Tag }>('/v1/tags', {
     method: 'POST',
     body: data,
   });
 }
 
 export async function deleteTag(tagId: string) {
-  return apiRequest<void>(`/premium/api/v1/tags/${tagId}`, {
+  return apiRequest<void>(`/v1/tags/${tagId}`, {
     method: 'DELETE',
   });
 }
 
 export async function getSubscriberTags(subscriberId: string) {
-  return apiRequest<{ tags: Tag[] }>(`/premium/api/v1/subscribers/${subscriberId}/tags`);
+  return apiRequest<{ tags: Tag[] }>(`/v1/subscribers/${subscriberId}/tags`);
 }
 
 export async function addSubscriberTag(subscriberId: string, data: { tag_id?: string; tag_name?: string }) {
-  return apiRequest<void>(`/premium/api/v1/subscribers/${subscriberId}/tags`, {
+  return apiRequest<void>(`/v1/subscribers/${subscriberId}/tags`, {
     method: 'POST',
     body: data,
   });
 }
 
 export async function removeSubscriberTag(subscriberId: string, tagId: string) {
-  return apiRequest<void>(`/premium/api/v1/subscribers/${subscriberId}/tags/${tagId}`, {
+  return apiRequest<void>(`/v1/subscribers/${subscriberId}/tags/${tagId}`, {
     method: 'DELETE',
   });
 }
