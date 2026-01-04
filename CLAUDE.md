@@ -125,6 +125,19 @@ import MyForm from '../components/admin/MyForm';
 
 **Important:** Do NOT use `<script>` tags with manual `createRoot()` mounting. Use `client:load` instead.
 
+### QR Code Rendering
+
+`otpauth://` URIs cannot be displayed directly in `<img src>`. Use client-side rendering:
+
+```tsx
+// NG: otpauth:// URI is NOT an image URL
+<img src="otpauth://totp/..." />  // Will not display
+
+// OK: Use qrcode.react for client-side rendering
+import { QRCodeSVG } from 'qrcode.react';
+<QRCodeSVG value="otpauth://totp/..." size={192} level="M" />
+```
+
 ### API Routing (Newsletter Worker)
 
 Routes are defined in `workers/newsletter/src/index.ts` with Hono-like pattern:
