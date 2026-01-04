@@ -49,6 +49,11 @@ export async function apiRequest<T>(
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    // Handle 204 No Content (common for DELETE endpoints)
+    if (response.status === 204) {
+      return { success: true, data: undefined as unknown as T };
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -709,5 +714,49 @@ export async function suggestSubjects(topic: string, count: number = 5) {
   return apiRequest<AISuggestSubjectsResponse>('/v1/ai/suggest-subjects', {
     method: 'POST',
     body: { topic, count },
+  });
+}
+
+// Tag types
+export interface Tag {
+  id: string;
+  name: string;
+  description: string | null;
+  subscriber_count?: number;
+  created_at: string;
+}
+
+// Tag API functions
+export async function listTags() {
+  return apiRequest<{ tags: Tag[] }>('/v1/tags');
+}
+
+export async function createTag(data: { name: string; description?: string }) {
+  return apiRequest<{ tag: Tag }>('/v1/tags', {
+    method: 'POST',
+    body: data,
+  });
+}
+
+export async function deleteTag(tagId: string) {
+  return apiRequest<void>(`/v1/tags/${tagId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getSubscriberTags(subscriberId: string) {
+  return apiRequest<{ tags: Tag[] }>(`/v1/subscribers/${subscriberId}/tags`);
+}
+
+export async function addSubscriberTag(subscriberId: string, data: { tag_id?: string; tag_name?: string }) {
+  return apiRequest<void>(`/v1/subscribers/${subscriberId}/tags`, {
+    method: 'POST',
+    body: data,
+  });
+}
+
+export async function removeSubscriberTag(subscriberId: string, tagId: string) {
+  return apiRequest<void>(`/v1/subscribers/${subscriberId}/tags/${tagId}`, {
+    method: 'DELETE',
   });
 }
