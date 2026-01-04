@@ -1,0 +1,8 @@
+---
+import MyPageLayout from '../../layouts/MyPageLayout.astro';
+import { Dashboard } from '../../components/my/Dashboard';
+---
+
+<MyPageLayout title="マイページ">
+  <Dashboard client:load />
+</MyPageLayout>
