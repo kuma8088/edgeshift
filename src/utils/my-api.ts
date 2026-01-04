@@ -58,10 +58,23 @@ export interface CurrentUser {
 
 /**
  * Get current authenticated user
- * Returns user info if authenticated, error if not
+ * Backend returns { success: true, data: { user, authMethod } }
+ * We extract just the user for the frontend
  */
 export async function getCurrentUser(): Promise<ApiResponse<CurrentUser>> {
-  return apiRequest<CurrentUser>('/premium/auth/me');
+  const result = await apiRequest<{ user: CurrentUser; authMethod: string }>('/premium/auth/me');
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  // Extract user from nested response
+  if (result.data && 'user' in result.data) {
+    return { success: true, data: result.data.user };
+  }
+
+  // Fallback: if data is already User object
+  return { success: true, data: result.data as unknown as CurrentUser };
 }
 
 /**
