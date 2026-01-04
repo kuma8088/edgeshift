@@ -68,13 +68,13 @@ export async function getCurrentUser(): Promise<ApiResponse<CurrentUser>> {
     return { success: false, error: result.error };
   }
 
-  // Extract user from nested response
-  if (result.data && 'user' in result.data) {
+  // Extract user from nested response (strict validation)
+  if (typeof result.data === 'object' && result.data !== null && 'user' in result.data) {
     return { success: true, data: result.data.user };
   }
 
-  // Fallback: if data is already User object
-  return { success: true, data: result.data as unknown as CurrentUser };
+  // No fallback - if user is missing, return error
+  return { success: false, error: 'Invalid response: missing user data' };
 }
 
 /**
