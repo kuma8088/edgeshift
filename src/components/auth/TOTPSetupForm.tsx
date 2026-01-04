@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { setupTOTP } from '../../utils/auth-api';
 
 interface Props {
@@ -110,10 +111,13 @@ export function TOTPSetupForm({ token, email, qrCodeUrl, secret, onSuccess }: Pr
         {/* QR Code */}
         <div className="flex justify-center mb-4">
           <div className="bg-white p-4 rounded-lg border border-[var(--color-border)]">
-            <img
-              src={qrCodeUrl}
-              alt="TOTP QR Code"
-              className="w-48 h-48"
+            <QRCodeSVG
+              value={qrCodeUrl}
+              size={192}
+              level="M"
+              marginSize={0}
+              title="TOTP QR Code"
+              role="img"
             />
           </div>
         </div>
