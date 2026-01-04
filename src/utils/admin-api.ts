@@ -711,3 +711,47 @@ export async function suggestSubjects(topic: string, count: number = 5) {
     body: { topic, count },
   });
 }
+
+// Tag types
+export interface Tag {
+  id: string;
+  name: string;
+  description: string | null;
+  subscriber_count?: number;
+  created_at: string;
+}
+
+// Tag API functions
+export async function listTags() {
+  return apiRequest<{ tags: Tag[] }>('/premium/api/v1/tags');
+}
+
+export async function createTag(data: { name: string; description?: string }) {
+  return apiRequest<{ tag: Tag }>('/premium/api/v1/tags', {
+    method: 'POST',
+    body: data,
+  });
+}
+
+export async function deleteTag(tagId: string) {
+  return apiRequest<void>(`/premium/api/v1/tags/${tagId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getSubscriberTags(subscriberId: string) {
+  return apiRequest<{ tags: Tag[] }>(`/premium/api/v1/subscribers/${subscriberId}/tags`);
+}
+
+export async function addSubscriberTag(subscriberId: string, data: { tag_id?: string; tag_name?: string }) {
+  return apiRequest<void>(`/premium/api/v1/subscribers/${subscriberId}/tags`, {
+    method: 'POST',
+    body: data,
+  });
+}
+
+export async function removeSubscriberTag(subscriberId: string, tagId: string) {
+  return apiRequest<void>(`/premium/api/v1/subscribers/${subscriberId}/tags/${tagId}`, {
+    method: 'DELETE',
+  });
+}

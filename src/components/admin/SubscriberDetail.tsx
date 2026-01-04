@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getSubscriber, type Subscriber } from '../../utils/admin-api';
 import { SubscriberListsSection } from './SubscriberListsSection';
+import { SubscriberTagSection } from './SubscriberTagSection';
 
 interface Props {
   subscriberId: string;
@@ -134,6 +135,11 @@ export function SubscriberDetail({ subscriberId }: Props) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Tags Section */}
+      <div className="bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] p-6 mb-6">
+        <SubscriberTagSection subscriberId={subscriberId} />
       </div>
 
       {/* Lists Section */}

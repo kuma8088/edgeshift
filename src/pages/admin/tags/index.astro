@@ -1,0 +1,8 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { TagList } from '../../../components/admin/TagList';
+---
+
+<AdminLayout title="タグ管理">
+  <TagList client:load />
+</AdminLayout>
