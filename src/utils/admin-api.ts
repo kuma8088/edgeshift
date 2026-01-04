@@ -49,6 +49,11 @@ export async function apiRequest<T>(
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    // Handle 204 No Content (common for DELETE endpoints)
+    if (response.status === 204) {
+      return { success: true, data: undefined as unknown as T };
+    }
+
     const data = await response.json();
 
     if (!response.ok) {

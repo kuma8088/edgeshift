@@ -16,6 +16,7 @@ export function TagList() {
 
   async function loadTags() {
     setLoading(true);
+    setError(null);
     const result = await listTags();
     if (result.success && result.data) {
       setTags(result.data.tags);
