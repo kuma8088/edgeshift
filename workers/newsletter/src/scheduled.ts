@@ -3,6 +3,7 @@ import { sendBatchEmails, sendEmail } from './lib/email';
 import { recordDeliveryLogs } from './lib/delivery';
 import { processSequenceEmails } from './lib/sequence-processor';
 import { sendAbTest, sendAbTestWinner, type SendEmailFn } from './routes/ab-test-send';
+import { STYLES } from './lib/templates/styles';
 
 /**
  * Convert plain text URLs to clickable links
@@ -28,15 +29,15 @@ function buildNewsletterEmail(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px;">
+<body style="${STYLES.body('#1e1e1e')}">
   <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="color: #1e1e1e; font-size: 24px; margin: 0;">EdgeShift Newsletter</h1>
+    <h1 style="${STYLES.heading('#1e1e1e')}">EdgeShift Newsletter</h1>
   </div>
-  <div style="margin-bottom: 32px;">
+  <div style="${STYLES.content}">
     ${linkifyUrls(content)}
   </div>
-  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+  <hr style="${STYLES.hr}">
+  <p style="${STYLES.footer}">
     <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a><br>
     <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
   </p>

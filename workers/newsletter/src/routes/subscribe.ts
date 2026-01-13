@@ -3,6 +3,7 @@ import { verifyTurnstileToken } from '../lib/turnstile';
 import { sendEmail } from '../lib/email';
 import { checkRateLimit } from '../lib/rate-limiter';
 import { isDisposableEmail } from '../lib/disposable-emails';
+import { STYLES } from '../lib/templates/styles';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -46,9 +47,9 @@ function buildConfirmationEmail(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>メールアドレスの確認</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e1e1e; max-width: 600px; margin: 0 auto; padding: 20px;">
+<body style="${STYLES.body('#1e1e1e')}">
   <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="color: #1e1e1e; font-size: 24px; margin: 0;">EdgeShift Newsletter</h1>
+    <h1 style="${STYLES.heading('#1e1e1e')}">EdgeShift Newsletter</h1>
   </div>
 
   <p>${greeting}、</p>
@@ -61,13 +62,13 @@ function buildConfirmationEmail(
     <a href="${confirmUrl}" style="display: inline-block; background-color: #7c3aed; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 500;">メールアドレスを確認する</a>
   </div>
 
-  <p style="color: #525252; font-size: 14px;">このリンクは24時間有効です。</p>
+  <p style="${STYLES.small('#525252')}">このリンクは24時間有効です。</p>
 
-  <p style="color: #525252; font-size: 14px;">もし心当たりがない場合は、このメールを無視してください。</p>
+  <p style="${STYLES.small('#525252')}">もし心当たりがない場合は、このメールを無視してください。</p>
 
-  <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;">
+  <hr style="${STYLES.hr}">
 
-  <p style="color: #a3a3a3; font-size: 12px; text-align: center;">
+  <p style="${STYLES.footer}">
     <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a>
   </p>
 </body>
