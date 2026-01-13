@@ -41,10 +41,10 @@ export const COLORS = {
  */
 export const SPACING = {
   containerPadding: '40px 20px',
-  boxPadding: '32px',
+  boxPadding: '24px',
   boxPaddingMobile: '24px',
   sectionGap: '24px',
-  paragraphGap: '16px',
+  paragraphGap: '12px',
   listItemGap: '4px',
 } as const;
 
@@ -54,7 +54,7 @@ export const SPACING = {
 export const TYPOGRAPHY = {
   body: {
     fontSize: '16px',
-    lineHeight: '1.6',
+    lineHeight: '1.5',
     letterSpacing: '0.02em',
   },
   heading: {
@@ -80,7 +80,7 @@ export const STYLES = {
   wrapper: `background-color: ${COLORS.background}; padding: ${SPACING.containerPadding};`,
 
   /** White content box */
-  contentBox: `background-color: ${COLORS.contentBox}; max-width: 600px; margin: 0 auto; padding: ${SPACING.boxPadding}; border-radius: 8px;`,
+  contentBox: `background-color: ${COLORS.contentBox}; max-width: 540px; margin: 0 auto; padding: ${SPACING.boxPadding}; border-radius: 8px;`,
 
   /** Body element style (for non-box layout fallback) */
   body: (textColor: string) =>
