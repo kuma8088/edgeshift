@@ -45,7 +45,7 @@ export const SPACING = {
   boxPaddingMobile: '24px',
   sectionGap: '24px',
   paragraphGap: '16px',
-  listItemGap: '8px',
+  listItemGap: '4px',
 } as const;
 
 /**
@@ -122,7 +122,7 @@ export const STYLES = {
   content: `margin-bottom: ${SPACING.sectionGap};`,
 
   /** List styles (ol/ul) */
-  list: `margin: 0 0 ${SPACING.paragraphGap} 0; padding-left: 24px;`,
+  list: `margin: 0 0 ${SPACING.paragraphGap} 0; padding-left: 16px;`,
 
   /** List item style */
   listItem: `margin-bottom: ${SPACING.listItemGap};`,
@@ -150,6 +150,18 @@ export const STYLES = {
   /** YouTube link wrapper */
   youtubeLink: `display: block; margin: ${SPACING.sectionGap} 0; text-decoration: none;`,
 } as const;
+
+/**
+ * Apply inline styles to list elements (ul, ol, li)
+ * Email clients don't support <style> tags, so inline styles are required
+ */
+export function applyListStyles(html: string): string {
+  return html
+    // Apply list (ul/ol) styles
+    .replace(/<(ul|ol)(?![^>]*style=)/gi, `<$1 style="${STYLES.list}"`)
+    // Apply list item styles
+    .replace(/<li(?![^>]*style=)/gi, `<li style="${STYLES.listItem}"`);
+}
 
 /**
  * Generate full email HTML structure with gray background + white box

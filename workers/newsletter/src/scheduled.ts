@@ -3,7 +3,7 @@ import { sendBatchEmails, sendEmail } from './lib/email';
 import { recordDeliveryLogs } from './lib/delivery';
 import { processSequenceEmails } from './lib/sequence-processor';
 import { sendAbTest, sendAbTestWinner, type SendEmailFn } from './routes/ab-test-send';
-import { STYLES, COLORS, wrapInEmailLayout } from './lib/templates/styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from './lib/templates/styles';
 
 /**
  * Extract YouTube video ID from various URL formats
@@ -99,7 +99,7 @@ function buildNewsletterEmail(
       <h1 style="${STYLES.heading(COLORS.text.primary)}">EdgeShift Newsletter</h1>
     </div>
     <div style="${STYLES.content}">
-      ${linkifyUrls(content)}
+      ${applyListStyles(linkifyUrls(content))}
     </div>
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">

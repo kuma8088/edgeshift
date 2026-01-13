@@ -1,5 +1,5 @@
 import type { BrandSettings } from '../../../types';
-import { STYLES, COLORS, wrapInEmailLayout } from '../styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
 
 export interface PresetRenderOptions {
   content: string;
@@ -15,7 +15,7 @@ export function renderSimple(options: PresetRenderOptions): string {
 
   const innerContent = `
     <div style="${STYLES.content}">
-      ${content}
+      ${applyListStyles(content)}
     </div>
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">

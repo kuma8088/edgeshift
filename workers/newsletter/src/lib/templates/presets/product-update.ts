@@ -1,6 +1,6 @@
 import type { BrandSettings } from '../../../types';
 import type { PresetRenderOptions } from './simple';
-import { STYLES, COLORS, wrapInEmailLayout } from '../styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
 
 export function renderProductUpdate(options: PresetRenderOptions): string {
   const { content, subject, brandSettings, unsubscribeUrl, siteUrl } = options;
@@ -16,7 +16,7 @@ export function renderProductUpdate(options: PresetRenderOptions): string {
     </div>
     <h1 style="${STYLES.heading(brandSettings.secondary_color)}">🚀 ${subject}</h1>
     <div style="${STYLES.content}">
-      ${content}
+      ${applyListStyles(content)}
     </div>
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">
