@@ -33,7 +33,6 @@ async function findReferrer(
 }
 
 function buildConfirmationEmail(
-  _name: string | undefined,
   confirmUrl: string,
   siteUrl: string
 ): string {
@@ -184,7 +183,7 @@ export async function handleSubscribe(
           {
             to: email,
             subject: 'メールアドレスの確認 - EdgeShift Newsletter',
-            html: buildConfirmationEmail(name, confirmUrl, env.SITE_URL),
+            html: buildConfirmationEmail(confirmUrl, env.SITE_URL),
           }
         );
 
@@ -233,7 +232,7 @@ export async function handleSubscribe(
           {
             to: email,
             subject: 'メールアドレスの確認 - EdgeShift Newsletter',
-            html: buildConfirmationEmail(name, confirmUrl, env.SITE_URL),
+            html: buildConfirmationEmail(confirmUrl, env.SITE_URL),
           }
         );
 
@@ -275,7 +274,7 @@ export async function handleSubscribe(
       {
         to: email,
         subject: 'メールアドレスの確認 - EdgeShift Newsletter',
-        html: buildConfirmationEmail(name, confirmUrl, env.SITE_URL),
+        html: buildConfirmationEmail(confirmUrl, env.SITE_URL),
       }
     );
 

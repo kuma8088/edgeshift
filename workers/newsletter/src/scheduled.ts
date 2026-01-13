@@ -39,7 +39,10 @@ function isYoutubeUrl(url: string): boolean {
  */
 function youtubeUrlToThumbnail(url: string): string {
   const videoId = extractYoutubeVideoId(url);
-  if (!videoId) return url;
+  if (!videoId) {
+    console.log(`YouTube thumbnail skipped: could not extract video ID from "${url}"`);
+    return url;
+  }
 
   const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
@@ -56,7 +59,7 @@ function youtubeUrlToThumbnail(url: string): string {
 function convertYoutubeUrls(text: string): string {
   // Match YouTube URLs that are not already inside HTML tags
   // Captures URLs on their own line or surrounded by whitespace
-  const youtubeUrlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[^\s<>"]+)(?![^<]*<\/a>)/g;
+  const youtubeUrlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[^\s<>"。、！？]+)(?![^<]*<\/a>)/g;
 
   return text.replace(youtubeUrlRegex, (match) => {
     return youtubeUrlToThumbnail(match);
@@ -76,13 +79,13 @@ function linkifyUrls(text: string): string {
   // Then linkify remaining URLs (excluding YouTube URLs that weren't converted and existing links)
   // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
   // Also skip URLs that are already inside <a> tags
-  const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"]+)(?![^<]*<\/a>)/g;
+  const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"。、！？]+)(?![^<]*<\/a>)/g;
   return withYoutubeThumbnails.replace(urlRegex, (match) => {
     // Skip if it's a YouTube URL (already handled) or YouTube thumbnail URL
     if (isYoutubeUrl(match) || match.includes('img.youtube.com')) {
       return match;
     }
-    return `<a href="${match}" style="color: #7c3aed;">${match}</a>`;
+    return `<a href="${match}" style="${STYLES.link(COLORS.accent)}">${match}</a>`;
   });
 }
 
