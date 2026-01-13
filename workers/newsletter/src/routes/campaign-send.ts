@@ -1,5 +1,5 @@
 import type { Env, Campaign, Subscriber, BrandSettings } from '../types';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 import { sendBatchEmails } from '../lib/email';
 import { recordDeliveryLogs, getDeliveryStats } from '../lib/delivery';
 import { errorResponse, successResponse } from '../lib/response';
@@ -10,7 +10,7 @@ export async function sendCampaign(
   env: Env,
   campaignId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
@@ -126,7 +126,7 @@ export async function getCampaignStats(
   env: Env,
   campaignId: string
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  if (!(await isAuthorizedAsync(request, env))) {
     return errorResponse('Unauthorized', 401);
   }
 
