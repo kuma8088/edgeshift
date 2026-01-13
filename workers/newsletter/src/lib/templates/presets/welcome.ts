@@ -1,6 +1,6 @@
 import type { BrandSettings } from '../../../types';
 import type { PresetRenderOptions } from './simple';
-import { STYLES, COLORS, wrapInEmailLayout } from '../styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
 
 export function renderWelcome(options: PresetRenderOptions): string {
   const { content, brandSettings, subscriberName, unsubscribeUrl, siteUrl } = options;
@@ -14,7 +14,7 @@ export function renderWelcome(options: PresetRenderOptions): string {
       <p style="${STYLES.subheading(brandSettings.secondary_color)}">${name}さん、ご登録ありがとうございます</p>
     </div>
     <div style="${STYLES.content} background-color: #f9fafb; padding: 24px; border-radius: 8px;">
-      ${content}
+      ${applyListStyles(content)}
     </div>
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">

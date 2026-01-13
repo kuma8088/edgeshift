@@ -1,7 +1,7 @@
 import type { Env, BroadcastRequest, ApiResponse, Subscriber } from '../types';
 import { isAuthorizedAsync } from '../lib/auth';
 import { sendBatchEmails } from '../lib/email';
-import { wrapInEmailLayout, STYLES, COLORS } from '../lib/templates/styles';
+import { wrapInEmailLayout, STYLES, COLORS, applyListStyles } from '../lib/templates/styles';
 
 function buildNewsletterEmail(
   content: string,
@@ -10,7 +10,7 @@ function buildNewsletterEmail(
 ): string {
   const innerContent = `
     <div style="${STYLES.content}">
-      ${content}
+      ${applyListStyles(content)}
     </div>
 
     <div style="${STYLES.footerWrapper}">

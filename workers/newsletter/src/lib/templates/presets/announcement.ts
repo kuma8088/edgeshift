@@ -1,6 +1,6 @@
 import type { BrandSettings } from '../../../types';
 import type { PresetRenderOptions } from './simple';
-import { STYLES, COLORS, wrapInEmailLayout } from '../styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
 
 export function renderAnnouncement(options: PresetRenderOptions): string {
   const { content, subject, brandSettings, unsubscribeUrl, siteUrl } = options;
@@ -10,7 +10,7 @@ export function renderAnnouncement(options: PresetRenderOptions): string {
       <h1 style="${STYLES.headingLarge('white')}">📢 ${subject}</h1>
     </div>
     <div style="${STYLES.content}">
-      ${content}
+      ${applyListStyles(content)}
     </div>
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">
