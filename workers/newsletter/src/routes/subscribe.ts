@@ -3,7 +3,7 @@ import { verifyTurnstileToken } from '../lib/turnstile';
 import { sendEmail } from '../lib/email';
 import { checkRateLimit } from '../lib/rate-limiter';
 import { isDisposableEmail } from '../lib/disposable-emails';
-import { STYLES } from '../lib/templates/styles';
+import { STYLES, COLORS, wrapInEmailLayout } from '../lib/templates/styles';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,47 +33,36 @@ async function findReferrer(
 }
 
 function buildConfirmationEmail(
-  name: string | undefined,
   confirmUrl: string,
   siteUrl: string
 ): string {
-  const greeting = name ? `${name} さん` : 'こんにちは';
+  const content = `
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h1 style="${STYLES.heading(COLORS.text.primary)}">EdgeShift Newsletter</h1>
+    </div>
 
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>メールアドレスの確認</title>
-</head>
-<body style="${STYLES.body('#1e1e1e')}">
-  <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="${STYLES.heading('#1e1e1e')}">EdgeShift Newsletter</h1>
-  </div>
+    <div style="${STYLES.content}">
+      <p style="${STYLES.paragraph}">EdgeShift Newsletter へのご登録ありがとうございます。</p>
 
-  <p>${greeting}、</p>
+      <p style="${STYLES.paragraph}">以下のボタンをクリックして、メールアドレスを確認してください：</p>
 
-  <p>EdgeShift Newsletter へのご登録ありがとうございます。</p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${confirmUrl}" style="${STYLES.button(COLORS.accent)}">メールアドレスを確認する</a>
+      </div>
 
-  <p>以下のボタンをクリックして、メールアドレスを確認してください：</p>
+      <p style="${STYLES.small(COLORS.text.secondary)}">このリンクは24時間有効です。</p>
 
-  <div style="text-align: center; margin: 32px 0;">
-    <a href="${confirmUrl}" style="display: inline-block; background-color: #7c3aed; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 500;">メールアドレスを確認する</a>
-  </div>
+      <p style="${STYLES.small(COLORS.text.secondary)}">もし心当たりがない場合は、このメールを無視してください。</p>
+    </div>
 
-  <p style="${STYLES.small('#525252')}">このリンクは24時間有効です。</p>
+    <div style="${STYLES.footerWrapper}">
+      <p style="${STYLES.footer}">
+        <a href="${siteUrl}" style="${STYLES.link(COLORS.accent)}">EdgeShift</a>
+      </p>
+    </div>
+  `;
 
-  <p style="${STYLES.small('#525252')}">もし心当たりがない場合は、このメールを無視してください。</p>
-
-  <hr style="${STYLES.hr}">
-
-  <p style="${STYLES.footer}">
-    <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a>
-  </p>
-</body>
-</html>
-  `.trim();
+  return wrapInEmailLayout(content, COLORS.text.primary);
 }
 
 export async function handleSubscribe(
@@ -194,7 +183,7 @@ export async function handleSubscribe(
           {
             to: email,
             subject: 'メールアドレスの確認 - EdgeShift Newsletter',
-            html: buildConfirmationEmail(name, confirmUrl, env.SITE_URL),
+            html: buildConfirmationEmail(confirmUrl, env.SITE_URL),
           }
         );
 
@@ -243,7 +232,7 @@ export async function handleSubscribe(
           {
             to: email,
             subject: 'メールアドレスの確認 - EdgeShift Newsletter',
-            html: buildConfirmationEmail(name, confirmUrl, env.SITE_URL),
+            html: buildConfirmationEmail(confirmUrl, env.SITE_URL),
           }
         );
 
@@ -285,7 +274,7 @@ export async function handleSubscribe(
       {
         to: email,
         subject: 'メールアドレスの確認 - EdgeShift Newsletter',
-        html: buildConfirmationEmail(name, confirmUrl, env.SITE_URL),
+        html: buildConfirmationEmail(confirmUrl, env.SITE_URL),
       }
     );
 
