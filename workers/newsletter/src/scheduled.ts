@@ -3,18 +3,87 @@ import { sendBatchEmails, sendEmail } from './lib/email';
 import { recordDeliveryLogs } from './lib/delivery';
 import { processSequenceEmails } from './lib/sequence-processor';
 import { sendAbTest, sendAbTestWinner, type SendEmailFn } from './routes/ab-test-send';
-import { STYLES } from './lib/templates/styles';
+import { STYLES, COLORS, wrapInEmailLayout } from './lib/templates/styles';
+
+/**
+ * Extract YouTube video ID from various URL formats
+ * Supports:
+ * - https://www.youtube.com/watch?v=VIDEO_ID
+ * - https://youtu.be/VIDEO_ID
+ * - https://www.youtube.com/embed/VIDEO_ID
+ */
+function extractYoutubeVideoId(url: string): string | null {
+  const patterns = [
+    /youtube\.com\/watch\?v=([^&\s]+)/,
+    /youtu\.be\/([^?\s]+)/,
+    /youtube\.com\/embed\/([^?\s]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Check if a URL is a YouTube URL
+ */
+function isYoutubeUrl(url: string): boolean {
+  return extractYoutubeVideoId(url) !== null;
+}
+
+/**
+ * Convert YouTube URL to clickable thumbnail HTML
+ * Uses maxresdefault.jpg for best quality
+ * Falls back to hqdefault.jpg if maxres not available (handled by YouTube CDN)
+ */
+function youtubeUrlToThumbnail(url: string): string {
+  const videoId = extractYoutubeVideoId(url);
+  if (!videoId) return url;
+
+  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  return `<a href="${videoUrl}" style="${STYLES.youtubeLink}" target="_blank">
+    <img src="${thumbnailUrl}" alt="YouTube video thumbnail" style="${STYLES.youtubeThumbnail}" />
+  </a>`;
+}
+
+/**
+ * Convert YouTube URLs in text to clickable thumbnails
+ * Processes standalone YouTube URLs (on their own line or surrounded by whitespace)
+ */
+function convertYoutubeUrls(text: string): string {
+  // Match YouTube URLs that are not already inside HTML tags
+  // Captures URLs on their own line or surrounded by whitespace
+  const youtubeUrlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[^\s<>"]+)(?![^<]*<\/a>)/g;
+
+  return text.replace(youtubeUrlRegex, (match) => {
+    return youtubeUrlToThumbnail(match);
+  });
+}
 
 /**
  * Convert plain text URLs to clickable links
  * Matches URLs starting with http:// or https://
  * Uses negative lookbehind to avoid matching URLs already inside HTML attributes
+ * Note: YouTube URLs are handled separately by convertYoutubeUrls
  */
 function linkifyUrls(text: string): string {
+  // First, convert YouTube URLs to thumbnails
+  const withYoutubeThumbnails = convertYoutubeUrls(text);
+
+  // Then linkify remaining URLs (excluding YouTube URLs that weren't converted and existing links)
   // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
   // Also skip URLs that are already inside <a> tags
   const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"]+)(?![^<]*<\/a>)/g;
-  return text.replace(urlRegex, '<a href="$1" style="color: #7c3aed;">$1</a>');
+  return withYoutubeThumbnails.replace(urlRegex, (match) => {
+    // Skip if it's a YouTube URL (already handled) or YouTube thumbnail URL
+    if (isYoutubeUrl(match) || match.includes('img.youtube.com')) {
+      return match;
+    }
+    return `<a href="${match}" style="color: #7c3aed;">${match}</a>`;
+  });
 }
 
 function buildNewsletterEmail(
@@ -22,28 +91,21 @@ function buildNewsletterEmail(
   unsubscribeUrl: string,
   siteUrl: string
 ): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="${STYLES.body('#1e1e1e')}">
-  <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="${STYLES.heading('#1e1e1e')}">EdgeShift Newsletter</h1>
-  </div>
-  <div style="${STYLES.content}">
-    ${linkifyUrls(content)}
-  </div>
-  <hr style="${STYLES.hr}">
-  <p style="${STYLES.footer}">
-    <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a><br>
-    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>
-  `.trim();
+  const innerContent = `
+    <div style="text-align: center; margin-bottom: 32px;">
+      <h1 style="${STYLES.heading(COLORS.text.primary)}">EdgeShift Newsletter</h1>
+    </div>
+    <div style="${STYLES.content}">
+      ${linkifyUrls(content)}
+    </div>
+    <div style="${STYLES.footerWrapper}">
+      <p style="${STYLES.footer}">
+        <a href="${siteUrl}" style="${STYLES.link(COLORS.accent)}">EdgeShift</a><br>
+        <a href="${unsubscribeUrl}" style="${STYLES.link(COLORS.text.muted)}">配信停止はこちら</a>
+      </p>
+    </div>
+  `;
+  return wrapInEmailLayout(innerContent, COLORS.text.primary);
 }
 
 function calculateNextScheduledTime(

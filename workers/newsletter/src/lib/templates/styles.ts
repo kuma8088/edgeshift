@@ -1,11 +1,10 @@
 /**
  * Common email styles optimized for Japanese typography
  *
- * Best practices for Japanese email:
- * - Include Japanese fonts in font-family stack
- * - Use larger line-height (1.7-1.8) for readability
- * - Add slight letter-spacing for dense Japanese text
- * - Minimum font-size 16px for body text (mobile readability)
+ * Design reference: Udemy promotional emails
+ * - Gray background + white content box
+ * - Proper padding/margin for readability
+ * - Appropriate line-height (not too wide)
  */
 
 /**
@@ -23,12 +22,39 @@ export const FONT_FAMILY = [
 ].join(', ');
 
 /**
+ * Color palette
+ */
+export const COLORS = {
+  background: '#f5f5f5',
+  contentBox: '#ffffff',
+  text: {
+    primary: '#1e1e1e',
+    secondary: '#525252',
+    muted: '#a3a3a3',
+  },
+  accent: '#7c3aed',
+  border: '#e5e5e5',
+} as const;
+
+/**
+ * Spacing constants
+ */
+export const SPACING = {
+  containerPadding: '40px 20px',
+  boxPadding: '32px',
+  boxPaddingMobile: '24px',
+  sectionGap: '24px',
+  paragraphGap: '16px',
+  listItemGap: '8px',
+} as const;
+
+/**
  * Typography settings
  */
 export const TYPOGRAPHY = {
   body: {
     fontSize: '16px',
-    lineHeight: '1.8',
+    lineHeight: '1.6',
     letterSpacing: '0.02em',
   },
   heading: {
@@ -38,7 +64,7 @@ export const TYPOGRAPHY = {
   },
   small: {
     fontSize: '14px',
-    lineHeight: '1.6',
+    lineHeight: '1.5',
   },
   footer: {
     fontSize: '12px',
@@ -50,13 +76,23 @@ export const TYPOGRAPHY = {
  * Pre-built inline style strings for common elements
  */
 export const STYLES = {
-  /** Body element style */
+  /** Outer wrapper with gray background */
+  wrapper: `background-color: ${COLORS.background}; padding: ${SPACING.containerPadding};`,
+
+  /** White content box */
+  contentBox: `background-color: ${COLORS.contentBox}; max-width: 600px; margin: 0 auto; padding: ${SPACING.boxPadding}; border-radius: 8px;`,
+
+  /** Body element style (for non-box layout fallback) */
   body: (textColor: string) =>
     `font-family: ${FONT_FAMILY}; font-size: ${TYPOGRAPHY.body.fontSize}; line-height: ${TYPOGRAPHY.body.lineHeight}; letter-spacing: ${TYPOGRAPHY.body.letterSpacing}; color: ${textColor}; max-width: 600px; margin: 0 auto; padding: 20px;`,
 
+  /** Base text style (applied to content box) */
+  baseText: (textColor: string) =>
+    `font-family: ${FONT_FAMILY}; font-size: ${TYPOGRAPHY.body.fontSize}; line-height: ${TYPOGRAPHY.body.lineHeight}; letter-spacing: ${TYPOGRAPHY.body.letterSpacing}; color: ${textColor};`,
+
   /** Main heading (h1) style */
   heading: (textColor: string) =>
-    `font-size: ${TYPOGRAPHY.heading.fontSize}; line-height: ${TYPOGRAPHY.heading.lineHeight}; letter-spacing: ${TYPOGRAPHY.heading.letterSpacing}; color: ${textColor}; margin: 0;`,
+    `font-size: ${TYPOGRAPHY.heading.fontSize}; line-height: ${TYPOGRAPHY.heading.lineHeight}; letter-spacing: ${TYPOGRAPHY.heading.letterSpacing}; color: ${textColor}; margin: 0 0 ${SPACING.paragraphGap} 0;`,
 
   /** Large heading for announcements */
   headingLarge: (textColor: string) =>
@@ -64,22 +100,73 @@ export const STYLES = {
 
   /** Subheading style */
   subheading: (textColor: string) =>
-    `font-size: 18px; line-height: 1.5; color: ${textColor};`,
+    `font-size: 18px; line-height: 1.5; color: ${textColor}; margin: 0 0 ${SPACING.paragraphGap} 0;`,
+
+  /** Paragraph style */
+  paragraph: `margin: 0 0 ${SPACING.paragraphGap} 0;`,
+
+  /** Footer wrapper */
+  footerWrapper: `margin-top: ${SPACING.sectionGap}; padding-top: ${SPACING.sectionGap}; border-top: 1px solid ${COLORS.border};`,
 
   /** Footer text style */
-  footer: `color: #a3a3a3; font-size: ${TYPOGRAPHY.footer.fontSize}; line-height: ${TYPOGRAPHY.footer.lineHeight}; text-align: center;`,
+  footer: `color: ${COLORS.text.muted}; font-size: ${TYPOGRAPHY.footer.fontSize}; line-height: ${TYPOGRAPHY.footer.lineHeight}; text-align: center;`,
 
   /** Small/secondary text style */
   small: (textColor: string) =>
     `color: ${textColor}; font-size: ${TYPOGRAPHY.small.fontSize}; line-height: ${TYPOGRAPHY.small.lineHeight};`,
 
   /** Horizontal rule */
-  hr: 'border: none; border-top: 1px solid #e5e5e5; margin: 32px 0;',
+  hr: `border: none; border-top: 1px solid ${COLORS.border}; margin: ${SPACING.sectionGap} 0;`,
 
   /** Content wrapper */
-  content: 'margin-bottom: 32px;',
+  content: `margin-bottom: ${SPACING.sectionGap};`,
+
+  /** List styles (ol/ul) */
+  list: `margin: 0 0 ${SPACING.paragraphGap} 0; padding-left: 24px;`,
+
+  /** List item style */
+  listItem: `margin-bottom: ${SPACING.listItemGap};`,
 
   /** Badge/label style */
   badge: (bgColor: string) =>
     `background-color: ${bgColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;`,
+
+  /** CTA Button style */
+  button: (bgColor: string) =>
+    `display: inline-block; background-color: ${bgColor}; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: 500;`,
+
+  /** Link style */
+  link: (color: string) => `color: ${color}; text-decoration: none;`,
+
+  /** Image style (for YouTube thumbnails, etc.) */
+  image: 'width: 100%; max-width: 480px; border-radius: 8px; display: block;',
+
+  /** Image link wrapper */
+  imageLink: `display: block; margin: ${SPACING.sectionGap} 0;`,
+
+  /** YouTube thumbnail wrapper - simple clickable image (email-compatible) */
+  youtubeThumbnail: 'width: 100%; max-width: 480px; border-radius: 8px; display: block;',
+
+  /** YouTube link wrapper */
+  youtubeLink: `display: block; margin: ${SPACING.sectionGap} 0; text-decoration: none;`,
 } as const;
+
+/**
+ * Generate full email HTML structure with gray background + white box
+ */
+export function wrapInEmailLayout(content: string, textColor: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; ${STYLES.wrapper}">
+  <div style="${STYLES.contentBox} ${STYLES.baseText(textColor)}">
+    ${content}
+  </div>
+</body>
+</html>
+  `.trim();
+}

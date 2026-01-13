@@ -1,38 +1,27 @@
 import type { Env, BroadcastRequest, ApiResponse, Subscriber } from '../types';
 import { isAuthorizedAsync } from '../lib/auth';
 import { sendBatchEmails } from '../lib/email';
-import { STYLES } from '../lib/templates/styles';
+import { wrapInEmailLayout, STYLES, COLORS } from '../lib/templates/styles';
 
 function buildNewsletterEmail(
   content: string,
   unsubscribeUrl: string,
   siteUrl: string
 ): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="${STYLES.body('#1e1e1e')}">
-  <div style="text-align: center; margin-bottom: 32px;">
-    <h1 style="${STYLES.heading('#1e1e1e')}">EdgeShift Newsletter</h1>
-  </div>
+  const innerContent = `
+    <div style="${STYLES.content}">
+      ${content}
+    </div>
 
-  <div style="${STYLES.content}">
-    ${content}
-  </div>
+    <div style="${STYLES.footerWrapper}">
+      <p style="${STYLES.footer}">
+        <a href="${siteUrl}" style="${STYLES.link(COLORS.accent)}">EdgeShift</a><br>
+        <a href="${unsubscribeUrl}" style="${STYLES.link(COLORS.text.muted)}">配信停止はこちら</a>
+      </p>
+    </div>
+  `;
 
-  <hr style="${STYLES.hr}">
-
-  <p style="${STYLES.footer}">
-    <a href="${siteUrl}" style="color: #7c3aed;">EdgeShift</a><br>
-    <a href="${unsubscribeUrl}" style="color: #a3a3a3;">配信停止はこちら</a>
-  </p>
-</body>
-</html>
-  `.trim();
+  return wrapInEmailLayout(innerContent, COLORS.text.primary);
 }
 
 export async function handleBroadcast(

@@ -2,6 +2,34 @@
 
 ## 2026-01-14
 
+### feat: Udemy-style email design with YouTube thumbnail support
+
+メールデザインをUdemyスタイルに刷新し、YouTubeサムネイル自動表示機能を追加。
+
+**Phase 1: デザイン刷新**
+- グレー背景 (#f5f5f5) + 白コンテンツボックスのレイアウト
+- line-height: 1.8 → 1.6 に調整（広すぎた行間を修正）
+- 適切なパディング・マージンで読みやすさ向上
+
+**Phase 2: 名前表示制御**
+- デフォルトで名前を表示しない
+- `{{name}}` 変数を明示的に使用した場合のみ表示
+
+**Phase 3: YouTubeサムネイル**
+- YouTube URL を自動検出
+- クリック可能なサムネイル画像に変換
+- 対応形式: youtube.com/watch?v=, youtu.be/, youtube.com/embed/
+
+**更新ファイル:**
+- `workers/newsletter/src/lib/templates/styles.ts`
+- `workers/newsletter/src/lib/templates/variables.ts`
+- `workers/newsletter/src/lib/templates/presets/*.ts` (5ファイル)
+- `workers/newsletter/src/routes/subscribe.ts`
+- `workers/newsletter/src/routes/broadcast.ts`
+- `workers/newsletter/src/scheduled.ts`
+
+---
+
 ### feat: Japanese typography optimization for email templates
 
 日本語メールの可読性向上のため、フォントとタイポグラフィを最適化。
