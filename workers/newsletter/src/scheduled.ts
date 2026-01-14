@@ -53,6 +53,27 @@ function youtubeUrlToThumbnail(url: string): string {
 }
 
 /**
+ * Convert anchor tags with YouTube URLs to clickable thumbnails
+ * Handles format: <a href="YOUTUBE_URL">...</a>
+ */
+function convertYoutubeAnchors(html: string): string {
+  // Match <a> tags where href is a YouTube URL
+  const anchorRegex = /<a\s+[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[^<]*<\/a>/gi;
+
+  return html.replace(anchorRegex, (match, url) => {
+    const videoId = extractYoutubeVideoId(url);
+    if (!videoId) return match;
+
+    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+    return `<a href="${videoUrl}" style="${STYLES.youtubeLink}" target="_blank">
+      <img src="${thumbnailUrl}" alt="YouTube video thumbnail" style="${STYLES.youtubeThumbnail}" />
+    </a>`;
+  });
+}
+
+/**
  * Convert YouTube URLs in text to clickable thumbnails
  * Processes standalone YouTube URLs (on their own line or surrounded by whitespace)
  */
@@ -73,14 +94,17 @@ function convertYoutubeUrls(text: string): string {
  * Note: YouTube URLs are handled separately by convertYoutubeUrls
  */
 function linkifyUrls(text: string): string {
-  // First, convert YouTube URLs to thumbnails
-  const withYoutubeThumbnails = convertYoutubeUrls(text);
+  // First, convert YouTube anchor tags to thumbnails
+  let result = convertYoutubeAnchors(text);
+
+  // Then, convert standalone YouTube URLs to thumbnails
+  result = convertYoutubeUrls(result);
 
   // Then linkify remaining URLs (excluding YouTube URLs that weren't converted and existing links)
   // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
   // Also skip URLs that are already inside <a> tags
   const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"。、！？]+)(?![^<]*<\/a>)/g;
-  return withYoutubeThumbnails.replace(urlRegex, (match) => {
+  return result.replace(urlRegex, (match) => {
     // Skip if it's a YouTube URL (already handled) or YouTube thumbnail URL
     if (isYoutubeUrl(match) || match.includes('img.youtube.com')) {
       return match;
