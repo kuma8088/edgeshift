@@ -139,13 +139,13 @@ export const STYLES = {
   link: (color: string) => `color: ${color}; text-decoration: none;`,
 
   /** Image style (for YouTube thumbnails, etc.) */
-  image: 'width: 100%; max-width: 480px; border-radius: 8px; display: block;',
+  image: 'display: block; max-width: 100%; height: auto; border-radius: 8px;',
 
   /** Image link wrapper */
   imageLink: `display: block; margin: ${SPACING.sectionGap} 0;`,
 
   /** YouTube thumbnail wrapper - simple clickable image (email-compatible) */
-  youtubeThumbnail: 'width: 100%; max-width: 480px; border-radius: 8px; display: block;',
+  youtubeThumbnail: 'display: block; max-width: 100%; height: auto; border-radius: 8px;',
 
   /** YouTube link wrapper */
   youtubeLink: `display: block; margin: ${SPACING.sectionGap} 0; text-decoration: none;`,
