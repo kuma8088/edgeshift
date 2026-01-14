@@ -43,7 +43,6 @@ export function isYoutubeUrl(url: string): boolean {
 export function youtubeUrlToThumbnail(url: string): string {
   const videoId = extractYoutubeVideoId(url);
   if (!videoId) {
-    console.log(`YouTube thumbnail skipped: could not extract video ID from "${url}"`);
     return url;
   }
 

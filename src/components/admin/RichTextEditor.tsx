@@ -1,6 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { MenuBar } from './MenuBar';
 import { useEffect } from 'react';
@@ -40,6 +41,13 @@ export function RichTextEditor({
         openOnClick: false,
         HTMLAttributes: {
           class: emailPreviewStyle ? 'email-editor-link' : 'text-blue-600 underline',
+        },
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          class: 'email-editor-image',
         },
       }),
       Placeholder.configure({
@@ -189,6 +197,13 @@ export function RichTextEditor({
           .email-editor-content pre code {
             background-color: transparent;
             padding: 0;
+          }
+          .email-editor-content img,
+          .email-editor-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 12px 0;
           }
         `}</style>
       </div>
