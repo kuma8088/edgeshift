@@ -47,7 +47,7 @@ describe('Template Engine', () => {
       expect(html).not.toContain('{{subscriber.name}}');
     });
 
-    it('should replace {{unsubscribe_url}} variable', () => {
+    it('should replace {{unsubscribe_url}} variable and linkify it', () => {
       const html = renderEmail({
         templateId: 'simple',
         content: 'Unsubscribe: {{unsubscribe_url}}',
@@ -58,7 +58,9 @@ describe('Template Engine', () => {
         siteUrl: 'http://example.com',
       });
 
-      expect(html).toContain('Unsubscribe: http://example.com/unsub/abc123');
+      // URL should be converted to a clickable link by linkifyUrls
+      expect(html).toContain('Unsubscribe:');
+      expect(html).toContain('href="http://example.com/unsub/abc123"');
     });
 
     it('should apply primary_color to links', () => {

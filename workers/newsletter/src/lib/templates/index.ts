@@ -1,6 +1,7 @@
 import type { BrandSettings, TemplateId, TemplateInfo } from '../../types';
 import { replaceVariables } from './variables';
 import { renderPreset, isValidTemplateId, TEMPLATE_LIST } from './presets';
+import { linkifyUrls } from '../content-processor';
 
 export interface RenderEmailOptions {
   templateId: string;
@@ -21,12 +22,15 @@ export function renderEmail(options: RenderEmailOptions): string {
     unsubscribeUrl,
   });
 
+  // Process URLs and YouTube links
+  const finalContent = linkifyUrls(processedContent);
+
   // Validate and get template ID
   const validTemplateId: TemplateId = isValidTemplateId(templateId) ? templateId : 'simple';
 
   // Render using preset
   return renderPreset(validTemplateId, {
-    content: processedContent,
+    content: finalContent,
     subject,
     brandSettings,
     subscriberName: subscriber.name,
