@@ -85,7 +85,7 @@ export function MenuBar({ editor }: MenuBarProps) {
       }
 
       // Insert image into editor
-      const imgHtml = `<img src="${result.data.url}" alt="Image" style="max-width: 100%; height: auto;" />`;
+      const imgHtml = `<img src="${result.data.url}" alt="Image" style="display: block; max-width: 100%; height: auto;" />`;
       editor?.chain().focus().insertContent(imgHtml).run();
     } catch (error) {
       console.error('Image upload error:', {
@@ -141,7 +141,7 @@ export function MenuBar({ editor }: MenuBarProps) {
       return;
     }
 
-    const imgHtml = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;
+    const imgHtml = `<img src="${url}" alt="Image" style="display: block; max-width: 100%; height: auto;" />`;
     editor?.chain().focus().insertContent(imgHtml).run();
   };
 

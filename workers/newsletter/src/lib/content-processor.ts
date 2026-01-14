@@ -99,7 +99,7 @@ export function convertYoutubeUrls(text: string): string {
  * - Skips if max-width is already specified in style
  */
 export function ensureImageMaxWidth(html: string): string {
-  const responsiveStyles = 'max-width: 100%; height: auto;';
+  const responsiveStyles = 'display: block; max-width: 100%; height: auto;';
 
   return html.replace(/<img\s+([^>]*)>/gi, (match, attributes: string) => {
     // Check if style attribute exists

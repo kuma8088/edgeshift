@@ -350,7 +350,7 @@ describe('Content Processor', () => {
     it('should add responsive styles to img tags without style attribute', () => {
       const html = '<p>Here is an image:</p><img src="https://example.com/image.jpg">';
       const result = linkifyUrls(html);
-      expect(result).toContain('style="max-width: 100%; height: auto;"');
+      expect(result).toContain('style="display: block; max-width: 100%; height: auto;"');
     });
 
     it('should append responsive styles to img tags with existing style', () => {
@@ -372,7 +372,7 @@ describe('Content Processor', () => {
     it('should add responsive styles to img tag without style', () => {
       const html = '<img src="https://example.com/image.jpg">';
       const result = ensureImageMaxWidth(html);
-      expect(result).toBe('<img src="https://example.com/image.jpg" style="max-width: 100%; height: auto;">');
+      expect(result).toBe('<img src="https://example.com/image.jpg" style="display: block; max-width: 100%; height: auto;">');
     });
 
     it('should append responsive styles to existing style', () => {
@@ -405,7 +405,7 @@ describe('Content Processor', () => {
     it('should handle multiple img tags', () => {
       const html = '<img src="a.jpg"><p>text</p><img src="b.jpg" style="border: 1px solid;">';
       const result = ensureImageMaxWidth(html);
-      expect(result).toContain('<img src="a.jpg" style="max-width: 100%; height: auto;">');
+      expect(result).toContain('<img src="a.jpg" style="display: block; max-width: 100%; height: auto;">');
       expect(result).toContain('border: 1px solid;');
       expect(result).toContain('max-width: 100%;');
     });
@@ -415,7 +415,7 @@ describe('Content Processor', () => {
       const result = ensureImageMaxWidth(html);
       expect(result).toContain('src="test.jpg"');
       expect(result).toContain('alt="Test image"');
-      expect(result).toContain('style="max-width: 100%; height: auto;"');
+      expect(result).toContain('style="display: block; max-width: 100%; height: auto;"');
     });
 
     it('should handle self-closing img tags', () => {
