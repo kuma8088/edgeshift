@@ -760,3 +760,57 @@ export async function removeSubscriberTag(subscriberId: string, tagId: string) {
     method: 'DELETE',
   });
 }
+
+// Image Upload API
+export interface ImageUploadResponse {
+  url: string;
+  filename: string;
+}
+
+export async function uploadImage(file: File): Promise<{ success: boolean; data?: ImageUploadResponse; error?: string }> {
+  try {
+    const apiKey = getApiKey();
+    const headers: Record<string, string> = {};
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE}/images/upload`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+
+    // Check for non-JSON responses first
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      console.error('Unexpected response type:', contentType, 'status:', response.status);
+      return { success: false, error: `Server error: ${response.status}` };
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('Failed to parse server response:', parseError);
+      return { success: false, error: 'Invalid server response' };
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearApiKey();
+        return { success: false, error: 'Authentication failed' };
+      }
+      return { success: false, error: data.error || `Upload failed: ${response.status}` };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: `Network error: ${message}` };
+  }
+}

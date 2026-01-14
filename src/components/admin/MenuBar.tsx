@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/react';
 import { useState, useRef, useEffect } from 'react';
 import { YouTubeInsertModal } from './YouTubeInsertModal';
+import { uploadImage } from '../../utils/admin-api';
 
 interface MenuBarProps {
   editor: Editor | null;
@@ -20,7 +21,9 @@ const AVAILABLE_VARIABLES: VariableOption[] = [
 export function MenuBar({ editor }: MenuBarProps) {
   const [isVariableDropdownOpen, setIsVariableDropdownOpen] = useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -46,27 +49,53 @@ export function MenuBar({ editor }: MenuBarProps) {
   };
 
   const handleInsertImage = () => {
-    const url = window.prompt('画像URLを入力:');
-    if (!url || !url.trim()) return;
+    // Trigger file input click
+    fileInputRef.current?.click();
+  };
 
-    const trimmedUrl = url.trim();
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    // Validate URL format to prevent XSS
-    try {
-      const parsed = new URL(trimmedUrl);
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        alert('http:// または https:// で始まるURLを入力してください');
-        return;
-      }
-    } catch {
-      alert('有効なURLを入力してください');
+    // Reset input value to allow selecting the same file again
+    event.target.value = '';
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('対応している画像形式: JPG, PNG, GIF, WebP');
       return;
     }
 
-    // Escape URL for safe HTML insertion
-    const safeUrl = trimmedUrl.replace(/"/g, '&quot;');
-    const imgHtml = `<img src="${safeUrl}" alt="Image" style="max-width: 100%; height: auto;" />`;
-    editor.chain().focus().insertContent(imgHtml).run();
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('ファイルサイズは5MB以下にしてください');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const result = await uploadImage(file);
+      if (!result.success || !result.data) {
+        alert(`アップロードに失敗しました: ${result.error || '不明なエラー'}`);
+        return;
+      }
+
+      // Insert image into editor
+      const imgHtml = `<img src="${result.data.url}" alt="Image" style="max-width: 100%; height: auto;" />`;
+      editor?.chain().focus().insertContent(imgHtml).run();
+    } catch (error) {
+      console.error('Image upload error:', {
+        error,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+      alert('画像のアップロードに失敗しました。再度お試しください。');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleInsertYouTube = (url: string) => {
@@ -193,16 +222,31 @@ export function MenuBar({ editor }: MenuBarProps) {
         Unlink
       </button>
       <div className="w-px h-6 bg-gray-300 mx-1" />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
       <button
         onClick={handleInsertImage}
-        className={buttonClass(false)}
+        className={`${buttonClass(false)} ${isUploading ? 'opacity-50 cursor-wait' : ''}`}
         type="button"
         title="Insert Image"
+        disabled={isUploading}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-        </svg>
-        Image
+        {isUploading ? (
+          <svg className="animate-spin h-4 w-4 inline-block mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+          </svg>
+        )}
+        {isUploading ? 'Uploading...' : 'Image'}
       </button>
       <button
         onClick={() => setShowYouTubeModal(true)}

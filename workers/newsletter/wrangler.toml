@@ -88,11 +88,16 @@ zone_name = "edgeshift.tech"
 pattern = "edgeshift.tech/api/brand-settings"
 zone_name = "edgeshift.tech"
 
+[[routes]]
+pattern = "edgeshift.tech/api/images/*"
+zone_name = "edgeshift.tech"
+
 [vars]
 ALLOWED_ORIGIN = "https://edgeshift.tech"
 SENDER_EMAIL = "newsletter@mail.edgeshift.tech"
 SENDER_NAME = "EdgeShift Newsletter"
 SITE_URL = "https://edgeshift.tech"
+IMAGES_PUBLIC_URL = "https://images.edgeshift.tech"
 # ADMIN_EMAIL = "admin@edgeshift.tech"  # Optional: set for milestone achievement notifications
 
 # D1 Database binding
@@ -132,6 +137,11 @@ database_id = "4ca2faf7-7486-4a66-b153-278acfa10d17"
 # Cron trigger for scheduled campaigns (every 15 minutes)
 [triggers]
 crons = ["*/15 * * * *"]
+
+# R2 bucket for image storage
+[[r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "edgeshift-newsletter-images"
 
 # Secrets (set via `wrangler secret put <NAME>`):
 # - RESEND_API_KEY
