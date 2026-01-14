@@ -1,6 +1,16 @@
 import type { Env } from '../types';
 import { isAuthorizedAsync } from '../lib/auth';
 
+/**
+ * Image item returned from list API
+ */
+interface ImageItem {
+  key: string;
+  url: string;
+  uploaded: string;
+  size: number;
+}
+
 // Supported image MIME types
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -134,6 +144,61 @@ export async function handleImageUpload(
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { status: statusCode, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+/**
+ * GET /api/images
+ * List all images in R2 bucket
+ *
+ * Response: { images: ImageItem[] }
+ */
+export async function handleListImages(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  // Check authorization
+  if (!(await isAuthorizedAsync(request, env))) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Unauthorized' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Check if R2 bucket is configured
+  if (!env.IMAGES_BUCKET) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Image storage not configured' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  try {
+    // List all objects in the bucket
+    const listed = await env.IMAGES_BUCKET.list();
+
+    // Construct public URL base
+    const baseUrl = env.IMAGES_PUBLIC_URL || 'https://images.edgeshift.tech';
+
+    // Map R2 objects to ImageItem format
+    const images: ImageItem[] = listed.objects.map((obj) => ({
+      key: obj.key,
+      url: `${baseUrl}/${obj.key}`,
+      uploaded: obj.uploaded.toISOString(),
+      size: obj.size,
+    }));
+
+    return new Response(
+      JSON.stringify({ images }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Image list error:', error);
+
+    return new Response(
+      JSON.stringify({ success: false, error: 'Failed to list images' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

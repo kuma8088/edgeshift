@@ -90,6 +90,42 @@ export function convertYoutubeUrls(text: string): string {
 }
 
 /**
+ * Ensure all img tags have max-width: 100% and height: auto for email responsiveness
+ * This prevents images from overflowing on mobile email clients
+ *
+ * Handles:
+ * - <img src="..."> → <img src="..." style="max-width: 100%; height: auto;">
+ * - <img src="..." style="border-radius: 8px;"> → <img src="..." style="border-radius: 8px; max-width: 100%; height: auto;">
+ * - Skips if max-width is already specified in style
+ */
+export function ensureImageMaxWidth(html: string): string {
+  const responsiveStyles = 'max-width: 100%; height: auto;';
+
+  return html.replace(/<img\s+([^>]*)>/gi, (match, attributes: string) => {
+    // Check if style attribute exists
+    const styleMatch = attributes.match(/style=["']([^"']*)["']/i);
+
+    if (styleMatch) {
+      const existingStyle = styleMatch[1];
+      // Skip if max-width is already specified
+      if (/max-width\s*:/i.test(existingStyle)) {
+        return match;
+      }
+      // Append responsive styles to existing style
+      const updatedStyle = existingStyle.trim().replace(/;?\s*$/, '; ') + responsiveStyles;
+      const updatedAttributes = attributes.replace(
+        /style=["'][^"']*["']/i,
+        `style="${updatedStyle}"`
+      );
+      return `<img ${updatedAttributes}>`;
+    }
+
+    // No style attribute - add new one
+    return `<img ${attributes} style="${responsiveStyles}">`;
+  });
+}
+
+/**
  * Convert plain text URLs to clickable links
  * Matches URLs starting with http:// or https://
  * Uses negative lookbehind to avoid matching URLs already inside HTML attributes
@@ -106,11 +142,14 @@ export function linkifyUrls(text: string): string {
   // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
   // Also skip URLs that are already inside <a> tags
   const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"。、！？]+)(?![^<]*<\/a>)/g;
-  return result.replace(urlRegex, (match) => {
+  result = result.replace(urlRegex, (match) => {
     // Skip if it's a YouTube URL (already handled) or YouTube thumbnail URL
     if (isYoutubeUrl(match) || match.includes('img.youtube.com')) {
       return match;
     }
     return `<a href="${match}" style="${STYLES.link(COLORS.accent)}">${match}</a>`;
   });
+
+  // Finally, ensure all images have responsive styles for email
+  return ensureImageMaxWidth(result);
 }

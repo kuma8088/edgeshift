@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/react';
 import { useState, useRef, useEffect } from 'react';
 import { YouTubeInsertModal } from './YouTubeInsertModal';
+import { ImageLibraryModal } from './ImageLibraryModal';
 import { uploadImage } from '../../utils/admin-api';
 
 interface MenuBarProps {
@@ -21,6 +22,7 @@ const AVAILABLE_VARIABLES: VariableOption[] = [
 export function MenuBar({ editor }: MenuBarProps) {
   const [isVariableDropdownOpen, setIsVariableDropdownOpen] = useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
+  const [showImageLibrary, setShowImageLibrary] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,6 +126,23 @@ export function MenuBar({ editor }: MenuBarProps) {
     const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
     const youtubeHtml = `<p><a href="${canonicalUrl}" target="_blank">[YouTube Video]</a></p>`;
     editor.chain().focus().insertContent(youtubeHtml).run();
+  };
+
+  const handleSelectFromLibrary = (url: string) => {
+    // Validate URL format before insertion
+    try {
+      const parsedUrl = new URL(url);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        console.error('Invalid URL protocol:', url);
+        return;
+      }
+    } catch {
+      console.error('Invalid URL:', url);
+      return;
+    }
+
+    const imgHtml = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;
+    editor?.chain().focus().insertContent(imgHtml).run();
   };
 
   const buttonClass = (isActive: boolean) =>
@@ -249,6 +268,17 @@ export function MenuBar({ editor }: MenuBarProps) {
         {isUploading ? 'Uploading...' : 'Image'}
       </button>
       <button
+        onClick={() => setShowImageLibrary(true)}
+        className={buttonClass(false)}
+        type="button"
+        title="Select from Image Library"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+        </svg>
+        Library
+      </button>
+      <button
         onClick={() => setShowYouTubeModal(true)}
         className={buttonClass(false)}
         type="button"
@@ -299,6 +329,12 @@ export function MenuBar({ editor }: MenuBarProps) {
         isOpen={showYouTubeModal}
         onClose={() => setShowYouTubeModal(false)}
         onInsert={handleInsertYouTube}
+      />
+
+      <ImageLibraryModal
+        isOpen={showImageLibrary}
+        onClose={() => setShowImageLibrary(false)}
+        onSelect={handleSelectFromLibrary}
       />
     </div>
   );
