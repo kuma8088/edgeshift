@@ -5,6 +5,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { ListSelector } from './ListSelector';
 import { TemplateSelector } from './TemplateSelector';
 import { EmailPreviewModal } from './EmailPreviewModal';
+import { EmailPreviewPane } from './EmailPreviewPane';
 
 export interface CampaignFormRef {
   setSubject: (subject: string) => void;
@@ -195,255 +196,275 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit}>
       {error && (
-        <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+        <div className="mb-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      <div>
-        <label htmlFor="subject" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-          件名 <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="subject"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          placeholder="メールの件名を入力"
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
-          required
-        />
-      </div>
+      {/* 2-column layout: Editor (left ~65%) + Settings (right ~35%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+        {/* Left Column: Email Content Editor with Preview */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+              メール本文
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowPreview(true)}
+              disabled={!content.trim()}
+              className="px-3 py-1.5 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              フルプレビュー
+            </button>
+          </div>
 
-      <div>
-        <label htmlFor="content" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-          本文 <span className="text-red-500">*</span>
-        </label>
-        <RichTextEditor
-          value={content}
-          onChange={setContent}
-          placeholder="メール本文を入力..."
-        />
-      </div>
-
-      <ListSelector
-        value={contactListId}
-        onChange={setContactListId}
-        label="配信対象リスト（オプション）"
-        allowNull
-      />
-
-      <div className="flex gap-4 items-end">
-        <div className="flex-1">
-          <TemplateSelector
-            value={templateId}
-            onChange={setTemplateId}
-            label="メールテンプレート"
+          {/* Rich Text Editor */}
+          <RichTextEditor
+            value={content}
+            onChange={setContent}
+            placeholder="メール本文を入力..."
           />
+
+          {/* Live Email Preview Pane */}
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">
+              プレビュー
+            </h3>
+            <EmailPreviewPane content={content} subject={subject} />
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowPreview(true)}
-          disabled={!content.trim()}
-          className="px-4 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Preview
-        </button>
-      </div>
 
-      <div>
-        <label htmlFor="scheduledAt" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-          送信予約日時（オプション）
-        </label>
-        <input
-          type="datetime-local"
-          id="scheduledAt"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
-        />
-        <p className="text-xs text-[var(--color-text-muted)] mt-1">
-          未設定の場合は下書きとして保存されます
-        </p>
-      </div>
+        {/* Right Column: Settings Panel */}
+        <div className="lg:sticky lg:top-6 lg:self-start space-y-6">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5 border border-[var(--color-border)]">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
+              配信設定
+            </h2>
 
-      {/* A/B Test Settings - only show when scheduled */}
-      {scheduledAt && (
-        <div className="space-y-4 border-t border-[var(--color-border)] pt-4 mt-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={abTestEnabled}
-              onChange={(e) => setAbTestEnabled(e.target.checked)}
-              className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-2 focus:ring-[var(--color-accent)]"
-            />
-            <span className="font-medium text-[var(--color-text-primary)]">A/Bテストを有効にする</span>
-          </label>
-
-          {abTestEnabled && (
-            <div className="ml-6 space-y-4 p-4 bg-[var(--color-bg-secondary)] rounded-lg">
+            <div className="space-y-5">
+              {/* Subject */}
               <div>
-                <label htmlFor="abSubjectB" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  件名B <span className="text-red-500">*</span>
+                <label htmlFor="subject" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  件名 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  id="abSubjectB"
-                  value={abSubjectB}
-                  onChange={(e) => setAbSubjectB(e.target.value)}
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
-                  placeholder="テストする別の件名"
-                  required={abTestEnabled}
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="メールの件名を入力"
+                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white"
+                  required
                 />
               </div>
 
+              {/* Template Selector */}
+              <TemplateSelector
+                value={templateId}
+                onChange={setTemplateId}
+                label="メールテンプレート"
+              />
+
+              {/* Contact List Selector */}
+              <ListSelector
+                value={contactListId}
+                onChange={setContactListId}
+                label="配信対象リスト"
+                allowNull
+              />
+
+              {/* Schedule */}
               <div>
-                <label htmlFor="abFromNameB" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
-                  送信者名B（オプション）
+                <label htmlFor="scheduledAt" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  送信予約日時
                 </label>
                 <input
-                  type="text"
-                  id="abFromNameB"
-                  value={abFromNameB}
-                  onChange={(e) => setAbFromNameB(e.target.value)}
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
-                  placeholder="テストする別の送信者名"
+                  type="datetime-local"
+                  id="scheduledAt"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white"
                 />
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  未設定の場合は下書きとして保存
+                </p>
               </div>
 
+              {/* A/B Test Settings - only show when scheduled */}
+              {scheduledAt && (
+                <div className="space-y-4 border-t border-[var(--color-border)] pt-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={abTestEnabled}
+                      onChange={(e) => setAbTestEnabled(e.target.checked)}
+                      className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-2 focus:ring-[var(--color-accent)]"
+                    />
+                    <span className="font-medium text-[var(--color-text-primary)] text-sm">A/Bテストを有効にする</span>
+                  </label>
+
+                  {abTestEnabled && (
+                    <div className="space-y-4 p-3 bg-white rounded-lg border border-[var(--color-border)]">
+                      <div>
+                        <label htmlFor="abSubjectB" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                          件名B <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id="abSubjectB"
+                          value={abSubjectB}
+                          onChange={(e) => setAbSubjectB(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                          placeholder="テストする別の件名"
+                          required={abTestEnabled}
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="abFromNameB" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">
+                          送信者名B（オプション）
+                        </label>
+                        <input
+                          type="text"
+                          id="abFromNameB"
+                          value={abFromNameB}
+                          onChange={(e) => setAbFromNameB(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                          placeholder="テストする別の送信者名"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                          待機時間
+                        </label>
+                        <div className="flex gap-3">
+                          {([1, 2, 4] as const).map((hours) => (
+                            <label key={hours} className="flex items-center cursor-pointer">
+                              <input
+                                type="radio"
+                                name="abWaitHours"
+                                value={hours}
+                                checked={abWaitHours === hours}
+                                onChange={() => setAbWaitHours(hours)}
+                                className="mr-1.5 text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
+                              />
+                              <span className="text-xs text-[var(--color-text-secondary)]">{hours}時間</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-[var(--color-text-secondary)] bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+                        <p className="font-medium text-blue-800 mb-1">配信スケジュール</p>
+                        <p className="text-blue-700">テスト: {formatTestTime(scheduledAt, abWaitHours)}</p>
+                        <p className="text-blue-700">本配信: {formatTime(scheduledAt)}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Archive Settings */}
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-5 border border-[var(--color-border)]">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
+              アーカイブ設定
+            </h2>
+
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  待機時間
+                <label htmlFor="slug" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  スラッグ（URL）
                 </label>
-                <div className="flex gap-4">
-                  {([1, 2, 4] as const).map((hours) => (
-                    <label key={hours} className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="abWaitHours"
-                        value={hours}
-                        checked={abWaitHours === hours}
-                        onChange={() => setAbWaitHours(hours)}
-                        className="mr-2 text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
-                      />
-                      <span className="text-sm text-[var(--color-text-secondary)]">{hours}時間</span>
-                    </label>
-                  ))}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder="newsletter-slug"
+                    className="flex-1 px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={generateSlug}
+                    className="px-3 py-2 text-xs bg-white text-[var(--color-text-secondary)] rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  >
+                    自動生成
+                  </button>
                 </div>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                  テスト配信から本配信までの待機時間
+                  /newsletter/archive/{slug || 'your-slug'}
                 </p>
               </div>
 
-              <div className="text-sm text-[var(--color-text-secondary)] bg-blue-50 p-3 rounded-lg border border-blue-100">
-                <p className="font-medium text-blue-800 mb-1">配信スケジュール</p>
-                <p className="text-blue-700">
-                  テスト配信: {formatTestTime(scheduledAt, abWaitHours)}
-                </p>
-                <p className="text-blue-700">
-                  本配信: {formatTime(scheduledAt)}
-                </p>
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isPublished}
+                    onChange={(e) => setIsPublished(e.target.checked)}
+                    className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-2 focus:ring-[var(--color-accent)]"
+                  />
+                  <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+                    アーカイブに公開
+                  </span>
+                </label>
+              </div>
+
+              <div>
+                <label htmlFor="excerpt" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  要約
+                </label>
+                <div className="space-y-2">
+                  <textarea
+                    id="excerpt"
+                    value={excerpt}
+                    onChange={(e) => setExcerpt(e.target.value)}
+                    placeholder="ニュースレターの要約を入力..."
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all resize-none bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={generateExcerpt}
+                    className="px-3 py-1.5 text-xs bg-white text-[var(--color-text-secondary)] rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  >
+                    本文から自動生成
+                  </button>
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      <div className="border-t border-[var(--color-border)] pt-6">
-        <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
-          アーカイブ設定
-        </h3>
-
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-              スラッグ（URL）
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                id="slug"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder="newsletter-slug"
-                className="flex-1 px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
-              />
-              <button
-                type="button"
-                onClick={generateSlug}
-                className="px-4 py-2 bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-border)] transition-colors"
-              >
-                自動生成
-              </button>
-            </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              アーカイブページのURL: /newsletter/archive/{slug || 'your-slug'}
-            </p>
           </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isPublished}
-                onChange={(e) => setIsPublished(e.target.checked)}
-                className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-2 focus:ring-[var(--color-accent)]"
-              />
-              <span className="text-sm font-medium text-[var(--color-text-secondary)]">
-                アーカイブに公開
-              </span>
-            </label>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1 ml-6">
-              チェックを入れると、このニュースレターがアーカイブページに表示されます
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="excerpt" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-              要約
-            </label>
-            <div className="space-y-2">
-              <textarea
-                id="excerpt"
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                placeholder="ニュースレターの要約を入力..."
-                rows={3}
-                className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all resize-none"
-              />
-              <button
-                type="button"
-                onClick={generateExcerpt}
-                className="px-4 py-2 bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-border)] transition-colors text-sm"
-              >
-                本文から自動生成
-              </button>
-            </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              アーカイブページに表示される概要文です（150文字程度推奨）
-            </p>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              {loading ? '保存中...' : campaign?.id ? '更新' : '作成'}
+            </button>
           </div>
         </div>
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={loading}
-          className="px-6 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          キャンセル
-        </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? '保存中...' : campaign?.id ? '更新' : '作成'}
-        </button>
       </div>
 
       <EmailPreviewModal
