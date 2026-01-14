@@ -45,6 +45,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [videoId, setVideoId] = useState<string | null>(null);
+  const [thumbnailError, setThumbnailError] = useState(false);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -52,6 +53,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
       setUrl('');
       setError('');
       setVideoId(null);
+      setThumbnailError(false);
     }
   }, [isOpen]);
 
@@ -62,6 +64,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
       if (id) {
         setVideoId(id);
         setError('');
+        setThumbnailError(false);
       } else {
         setVideoId(null);
         setError('Invalid YouTube URL. Please use youtube.com/watch or youtu.be format.');
@@ -108,9 +111,14 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Insert YouTube Video
+      <div
+        className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="youtube-modal-title"
+      >
+        <h3 id="youtube-modal-title" className="text-lg font-semibold text-gray-900 mb-4">
+          YouTube動画を挿入
         </h3>
 
         <div className="space-y-4">
@@ -124,7 +132,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="https://youtube.com/watch?v=... or https://youtu.be/..."
+              placeholder="YouTube URLを貼り付け..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               autoFocus
             />
@@ -136,7 +144,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
           {/* Thumbnail Preview */}
           {videoId && (
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <p className="text-xs text-gray-500 px-3 py-2 bg-gray-50">Preview:</p>
+              <p className="text-xs text-gray-500 px-3 py-2 bg-gray-50">プレビュー:</p>
               <img
                 src={getYouTubeThumbnailUrl(videoId)}
                 alt="YouTube thumbnail preview"
@@ -146,14 +154,21 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
                   const img = e.target as HTMLImageElement;
                   if (img.src.includes('maxresdefault')) {
                     img.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                  } else {
+                    setThumbnailError(true);
                   }
                 }}
               />
+              {thumbnailError && (
+                <p className="text-sm text-yellow-600 mt-2 px-3 py-2">
+                  サムネイルを読み込めませんでした
+                </p>
+              )}
             </div>
           )}
 
           <p className="text-xs text-gray-500">
-            The video URL will be converted to a clickable thumbnail when the email is sent.
+            メール送信時に動画URLがクリック可能なサムネイルに変換されます。
           </p>
         </div>
 
@@ -163,7 +178,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
             onClick={onClose}
             className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            キャンセル
           </button>
           <button
             type="button"
@@ -171,7 +186,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
             disabled={!videoId}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Insert
+            挿入
           </button>
         </div>
       </div>

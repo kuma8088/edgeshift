@@ -46,18 +46,54 @@ export function MenuBar({ editor }: MenuBarProps) {
   };
 
   const handleInsertImage = () => {
-    const url = window.prompt('Enter image URL:');
-    if (url) {
-      // Insert image as HTML img tag
-      const imgHtml = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;
-      editor.chain().focus().insertContent(imgHtml).run();
+    const url = window.prompt('画像URLを入力:');
+    if (!url || !url.trim()) return;
+
+    const trimmedUrl = url.trim();
+
+    // Validate URL format to prevent XSS
+    try {
+      const parsed = new URL(trimmedUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        alert('http:// または https:// で始まるURLを入力してください');
+        return;
+      }
+    } catch {
+      alert('有効なURLを入力してください');
+      return;
     }
+
+    // Escape URL for safe HTML insertion
+    const safeUrl = trimmedUrl.replace(/"/g, '&quot;');
+    const imgHtml = `<img src="${safeUrl}" alt="Image" style="max-width: 100%; height: auto;" />`;
+    editor.chain().focus().insertContent(imgHtml).run();
   };
 
   const handleInsertYouTube = (url: string) => {
-    // Insert YouTube URL as a clickable link with thumbnail preview text
-    // The actual conversion to thumbnail happens on email send
-    const youtubeHtml = `<p><a href="${url}" target="_blank">[YouTube Video: ${url}]</a></p>`;
+    // Extract video ID for safety (defense in depth)
+    const patterns = [
+      /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+    ];
+
+    let videoId: string | null = null;
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        videoId = match[1];
+        break;
+      }
+    }
+
+    if (!videoId) {
+      console.error('Invalid YouTube URL passed to handleInsertYouTube');
+      return;
+    }
+
+    // Use canonical URL format (safe)
+    const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const youtubeHtml = `<p><a href="${canonicalUrl}" target="_blank">[YouTube Video]</a></p>`;
     editor.chain().focus().insertContent(youtubeHtml).run();
   };
 
@@ -186,11 +222,17 @@ export function MenuBar({ editor }: MenuBarProps) {
           className={buttonClass(isVariableDropdownOpen)}
           type="button"
           title="変数を挿入"
+          aria-haspopup="listbox"
+          aria-expanded={isVariableDropdownOpen}
         >
           {'{{}}'}
         </button>
         {isVariableDropdownOpen && (
-          <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+          <div
+            className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10"
+            role="listbox"
+            aria-label="変数一覧"
+          >
             <div className="p-2">
               <p className="text-xs font-medium text-gray-500 mb-2 px-2">変数を挿入</p>
               {AVAILABLE_VARIABLES.map((variable) => (
