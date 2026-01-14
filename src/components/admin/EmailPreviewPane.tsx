@@ -42,8 +42,15 @@ function youtubeUrlToThumbnail(url: string): string {
   const videoId = extractYoutubeVideoId(url);
   if (!videoId) return url;
 
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  // Sanitize video ID to prevent XSS - only allow valid YouTube ID characters
+  const safeVideoId = videoId.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (safeVideoId !== videoId) {
+    // Video ID contained unexpected characters, return original URL
+    return url;
+  }
+
+  const thumbnailUrl = `https://img.youtube.com/vi/${safeVideoId}/maxresdefault.jpg`;
+  const videoUrl = `https://www.youtube.com/watch?v=${safeVideoId}`;
 
   // Styles from STYLES.youtubeLink and STYLES.youtubeThumbnail
   return `<a href="${videoUrl}" style="display: block; margin: 24px 0; text-decoration: none;" target="_blank" rel="noopener noreferrer">

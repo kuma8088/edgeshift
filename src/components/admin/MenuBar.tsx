@@ -86,8 +86,13 @@ export function MenuBar({ editor }: MenuBarProps) {
       const imgHtml = `<img src="${result.data.url}" alt="Image" style="max-width: 100%; height: auto;" />`;
       editor?.chain().focus().insertContent(imgHtml).run();
     } catch (error) {
-      console.error('Image upload error:', error);
-      alert('画像のアップロード中にエラーが発生しました');
+      console.error('Image upload error:', {
+        error,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+      });
+      alert('画像のアップロードに失敗しました。再度お試しください。');
     } finally {
       setIsUploading(false);
     }

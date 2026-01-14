@@ -96,16 +96,21 @@ export async function handleImageUpload(
 
     // Upload to R2
     const arrayBuffer = await file.arrayBuffer();
-    await env.IMAGES_BUCKET.put(filename, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type,
-      },
+    const r2Object = await env.IMAGES_BUCKET.put(filename, arrayBuffer, {
+      httpMetadata: { contentType: file.type },
     });
 
-    // Construct public URL
-    // R2 public access URL format: https://pub-{account_hash}.r2.dev/{bucket_name}/{key}
-    // Or custom domain if configured
-    const publicUrl = `https://images.edgeshift.tech/${filename}`;
+    if (!r2Object) {
+      console.error('R2 put returned null for filename:', filename);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Storage operation failed - please retry' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Construct public URL using environment variable or default
+    const baseUrl = env.IMAGES_PUBLIC_URL || 'https://images.edgeshift.tech';
+    const publicUrl = `${baseUrl}/${filename}`;
 
     return new Response(
       JSON.stringify({
@@ -116,9 +121,22 @@ export async function handleImageUpload(
     );
   } catch (error) {
     console.error('Image upload error:', error);
+
+    let errorMessage = 'Failed to upload image';
+    let statusCode = 500;
+
+    if (error instanceof TypeError && error.message.includes('formData')) {
+      errorMessage = 'Invalid form data format';
+      statusCode = 400;
+    } else if (error instanceof Error) {
+      if (error.message.includes('R2') || error.message.includes('bucket')) {
+        errorMessage = 'Storage service temporarily unavailable';
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: false, error: 'Failed to upload image' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: statusCode, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
