@@ -9,12 +9,26 @@ interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  /** Render editor as email preview format (540px white box on gray background) */
+  emailPreviewStyle?: boolean;
 }
+
+// Font stack optimized for Japanese + cross-platform (from email styles)
+const EMAIL_FONT_FAMILY = [
+  '-apple-system',
+  'BlinkMacSystemFont',
+  "'Hiragino Kaku Gothic ProN'",
+  "'Hiragino Sans'",
+  'Meiryo',
+  "'Segoe UI'",
+  'sans-serif',
+].join(', ');
 
 export function RichTextEditor({
   value,
   onChange,
   placeholder = 'Start typing...',
+  emailPreviewStyle = false,
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -25,7 +39,7 @@ export function RichTextEditor({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-blue-600 underline',
+          class: emailPreviewStyle ? 'email-editor-link' : 'text-blue-600 underline',
         },
       }),
       Placeholder.configure({
@@ -38,8 +52,9 @@ export function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class:
-          'prose prose-sm max-w-none min-h-[300px] p-4 focus:outline-none',
+        class: emailPreviewStyle
+          ? 'email-editor-content min-h-[300px] focus:outline-none'
+          : 'prose prose-sm max-w-none min-h-[300px] p-4 focus:outline-none',
       },
     },
   });
@@ -50,6 +65,135 @@ export function RichTextEditor({
       editor.commands.setContent(value);
     }
   }, [value, editor]);
+
+  if (emailPreviewStyle) {
+    return (
+      <div className="rounded-lg overflow-hidden">
+        {/* MenuBar at top */}
+        <div className="bg-white border border-gray-300 rounded-t-lg">
+          <MenuBar editor={editor} />
+        </div>
+
+        {/* Email preview styled editor */}
+        <div
+          className="rounded-b-lg"
+          style={{
+            backgroundColor: '#f5f5f5',
+            padding: '24px 16px',
+          }}
+        >
+          {/* White content box - matches email format */}
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              maxWidth: '540px',
+              margin: '0 auto',
+              padding: '24px',
+              borderRadius: '8px',
+              fontFamily: EMAIL_FONT_FAMILY,
+              fontSize: '16px',
+              lineHeight: '1.5',
+              letterSpacing: '0.02em',
+              color: '#1e1e1e',
+            }}
+          >
+            <EditorContent editor={editor} />
+          </div>
+        </div>
+
+        {/* Scoped styles for email editor content */}
+        <style>{`
+          .email-editor-content {
+            font-family: ${EMAIL_FONT_FAMILY};
+            font-size: 16px;
+            line-height: 1.5;
+            letter-spacing: 0.02em;
+            color: #1e1e1e;
+          }
+          .email-editor-content p {
+            margin: 0 0 12px 0;
+          }
+          .email-editor-content p:last-child {
+            margin-bottom: 0;
+          }
+          .email-editor-content p.is-editor-empty:first-child::before {
+            color: #adb5bd;
+            content: attr(data-placeholder);
+            float: left;
+            height: 0;
+            pointer-events: none;
+          }
+          .email-editor-content h1,
+          .email-editor-content h2,
+          .email-editor-content h3 {
+            margin: 0 0 12px 0;
+            line-height: 1.4;
+            letter-spacing: 0.01em;
+            font-weight: 600;
+          }
+          .email-editor-content h1 {
+            font-size: 24px;
+          }
+          .email-editor-content h2 {
+            font-size: 20px;
+          }
+          .email-editor-content h3 {
+            font-size: 18px;
+          }
+          .email-editor-content ul,
+          .email-editor-content ol {
+            margin: 0 0 12px 0;
+            padding-left: 16px;
+          }
+          .email-editor-content li {
+            margin-bottom: 4px;
+          }
+          .email-editor-link {
+            color: #7c3aed;
+            text-decoration: none;
+          }
+          .email-editor-link:hover {
+            text-decoration: underline;
+          }
+          .email-editor-content blockquote {
+            margin: 0 0 12px 0;
+            padding-left: 16px;
+            border-left: 3px solid #e5e5e5;
+            color: #525252;
+          }
+          .email-editor-content hr {
+            border: none;
+            border-top: 1px solid #e5e5e5;
+            margin: 24px 0;
+          }
+          .email-editor-content strong {
+            font-weight: 600;
+          }
+          .email-editor-content em {
+            font-style: italic;
+          }
+          .email-editor-content code {
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+          }
+          .email-editor-content pre {
+            background-color: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0 0 12px 0;
+          }
+          .email-editor-content pre code {
+            background-color: transparent;
+            padding: 0;
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">

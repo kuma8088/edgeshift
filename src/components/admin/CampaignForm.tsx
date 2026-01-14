@@ -5,7 +5,6 @@ import { RichTextEditor } from './RichTextEditor';
 import { ListSelector } from './ListSelector';
 import { TemplateSelector } from './TemplateSelector';
 import { EmailPreviewModal } from './EmailPreviewModal';
-import { EmailPreviewPane } from './EmailPreviewPane';
 
 export interface CampaignFormRef {
   setSubject: (subject: string) => void;
@@ -205,7 +204,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
 
       {/* 2-column layout: Editor (left ~65%) + Settings (right ~35%) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-        {/* Left Column: Email Content Editor with Preview */}
+        {/* Left Column: Email Content Editor (styled as email preview) */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
@@ -221,24 +220,17 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
-              フルプレビュー
+              プレビュー
             </button>
           </div>
 
-          {/* Rich Text Editor */}
+          {/* Rich Text Editor styled as email preview */}
           <RichTextEditor
             value={content}
             onChange={setContent}
             placeholder="メール本文を入力..."
+            emailPreviewStyle
           />
-
-          {/* Live Email Preview Pane */}
-          <div className="mt-6">
-            <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">
-              プレビュー
-            </h3>
-            <EmailPreviewPane content={content} subject={subject} />
-          </div>
         </div>
 
         {/* Right Column: Settings Panel */}
