@@ -6,6 +6,7 @@ import {
   convertYoutubeAnchors,
   convertYoutubeUrls,
   linkifyUrls,
+  ensureImageMaxWidth,
 } from '../lib/content-processor';
 
 describe('Content Processor', () => {
@@ -344,6 +345,106 @@ describe('Content Processor', () => {
       expect(result).toContain('<a href="https://example.com"');
       expect(result).toContain('https://img.youtube.com/vi/video1/maxresdefault.jpg');
       expect(result).toContain('<a href="https://another.com/path?query=1"');
+    });
+
+    it('should add responsive styles to img tags without style attribute', () => {
+      const html = '<p>Here is an image:</p><img src="https://example.com/image.jpg">';
+      const result = linkifyUrls(html);
+      expect(result).toContain('style="max-width: 100%; height: auto;"');
+    });
+
+    it('should append responsive styles to img tags with existing style', () => {
+      const html = '<img src="https://example.com/image.jpg" style="border-radius: 8px;">';
+      const result = linkifyUrls(html);
+      expect(result).toContain('border-radius: 8px;');
+      expect(result).toContain('max-width: 100%;');
+      expect(result).toContain('height: auto;');
+    });
+
+    it('should not modify img tags that already have max-width', () => {
+      const html = '<img src="https://example.com/image.jpg" style="max-width: 480px;">';
+      const result = linkifyUrls(html);
+      expect(result).toBe(html);
+    });
+  });
+
+  describe('ensureImageMaxWidth', () => {
+    it('should add responsive styles to img tag without style', () => {
+      const html = '<img src="https://example.com/image.jpg">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toBe('<img src="https://example.com/image.jpg" style="max-width: 100%; height: auto;">');
+    });
+
+    it('should append responsive styles to existing style', () => {
+      const html = '<img src="https://example.com/image.jpg" style="border-radius: 8px;">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toContain('border-radius: 8px;');
+      expect(result).toContain('max-width: 100%;');
+      expect(result).toContain('height: auto;');
+    });
+
+    it('should handle style without trailing semicolon', () => {
+      const html = '<img src="https://example.com/image.jpg" style="border-radius: 8px">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toContain('border-radius: 8px;');
+      expect(result).toContain('max-width: 100%;');
+    });
+
+    it('should not modify img with existing max-width', () => {
+      const html = '<img src="https://example.com/image.jpg" style="max-width: 480px; border-radius: 4px;">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toBe(html);
+    });
+
+    it('should handle max-width with 100% value', () => {
+      const html = '<img src="https://example.com/image.jpg" style="max-width: 100%;">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toBe(html);
+    });
+
+    it('should handle multiple img tags', () => {
+      const html = '<img src="a.jpg"><p>text</p><img src="b.jpg" style="border: 1px solid;">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toContain('<img src="a.jpg" style="max-width: 100%; height: auto;">');
+      expect(result).toContain('border: 1px solid;');
+      expect(result).toContain('max-width: 100%;');
+    });
+
+    it('should handle img with multiple attributes', () => {
+      const html = '<img src="test.jpg" alt="Test image" width="600" class="responsive">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toContain('src="test.jpg"');
+      expect(result).toContain('alt="Test image"');
+      expect(result).toContain('style="max-width: 100%; height: auto;"');
+    });
+
+    it('should handle self-closing img tags', () => {
+      const html = '<img src="test.jpg" />';
+      // Note: Our regex expects non-self-closing tags, but should still work
+      const result = ensureImageMaxWidth(html);
+      // The function handles standard img tags; self-closing variations may differ
+      expect(result).toContain('max-width: 100%');
+    });
+
+    it('should handle single-quoted style attributes', () => {
+      const html = "<img src='test.jpg' style='border: none;'>";
+      const result = ensureImageMaxWidth(html);
+      expect(result).toContain('max-width: 100%');
+    });
+
+    it('should return empty string unchanged', () => {
+      expect(ensureImageMaxWidth('')).toBe('');
+    });
+
+    it('should return text without img tags unchanged', () => {
+      const text = '<p>No images here</p>';
+      expect(ensureImageMaxWidth(text)).toBe(text);
+    });
+
+    it('should be case-insensitive for IMG and STYLE', () => {
+      const html = '<IMG SRC="test.jpg" STYLE="border: 1px;">';
+      const result = ensureImageMaxWidth(html);
+      expect(result).toContain('max-width: 100%');
     });
   });
 });

@@ -64,7 +64,7 @@ import {
 } from './routes/referral';
 import { getBrandSettings, updateBrandSettings } from './routes/brand-settings';
 import { getTemplates, previewTemplate, testSendTemplate } from './routes/templates';
-import { handleImageUpload } from './routes/images';
+import { handleImageUpload, handleListImages } from './routes/images';
 import { isAuthorizedAsync } from './lib/auth';
 
 export default {
@@ -317,8 +317,10 @@ export default {
           response = await handleGetReferralStats(request, env);
         }
       }
-      // Image upload route
-      else if (path === '/api/images/upload' && request.method === 'POST') {
+      // Image routes
+      else if (path === '/api/images' && request.method === 'GET') {
+        response = await handleListImages(request, env);
+      } else if (path === '/api/images/upload' && request.method === 'POST') {
         response = await handleImageUpload(request, env);
       }
       // Manual cron trigger endpoint for E2E testing

@@ -761,10 +761,17 @@ export async function removeSubscriberTag(subscriberId: string, tagId: string) {
   });
 }
 
-// Image Upload API
+// Image API
 export interface ImageUploadResponse {
   url: string;
   filename: string;
+}
+
+export interface ImageInfo {
+  key: string;
+  url: string;
+  uploaded: string;
+  size: number;
 }
 
 export async function uploadImage(file: File): Promise<{ success: boolean; data?: ImageUploadResponse; error?: string }> {
@@ -813,4 +820,12 @@ export async function uploadImage(file: File): Promise<{ success: boolean; data?
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: `Network error: ${message}` };
   }
+}
+
+/**
+ * GET /api/images
+ * List all uploaded images from R2 bucket
+ */
+export async function getImages(): Promise<{ success: boolean; data?: { images: ImageInfo[] }; error?: string }> {
+  return apiRequest<{ images: ImageInfo[] }>('/images');
 }
