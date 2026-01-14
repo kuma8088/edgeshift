@@ -35,7 +35,7 @@ function generateFilename(mimeType: string): string {
  * Upload an image to R2 bucket
  *
  * Request: multipart/form-data with 'file' field
- * Response: { success: true, data: { url: string } }
+ * Response: { url: string, filename: string }
  */
 export async function handleImageUpload(
   request: Request,
@@ -113,10 +113,7 @@ export async function handleImageUpload(
     const publicUrl = `${baseUrl}/${filename}`;
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: { url: publicUrl, filename },
-      }),
+      JSON.stringify({ url: publicUrl, filename }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
