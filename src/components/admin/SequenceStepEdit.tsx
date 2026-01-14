@@ -535,6 +535,7 @@ export function SequenceStepEdit({ sequenceId, stepNumber }: SequenceStepEditPro
               value={stepData.content}
               onChange={(html) => setStepData({ ...stepData, content: html })}
               placeholder="メール本文を入力..."
+              emailPreviewStyle
             />
           </div>
 

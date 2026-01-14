@@ -202,8 +202,8 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
         </div>
       )}
 
-      {/* 2-column layout: Editor (left ~65%) + Settings (right ~35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+      {/* 2-column layout: Editor (left ~540-600px) + Settings (right flexible) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(540px,600px)_1fr] gap-6">
         {/* Left Column: Email Content Editor (styled as email preview) */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">

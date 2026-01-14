@@ -282,6 +282,7 @@ function SortableStep({ step, index, onUpdate, onRemove, timingMode, onTimingMod
           value={step.content}
           onChange={(html) => onUpdate(index, 'content', html)}
           placeholder="メール本文を入力..."
+          emailPreviewStyle
         />
       </div>
     </div>

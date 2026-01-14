@@ -11,6 +11,7 @@ export interface Env {
   ADMIN_EMAIL?: string; // Optional: for milestone achievement notifications
   RATE_LIMIT_KV?: KVNamespace; // Optional: only required when rate limiting is enabled
   CF_ACCESS_AUD?: string; // Optional: Cloudflare Access Application Audience Tag
+  IMAGES_BUCKET?: R2Bucket; // Optional: R2 bucket for image uploads
 }
 
 export interface Subscriber {
