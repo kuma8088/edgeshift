@@ -827,5 +827,10 @@ export async function uploadImage(file: File): Promise<{ success: boolean; data?
  * List all uploaded images from R2 bucket
  */
 export async function getImages(): Promise<{ success: boolean; data?: { images: ImageInfo[] }; error?: string }> {
-  return apiRequest<{ images: ImageInfo[] }>('/images');
+  try {
+    return await apiRequest<{ images: ImageInfo[] }>('/images');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return { success: false, error: `Network error: ${message}` };
+  }
 }

@@ -129,7 +129,18 @@ export function MenuBar({ editor }: MenuBarProps) {
   };
 
   const handleSelectFromLibrary = (url: string) => {
-    // Insert image from library into editor
+    // Validate URL format before insertion
+    try {
+      const parsedUrl = new URL(url);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        console.error('Invalid URL protocol:', url);
+        return;
+      }
+    } catch {
+      console.error('Invalid URL:', url);
+      return;
+    }
+
     const imgHtml = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;
     editor?.chain().focus().insertContent(imgHtml).run();
   };
