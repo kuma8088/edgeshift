@@ -160,7 +160,10 @@ export function applyListStyles(html: string): string {
     // Apply list (ul/ol) styles
     .replace(/<(ul|ol)(?![^>]*style=)/gi, `<$1 style="${STYLES.list}"`)
     // Apply list item styles
-    .replace(/<li(?![^>]*style=)/gi, `<li style="${STYLES.listItem}"`);
+    .replace(/<li(?![^>]*style=)/gi, `<li style="${STYLES.listItem}"`)
+    // Reset margin on <p> tags inside <li> (TipTap wraps list content in <p>)
+    // Email clients apply default margin to <p> which causes extra spacing
+    .replace(/<li([^>]*)><p(?![^>]*style=)/gi, '<li$1><p style="margin:0"');
 }
 
 /**
