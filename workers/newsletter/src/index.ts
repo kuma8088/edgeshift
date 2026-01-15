@@ -65,6 +65,7 @@ import {
 import { getBrandSettings, updateBrandSettings } from './routes/brand-settings';
 import { getTemplates, previewTemplate, testSendTemplate } from './routes/templates';
 import { handleImageUpload, handleListImages } from './routes/images';
+import { handleImport, handleExport } from './routes/import-export';
 import { isAuthorizedAsync } from './lib/auth';
 
 export default {
@@ -143,6 +144,12 @@ export default {
       } else if (path.match(/^\/api\/contact-lists\/[^\/]+$/) && request.method === 'DELETE') {
         const id = path.replace('/api/contact-lists/', '');
         response = await handleDeleteContactList(request, env, id);
+      }
+      // Import/Export routes
+      else if (path === '/api/subscribers/import' && request.method === 'POST') {
+        response = await handleImport(request, env);
+      } else if (path === '/api/subscribers/export' && request.method === 'GET') {
+        response = await handleExport(request, env);
       } else if (path.match(/^\/api\/subscribers\/[^\/]+\/lists$/)) {
         const subscriberId = path.replace('/api/subscribers/', '').replace('/lists', '');
 

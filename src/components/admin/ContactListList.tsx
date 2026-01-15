@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { getContactLists, deleteContactList, type ContactList } from '../../utils/admin-api';
 import { ContactListFormModal } from './ContactListFormModal';
+import { ImportModal } from './ImportModal';
+import { ExportModal } from './ExportModal';
 
 export function ContactListList() {
   const [lists, setLists] = useState<ContactList[]>([]);
@@ -12,6 +14,8 @@ export function ContactListList() {
   const [editingList, setEditingList] = useState<ContactList | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ContactList | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   useEffect(() => {
     loadLists();
@@ -94,12 +98,26 @@ export function ContactListList() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Contact Lists</h1>
-        <button
-          onClick={handleCreateNew}
-          className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
-        >
-          + 新規作成
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setImportModalOpen(true)}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+          >
+            Import
+          </button>
+          <button
+            onClick={() => setExportModalOpen(true)}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+          >
+            Export
+          </button>
+          <button
+            onClick={handleCreateNew}
+            className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
+          >
+            + 新規作成
+          </button>
+        </div>
       </div>
 
       {lists.length === 0 ? (
@@ -195,6 +213,20 @@ export function ContactListList() {
           </div>
         </div>
       )}
+
+      <ImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={() => {
+          setImportModalOpen(false);
+          loadLists();
+        }}
+      />
+
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+      />
     </div>
   );
 }
