@@ -10,12 +10,12 @@ describe('replaceVariables', () => {
     expect(result).toBe('Hello John!');
   });
 
-  it('should replace {{unsubscribe_url}} with URL', () => {
+  it('should replace {{unsubscribe_url}} with anchor tag', () => {
     const result = replaceVariables('Click {{unsubscribe_url}} to unsubscribe', {
       subscriberName: 'John',
       unsubscribeUrl: 'http://example.com/unsub/abc123',
     });
-    expect(result).toBe('Click http://example.com/unsub/abc123 to unsubscribe');
+    expect(result).toBe('Click <a href="http://example.com/unsub/abc123" style="color: #666666;">配信停止</a> to unsubscribe');
   });
 
   it('should fallback to empty string when name is null', () => {
@@ -34,6 +34,6 @@ describe('replaceVariables', () => {
         unsubscribeUrl: 'http://example.com/unsub',
       }
     );
-    expect(result).toBe('田中さん、配信停止はhttp://example.com/unsubから');
+    expect(result).toBe('田中さん、配信停止は<a href="http://example.com/unsub" style="color: #666666;">配信停止</a>から');
   });
 });
