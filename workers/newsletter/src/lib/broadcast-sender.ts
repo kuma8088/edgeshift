@@ -277,8 +277,17 @@ export async function sendCampaignViaBroadcast(
     const failedCount = results.filter((r) => !r.success).length;
 
     // 8. Cleanup: Delete temp Segment (best effort)
+    // IMPORTANT: Resend Broadcast API is async - 200 OK means "queued", not "sent"
+    // If we delete the Segment immediately, Resend loses the recipient list before sending
+    // Wait 30 seconds to allow Broadcast processing to complete
     if (segmentId) {
       const currentSegmentId = segmentId;
+      console.log('Delaying segment cleanup by 30s to allow Broadcast processing', {
+        segmentId: currentSegmentId,
+        broadcastId: broadcastResult.broadcastId,
+      });
+      await sleep(30000);
+
       const deleteResult = await deleteSegment(config, currentSegmentId).catch((e) => {
         console.error('Segment cleanup failed:', {
           segmentId: currentSegmentId,
@@ -493,7 +502,14 @@ export async function sendSequenceStepViaBroadcast(
     };
   } finally {
     // 7. Cleanup: Delete temp Segment (best effort)
+    // IMPORTANT: Resend Broadcast API is async - 200 OK means "queued", not "sent"
+    // Wait 30 seconds to allow Broadcast processing to complete before deleting Segment
     if (segmentId) {
+      console.log('Delaying sequence segment cleanup by 30s to allow Broadcast processing', {
+        segmentId,
+      });
+      await sleep(30000);
+
       const deleteResult = await deleteSegment(config, segmentId).catch((e) => {
         console.error('Sequence segment cleanup failed:', {
           segmentId,
