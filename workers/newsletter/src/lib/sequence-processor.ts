@@ -286,7 +286,18 @@ export async function processSequenceEmails(env: Env): Promise<void> {
               errorMessage: result.error,
             });
           } catch (logError) {
-            console.error('Failed to record sequence delivery log:', logError);
+            // Failed to record the failure - this creates a gap in delivery analytics
+            // but the actual send failure is still logged below
+            console.error('Failed to record sequence delivery failure log:', {
+              error: logError instanceof Error ? logError.message : String(logError),
+              context: {
+                sequenceId: email.sequence_id,
+                stepId: email.step_id,
+                subscriberId: email.subscriber_id,
+                email: email.email,
+              },
+              consequence: 'Failed delivery will not appear in analytics; send error is logged separately',
+            });
           }
           console.error(`Failed to send sequence email to ${email.email}:`, result.error);
         }

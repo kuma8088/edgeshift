@@ -402,16 +402,27 @@ export async function sendSequenceStepViaBroadcast(
       };
     }
 
-    // 6. Record success delivery log
-    await recordSequenceDeliveryLog(env, {
-      sequenceId: step.sequence_id,
-      sequenceStepId: step.id,
-      subscriberId: subscriber.id,
-      email: subscriber.email,
-      emailSubject: step.subject,
-      resendId: broadcastResult.broadcastId,
-      status: 'sent',
-    });
+    // 6. Record success delivery log (best effort - don't fail if logging fails)
+    try {
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: step.sequence_id,
+        sequenceStepId: step.id,
+        subscriberId: subscriber.id,
+        email: subscriber.email,
+        emailSubject: step.subject,
+        resendId: broadcastResult.broadcastId,
+        status: 'sent',
+      });
+    } catch (logError) {
+      // Broadcast was already sent successfully - don't fail the operation
+      // Just log the error for debugging
+      console.error('Failed to record sequence delivery log after successful broadcast:', {
+        sequenceId: step.sequence_id,
+        subscriberId: subscriber.id,
+        broadcastId: broadcastResult.broadcastId,
+        error: logError instanceof Error ? logError.message : String(logError),
+      });
+    }
 
     return {
       success: true,
