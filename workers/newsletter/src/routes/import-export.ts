@@ -5,8 +5,9 @@
  * and exporting subscriber data to CSV format.
  */
 
-import type { Env, ImportResult, ImportError, Subscriber, ExportOptions } from '../types';
+import type { Env, ImportResult, Subscriber, ExportOptions } from '../types';
 import { splitName } from '../lib/resend-marketing';
+import { isAuthorized } from '../lib/auth';
 
 // ============================================================================
 // CSV Parsing Utilities
@@ -152,9 +153,159 @@ function generateId(): string {
 }
 
 // ============================================================================
-// Import Functions (to be implemented in Task 3)
+// Import Handler
 // ============================================================================
 
-// Placeholder for future implementation
-// export async function importSubscribers(...)
-// export async function exportSubscribers(...)
+/**
+ * Handle POST /api/subscribers/import
+ *
+ * Accepts a CSV file with subscriber data and imports them into the database.
+ * - Validates email format
+ * - Skips duplicates
+ * - Optionally adds to a contact list
+ */
+export async function handleImport(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  // Check authorization (using sync version for API key auth)
+  if (!isAuthorized(request, env)) {
+    return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const contactListId = formData.get('contact_list_id') as string | null;
+
+    if (!file) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No file provided' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const csvText = await file.text();
+    const rows = parseCSV(csvText);
+
+    if (rows.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'CSV file is empty or has no valid data' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check for email column
+    const firstRow = rows[0];
+    if (!('email' in firstRow)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No email column found in CSV' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get existing emails for duplicate check
+    const existingEmails = new Set<string>();
+    const existingResult = await env.DB.prepare(
+      'SELECT email FROM subscribers'
+    ).all<{ email: string }>();
+    for (const row of existingResult.results || []) {
+      existingEmails.add(row.email.toLowerCase());
+    }
+
+    const result: ImportResult = {
+      imported: 0,
+      skipped: 0,
+      errors: [],
+    };
+
+    const now = Date.now();
+    const subscribersToInsert: Array<{
+      id: string;
+      email: string;
+      name: string | null;
+      status: string;
+      created_at: number;
+      subscribed_at: number;
+    }> = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const email = row.email?.toLowerCase().trim();
+      const rowNumber = i + 2; // +2 because row 1 is header, and we're 0-indexed
+
+      if (!email) {
+        result.errors.push({ row: rowNumber, email: '', reason: 'Email is required' });
+        continue;
+      }
+
+      if (!isValidEmail(email)) {
+        result.errors.push({ row: rowNumber, email, reason: 'Invalid email format' });
+        continue;
+      }
+
+      if (existingEmails.has(email)) {
+        result.skipped++;
+        continue;
+      }
+
+      // Build name from first_name/last_name or name field
+      let name: string | null = null;
+      if (row.first_name || row.last_name) {
+        name = joinName(row.first_name, row.last_name);
+      } else if (row.name) {
+        name = row.name.trim() || null;
+      }
+
+      subscribersToInsert.push({
+        id: generateId(),
+        email,
+        name,
+        status: 'active',
+        created_at: now,
+        subscribed_at: now,
+      });
+
+      existingEmails.add(email); // Prevent duplicates within same import
+    }
+
+    // Batch insert subscribers
+    for (const subscriber of subscribersToInsert) {
+      await env.DB.prepare(
+        `INSERT INTO subscribers (id, email, name, status, created_at, subscribed_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(
+        subscriber.id,
+        subscriber.email,
+        subscriber.name,
+        subscriber.status,
+        subscriber.created_at,
+        subscriber.subscribed_at
+      ).run();
+
+      result.imported++;
+
+      // Add to contact list if specified
+      if (contactListId) {
+        await env.DB.prepare(
+          `INSERT INTO contact_list_members (id, contact_list_id, subscriber_id, added_at)
+           VALUES (?, ?, ?, ?)`
+        ).bind(generateId(), contactListId, subscriber.id, now).run();
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, data: result }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Import error:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Import failed' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}

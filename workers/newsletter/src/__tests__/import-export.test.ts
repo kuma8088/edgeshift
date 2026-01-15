@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
+import { handleImport } from '../routes/import-export';
+
+const env = getTestEnv();
 
 describe('CSV Import/Export', () => {
   beforeEach(async () => {
@@ -125,6 +128,145 @@ describe('CSV Import/Export', () => {
     it('should trim whitespace', async () => {
       const { joinName } = await import('../routes/import-export');
       expect(joinName('  John  ', '  Doe  ')).toBe('John Doe');
+    });
+  });
+
+  describe('handleImport', () => {
+    beforeEach(async () => {
+      // Clear subscribers table
+      await env.DB.prepare('DELETE FROM subscribers').run();
+    });
+
+    it('should import subscribers from CSV', async () => {
+      const csv = 'email,first_name,last_name\ntest@example.com,John,Doe';
+      const formData = new FormData();
+      formData.append('file', new Blob([csv], { type: 'text/csv' }), 'test.csv');
+
+      const request = new Request('http://localhost/api/subscribers/import', {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleImport(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(result.success).toBe(true);
+      expect(result.data.imported).toBe(1);
+      expect(result.data.skipped).toBe(0);
+
+      // Verify in database
+      const subscriber = await env.DB.prepare(
+        'SELECT * FROM subscribers WHERE email = ?'
+      ).bind('test@example.com').first();
+      expect(subscriber).not.toBeNull();
+      expect(subscriber?.name).toBe('John Doe');
+      expect(subscriber?.status).toBe('active');
+    });
+
+    it('should skip duplicate emails', async () => {
+      // Insert existing subscriber
+      await env.DB.prepare(
+        `INSERT INTO subscribers (id, email, name, status, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind('existing-id', 'existing@example.com', 'Existing', 'active', Date.now()).run();
+
+      const csv = 'email\nexisting@example.com\nnew@example.com';
+      const formData = new FormData();
+      formData.append('file', new Blob([csv], { type: 'text/csv' }), 'test.csv');
+
+      const request = new Request('http://localhost/api/subscribers/import', {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleImport(request, env);
+      const result = await response.json();
+
+      expect(result.data.imported).toBe(1);
+      expect(result.data.skipped).toBe(1);
+    });
+
+    it('should report invalid email format in errors', async () => {
+      const csv = 'email\ninvalid-email\nvalid@example.com';
+      const formData = new FormData();
+      formData.append('file', new Blob([csv], { type: 'text/csv' }), 'test.csv');
+
+      const request = new Request('http://localhost/api/subscribers/import', {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleImport(request, env);
+      const result = await response.json();
+
+      expect(result.data.imported).toBe(1);
+      expect(result.data.errors.length).toBe(1);
+      expect(result.data.errors[0].email).toBe('invalid-email');
+      expect(result.data.errors[0].reason).toContain('Invalid email');
+    });
+
+    it('should add to contact list when specified', async () => {
+      // Create a contact list
+      await env.DB.prepare(
+        `INSERT INTO contact_lists (id, name, created_at, updated_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind('list-1', 'Test List', Date.now(), Date.now()).run();
+
+      const csv = 'email\ntest@example.com';
+      const formData = new FormData();
+      formData.append('file', new Blob([csv], { type: 'text/csv' }), 'test.csv');
+      formData.append('contact_list_id', 'list-1');
+
+      const request = new Request('http://localhost/api/subscribers/import', {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleImport(request, env);
+      const result = await response.json();
+
+      expect(result.data.imported).toBe(1);
+
+      // Verify contact list membership
+      const membership = await env.DB.prepare(
+        'SELECT * FROM contact_list_members WHERE contact_list_id = ?'
+      ).bind('list-1').first();
+      expect(membership).not.toBeNull();
+    });
+
+    it('should return 401 without authorization', async () => {
+      const csv = 'email\ntest@example.com';
+      const formData = new FormData();
+      formData.append('file', new Blob([csv], { type: 'text/csv' }), 'test.csv');
+
+      const request = new Request('http://localhost/api/subscribers/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const response = await handleImport(request, env);
+      expect(response.status).toBe(401);
+    });
+
+    it('should return 400 when no file provided', async () => {
+      const formData = new FormData();
+
+      const request = new Request('http://localhost/api/subscribers/import', {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleImport(request, env);
+      const result = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(result.error).toContain('No file');
     });
   });
 });
