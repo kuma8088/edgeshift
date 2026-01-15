@@ -35,7 +35,8 @@ export async function setupTestDb() {
       created_at INTEGER DEFAULT (unixepoch()),
       referral_code TEXT UNIQUE,
       referred_by TEXT,
-      referral_count INTEGER DEFAULT 0
+      referral_count INTEGER DEFAULT 0,
+      resend_contact_id TEXT
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS campaigns (
       id TEXT PRIMARY KEY,

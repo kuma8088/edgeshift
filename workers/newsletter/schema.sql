@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS subscribers (
   -- Referral program fields
   referral_code TEXT UNIQUE,
   referred_by TEXT REFERENCES subscribers(id),
-  referral_count INTEGER DEFAULT 0
+  referral_count INTEGER DEFAULT 0,
+  -- Resend Marketing API integration
+  resend_contact_id TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_subscribers_status ON subscribers(status);
@@ -21,6 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email);
 CREATE INDEX IF NOT EXISTS idx_subscribers_confirm_token ON subscribers(confirm_token);
 CREATE INDEX IF NOT EXISTS idx_subscribers_unsubscribe_token ON subscribers(unsubscribe_token);
 CREATE INDEX IF NOT EXISTS idx_subscribers_referral_code ON subscribers(referral_code);
+CREATE INDEX IF NOT EXISTS idx_subscribers_resend_contact_id ON subscribers(resend_contact_id);
 
 -- Campaigns table
 CREATE TABLE IF NOT EXISTS campaigns (
