@@ -218,6 +218,7 @@ export async function sendCampaignViaBroadcast(
     const templateId = campaign.template_id || brandSettings.default_template_id;
 
     // Use first subscriber for template rendering (personalization would require individual sends)
+    // Note: Using Resend's built-in unsubscribe URL for Broadcast API
     const firstSubscriber = subscribers[0];
     const html = renderEmail({
       templateId,
@@ -225,7 +226,7 @@ export async function sendCampaignViaBroadcast(
       subject: campaign.subject,
       brandSettings,
       subscriber: { name: firstSubscriber.name, email: firstSubscriber.email },
-      unsubscribeUrl: `${env.SITE_URL}/api/newsletter/unsubscribe/{{unsubscribe_token}}`,
+      unsubscribeUrl: '{{{RESEND_UNSUBSCRIBE_URL}}}',
       siteUrl: env.SITE_URL,
     });
 
