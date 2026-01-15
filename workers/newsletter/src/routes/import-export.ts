@@ -7,7 +7,7 @@
 
 import type { Env, ImportResult, Subscriber, ExportOptions } from '../types';
 import { splitName } from '../lib/resend-marketing';
-import { isAuthorized } from '../lib/auth';
+import { isAuthorizedAsync } from '../lib/auth';
 
 // ============================================================================
 // CSV Parsing Utilities
@@ -168,8 +168,8 @@ export async function handleImport(
   request: Request,
   env: Env
 ): Promise<Response> {
-  // Check authorization (using sync version for API key auth)
-  if (!isAuthorized(request, env)) {
+  // Check authorization (supports API key, CF Access, and session)
+  if (!(await isAuthorizedAsync(request, env))) {
     return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -347,8 +347,8 @@ export async function handleExport(
   request: Request,
   env: Env
 ): Promise<Response> {
-  // Check authorization
-  if (!isAuthorized(request, env)) {
+  // Check authorization (supports API key, CF Access, and session)
+  if (!(await isAuthorizedAsync(request, env))) {
     return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
