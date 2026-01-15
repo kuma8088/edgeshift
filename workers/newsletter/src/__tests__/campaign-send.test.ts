@@ -228,3 +228,131 @@ describe('List-based Campaign Delivery', () => {
     expect(recipients.results).toHaveLength(2);
   });
 });
+
+// Mock broadcast-sender for feature flag tests
+vi.mock('../lib/broadcast-sender', () => ({
+  sendCampaignViaBroadcast: vi.fn().mockResolvedValue({
+    success: true,
+    broadcastId: 'broadcast_mock_123',
+    sent: 1,
+    failed: 0,
+    results: [{ email: 'test@example.com', success: true, contactId: 'contact_123' }],
+  }),
+}));
+
+describe('Campaign Send with Broadcast API', () => {
+  beforeEach(async () => {
+    await setupTestDb();
+    const env = getTestEnv();
+
+    // Create a test subscriber
+    await env.DB.prepare(`
+      INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
+      VALUES ('sub-broadcast-1', 'broadcast-test@example.com', 'Broadcast User', 'active', 'unsub-token-broadcast')
+    `).run();
+
+    // Create a test campaign
+    await env.DB.prepare(`
+      INSERT INTO campaigns (id, subject, content, status)
+      VALUES ('camp-broadcast-1', 'Broadcast Test Subject', '<p>Broadcast Content</p>', 'draft')
+    `).run();
+  });
+
+  afterEach(async () => {
+    await cleanupTestDb();
+    vi.clearAllMocks();
+  });
+
+  it('should use Broadcast API when USE_BROADCAST_API=true and RESEND_AUDIENCE_ID is set', async () => {
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+    const baseEnv = getTestEnv();
+
+    // Override env to enable Broadcast API
+    const env = {
+      ...baseEnv,
+      USE_BROADCAST_API: 'true',
+      RESEND_AUDIENCE_ID: 'aud_test_123',
+    };
+
+    const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+
+    const response = await sendCampaign(request, env, 'camp-broadcast-1');
+    const result = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(result.success).toBe(true);
+    expect(result.data.broadcastId).toBe('broadcast_mock_123');
+    expect(sendCampaignViaBroadcast).toHaveBeenCalledTimes(1);
+
+    // Verify campaign status updated
+    const campaign = await env.DB.prepare('SELECT status FROM campaigns WHERE id = ?')
+      .bind('camp-broadcast-1').first();
+    expect(campaign?.status).toBe('sent');
+  });
+
+  it('should use Email API when USE_BROADCAST_API=false', async () => {
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+    const { sendBatchEmails } = await import('../lib/email');
+    const baseEnv = getTestEnv();
+
+    // Override env to disable Broadcast API (default)
+    const env = {
+      ...baseEnv,
+      USE_BROADCAST_API: 'false',
+      RESEND_AUDIENCE_ID: 'aud_test_123',
+    };
+
+    const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+
+    const response = await sendCampaign(request, env, 'camp-broadcast-1');
+    const result = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(result.success).toBe(true);
+    // Should NOT have broadcastId since Email API was used
+    expect(result.data.broadcastId).toBeUndefined();
+    // Broadcast API should NOT be called
+    expect(sendCampaignViaBroadcast).not.toHaveBeenCalled();
+    // Email API should be called
+    expect(sendBatchEmails).toHaveBeenCalled();
+
+    // Verify campaign status updated
+    const campaign = await env.DB.prepare('SELECT status FROM campaigns WHERE id = ?')
+      .bind('camp-broadcast-1').first();
+    expect(campaign?.status).toBe('sent');
+  });
+
+  it('should use Email API when RESEND_AUDIENCE_ID is not set even if USE_BROADCAST_API=true', async () => {
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+    const { sendBatchEmails } = await import('../lib/email');
+    const baseEnv = getTestEnv();
+
+    // Override env: flag enabled but no audience ID
+    const env = {
+      ...baseEnv,
+      USE_BROADCAST_API: 'true',
+      RESEND_AUDIENCE_ID: '', // Empty = not configured
+    };
+
+    const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+
+    const response = await sendCampaign(request, env, 'camp-broadcast-1');
+    const result = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(result.success).toBe(true);
+    // Should fall back to Email API
+    expect(result.data.broadcastId).toBeUndefined();
+    expect(sendCampaignViaBroadcast).not.toHaveBeenCalled();
+    expect(sendBatchEmails).toHaveBeenCalled();
+  });
+});
