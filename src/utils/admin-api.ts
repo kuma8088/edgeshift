@@ -761,6 +761,65 @@ export async function removeSubscriberTag(subscriberId: string, tagId: string) {
   });
 }
 
+// Import/Export API
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; email: string; reason: string }>;
+}
+
+export async function importSubscribers(
+  file: File,
+  contactListId?: string
+): Promise<{ success: boolean; data?: ImportResult; error?: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (contactListId) {
+    formData.append('contact_list_id', contactListId);
+  }
+
+  const apiKey = getApiKey();
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/subscribers/import`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Import failed' };
+    }
+
+    return data;
+  } catch (error) {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+export function getExportUrl(options?: {
+  contactListId?: string;
+  status?: 'active' | 'unsubscribed' | 'all';
+}): string {
+  const params = new URLSearchParams();
+  if (options?.contactListId) {
+    params.set('contact_list_id', options.contactListId);
+  }
+  if (options?.status) {
+    params.set('status', options.status);
+  }
+
+  const queryString = params.toString();
+  return `${API_BASE}/subscribers/export${queryString ? `?${queryString}` : ''}`;
+}
+
 // Image API
 export interface ImageUploadResponse {
   url: string;
