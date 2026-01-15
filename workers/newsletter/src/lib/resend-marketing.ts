@@ -62,9 +62,13 @@ const RETRY_DELAY_MS = 1000;
 // Utility Functions
 // ============================================================================
 
-async function sleep(ms: number): Promise<void> {
+export async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// Resend rate limit delay constant - exported for use in other modules
+// Resend default rate limit: 2 requests/second = 500ms minimum
+export const RESEND_RATE_LIMIT_DELAY_MS = 550;
 
 /**
  * Split a full name into firstName and lastName.
@@ -97,7 +101,10 @@ export function splitName(fullName: string | null | undefined): {
 
 /**
  * Fetch with retry logic and exponential backoff.
- * Only retries on 5xx errors or network failures.
+ * Retries on:
+ * - 5xx server errors
+ * - 429 rate limit errors (with longer delay)
+ * - Network failures
  */
 async function fetchWithRetry(
   url: string,
@@ -109,16 +116,46 @@ async function fetchWithRetry(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const response = await fetch(url, options);
-      // Don't retry on client errors (4xx), only on server errors (5xx)
-      if (response.ok || response.status < 500) {
+
+      // Success or non-retryable client error
+      if (response.ok || (response.status < 500 && response.status !== 429)) {
         return response;
       }
-      lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+      // Handle rate limiting (429)
+      if (response.status === 429) {
+        const responseBody = await response.json().catch(() => ({}));
+        const retryAfter = response.headers.get('Retry-After');
+        const parsedRetryAfter = retryAfter ? parseInt(retryAfter, 10) : NaN;
+        const delayMs = !isNaN(parsedRetryAfter)
+          ? parsedRetryAfter * 1000
+          : RETRY_DELAY_MS * Math.pow(2, attempt + 2); // Longer delay for rate limits
+
+        console.warn(`Rate limited by Resend API`, {
+          attempt: attempt + 1,
+          maxRetries,
+          retryAfterMs: delayMs,
+          responseBody,
+          url,
+        });
+
+        if (attempt < maxRetries - 1) {
+          await sleep(delayMs);
+          continue;
+        }
+
+        // Last attempt - set detailed error
+        lastError = new Error(
+          `Rate limited after ${maxRetries} attempts. Retry-After: ${retryAfter || 'not specified'}`
+        );
+      } else {
+        lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
     }
 
-    // Exponential backoff
+    // Exponential backoff for server errors
     if (attempt < maxRetries - 1) {
       await sleep(RETRY_DELAY_MS * Math.pow(2, attempt));
     }
@@ -167,12 +204,32 @@ export async function ensureResendContact(
       }),
     });
 
-    const result: ResendContactResponse = await response.json();
+    const responseText = await response.text();
+    let result: ResendContactResponse;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      const preview = responseText.length > 100 ? responseText.slice(0, 100) + '...' : responseText;
+      console.error('Failed to parse Resend API response', {
+        status: response.status,
+        responsePreview: preview,
+        parseError: parseError instanceof Error ? parseError.message : String(parseError),
+      });
+      return {
+        success: false,
+        error: `Invalid JSON response from Resend API (HTTP ${response.status}): ${preview}`,
+      };
+    }
 
     // 409 Conflict means contact already exists
+    // Try to extract contactId from response if Resend provides it
     if (response.status === 409) {
-      console.log(`Contact already exists: ${email}`);
-      return { success: true, existed: true };
+      console.log(`Contact already exists: ${email}`, { responseId: result.id });
+      return {
+        success: true,
+        existed: true,
+        contactId: result.id, // May be undefined if Resend doesn't return it
+      };
     }
 
     if (!response.ok || result.error) {
@@ -229,7 +286,22 @@ export async function createTempSegment(
       body: JSON.stringify({ name }),
     });
 
-    const result: ResendSegmentResponse = await response.json();
+    const responseText = await response.text();
+    let result: ResendSegmentResponse;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      const preview = responseText.length > 100 ? responseText.slice(0, 100) + '...' : responseText;
+      console.error('Failed to parse Resend API response', {
+        status: response.status,
+        responsePreview: preview,
+        parseError: parseError instanceof Error ? parseError.message : String(parseError),
+      });
+      return {
+        success: false,
+        error: `Invalid JSON response from Resend API (HTTP ${response.status}): ${preview}`,
+      };
+    }
 
     if (!response.ok || result.error) {
       console.error('Resend create segment error:', {
@@ -258,47 +330,75 @@ export async function createTempSegment(
 }
 
 interface AddContactToSegmentResponse {
-  success?: boolean;
+  object?: string;
+  id?: string;
   error?: { message: string };
 }
 
+
 /**
  * Add contacts to a segment in batch.
- * Contacts can be specified by ID or email.
+ * Contacts must be specified by contact ID (not email).
+ *
+ * Resend API: POST /contacts/segments/add
+ * Body: { contactId, segmentId }
  */
 export async function addContactsToSegment(
   config: ResendMarketingConfig,
   segmentId: string,
-  emails: string[]
+  contactIds: string[]
 ): Promise<{ success: boolean; added: number; errors: string[] }> {
   const errors: string[] = [];
   let added = 0;
 
   // Process contacts one by one (Resend API doesn't support batch add to segment)
-  for (const email of emails) {
+  for (let i = 0; i < contactIds.length; i++) {
+    const contactId = contactIds[i];
+
+    // Add delay between requests to avoid rate limiting (skip for first request)
+    if (i > 0) {
+      await sleep(RESEND_RATE_LIMIT_DELAY_MS);
+    }
+
     try {
       const response = await fetchWithRetry(
-        `${RESEND_API_BASE}/contacts/segments/${segmentId}`,
+        `${RESEND_API_BASE}/contacts/segments/add`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${config.apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({
+            contactId,
+            segmentId,
+          }),
         }
       );
 
-      const result: AddContactToSegmentResponse = await response.json();
+      const responseText = await response.text();
+      let result: AddContactToSegmentResponse;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        const preview = responseText.length > 100 ? responseText.slice(0, 100) + '...' : responseText;
+        console.error('Failed to parse Resend API response', {
+          status: response.status,
+          responsePreview: preview,
+          parseError: parseError instanceof Error ? parseError.message : String(parseError),
+        });
+        errors.push(`${contactId}: Invalid JSON response (HTTP ${response.status}): ${preview}`);
+        continue;
+      }
 
       if (!response.ok || result.error) {
-        errors.push(`${email}: ${result.error?.message || `HTTP ${response.status}`}`);
+        errors.push(`${contactId}: ${result.error?.message || `HTTP ${response.status}`}`);
       } else {
         added++;
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      errors.push(`${email}: ${errorMessage}`);
+      errors.push(`${contactId}: ${errorMessage}`);
     }
   }
 
@@ -392,7 +492,22 @@ export async function createAndSendBroadcast(
       }),
     });
 
-    const createResult: ResendBroadcastResponse = await createResponse.json();
+    const createResponseText = await createResponse.text();
+    let createResult: ResendBroadcastResponse;
+    try {
+      createResult = JSON.parse(createResponseText);
+    } catch (parseError) {
+      const preview = createResponseText.length > 100 ? createResponseText.slice(0, 100) + '...' : createResponseText;
+      console.error('Failed to parse Resend API response', {
+        status: createResponse.status,
+        responsePreview: preview,
+        parseError: parseError instanceof Error ? parseError.message : String(parseError),
+      });
+      return {
+        success: false,
+        error: `Invalid JSON response from Resend API (HTTP ${createResponse.status}): ${preview}`,
+      };
+    }
 
     if (!createResponse.ok || createResult.error) {
       console.error('Resend create broadcast error:', {
@@ -426,7 +541,24 @@ export async function createAndSendBroadcast(
       }
     );
 
-    const sendResult: SendBroadcastResponse = await sendResponse.json();
+    const sendResponseText = await sendResponse.text();
+    let sendResult: SendBroadcastResponse;
+    try {
+      sendResult = JSON.parse(sendResponseText);
+    } catch (parseError) {
+      const preview = sendResponseText.length > 100 ? sendResponseText.slice(0, 100) + '...' : sendResponseText;
+      console.error('Failed to parse Resend API response', {
+        status: sendResponse.status,
+        responsePreview: preview,
+        parseError: parseError instanceof Error ? parseError.message : String(parseError),
+        broadcastId,
+      });
+      return {
+        success: false,
+        broadcastId,
+        error: `Invalid JSON response from Resend API (HTTP ${sendResponse.status}): ${preview}`,
+      };
+    }
 
     if (!sendResponse.ok || sendResult.error) {
       console.error('Resend send broadcast error:', {

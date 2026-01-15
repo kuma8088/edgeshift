@@ -210,6 +210,41 @@ describe('Resend Marketing API Service', () => {
         })
       );
     });
+
+    it('should retry on 429 rate limit and succeed', async () => {
+      const config = createMockConfig();
+
+      // First call returns 429, second succeeds
+      mockFetch
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: { message: 'Rate limited' } }), {
+            status: 429,
+            headers: { 'Retry-After': '1' },
+          })
+        )
+        .mockResolvedValueOnce(
+          createJsonResponse({ id: 'contact-123', object: 'contact' }, 201)
+        );
+
+      const result = await ensureResendContact(config, 'test@example.com', 'Test');
+
+      expect(result.success).toBe(true);
+      expect(result.contactId).toBe('contact-123');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle invalid JSON response', async () => {
+      const config: ResendMarketingConfig = { apiKey: 'test-key' };
+
+      mockFetch.mockResolvedValueOnce(
+        new Response('<!DOCTYPE html><html>Error</html>', { status: 200 })
+      );
+
+      const result = await ensureResendContact(config, 'test@example.com');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid JSON response');
+    });
   });
 
   // ==========================================================================
@@ -276,6 +311,19 @@ describe('Resend Marketing API Service', () => {
       expect(result.success).toBe(true);
       expect(result.segmentId).toBeUndefined();
     });
+
+    it('should handle invalid JSON response', async () => {
+      const config: ResendMarketingConfig = { apiKey: 'test-key' };
+
+      mockFetch.mockResolvedValueOnce(
+        new Response('Server Error', { status: 200 })
+      );
+
+      const result = await createTempSegment(config, 'Test Segment');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid JSON response');
+    });
   });
 
   // ==========================================================================
@@ -291,7 +339,7 @@ describe('Resend Marketing API Service', () => {
       const result = await addContactsToSegment(
         config,
         'segment-123',
-        ['user1@example.com', 'user2@example.com']
+        ['contact-1', 'contact-2']
       );
 
       expect(result.success).toBe(true);
@@ -299,12 +347,13 @@ describe('Resend Marketing API Service', () => {
       expect(result.errors).toHaveLength(0);
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Verify correct API endpoint: POST /contacts/segments/add with body
       expect(mockFetch).toHaveBeenNthCalledWith(
         1,
-        'https://api.resend.com/contacts/segments/segment-123',
+        'https://api.resend.com/contacts/segments/add',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ email: 'user1@example.com' }),
+          body: JSON.stringify({ contactId: 'contact-1', segmentId: 'segment-123' }),
         })
       );
     });
@@ -319,13 +368,13 @@ describe('Resend Marketing API Service', () => {
       const result = await addContactsToSegment(
         config,
         'segment-123',
-        ['user1@example.com', 'user2@example.com']
+        ['contact-1', 'contact-2']
       );
 
       expect(result.success).toBe(false);
       expect(result.added).toBe(1);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('user2@example.com');
+      expect(result.errors[0]).toContain('contact-2');
       expect(result.errors[0]).toContain('Contact not found');
     });
 
@@ -339,7 +388,7 @@ describe('Resend Marketing API Service', () => {
       const result = await addContactsToSegment(
         config,
         'segment-123',
-        ['user1@example.com', 'user2@example.com']
+        ['contact-1', 'contact-2']
       );
 
       expect(result.success).toBe(false);
@@ -347,7 +396,7 @@ describe('Resend Marketing API Service', () => {
       expect(result.errors).toHaveLength(1);
     });
 
-    it('should handle empty email list', async () => {
+    it('should handle empty contactId list', async () => {
       const config = createMockConfig();
 
       const result = await addContactsToSegment(config, 'segment-123', []);
@@ -370,7 +419,7 @@ describe('Resend Marketing API Service', () => {
       const result = await addContactsToSegment(
         config,
         'segment-123',
-        ['user1@example.com', 'user2@example.com']
+        ['contact-1', 'contact-2']
       );
 
       expect(result.success).toBe(false);
@@ -608,6 +657,24 @@ describe('Resend Marketing API Service', () => {
           }),
         })
       );
+    });
+
+    it('should handle invalid JSON response on create', async () => {
+      const config: ResendMarketingConfig = { apiKey: 'test-key' };
+
+      mockFetch.mockResolvedValueOnce(
+        new Response('Gateway Timeout', { status: 200 })
+      );
+
+      const result = await createAndSendBroadcast(config, {
+        segmentId: 'seg-123',
+        from: 'test@example.com',
+        subject: 'Test',
+        html: '<p>Test</p>',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid JSON response');
     });
   });
 });

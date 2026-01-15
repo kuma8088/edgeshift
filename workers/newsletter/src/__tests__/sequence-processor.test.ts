@@ -849,7 +849,7 @@ describe('Sequence Processor', () => {
       expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
         expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
         'segment-123',
-        ['broadcast-test@example.com']
+        ['contact-123']
       );
 
       expect(mockedCreateAndSendBroadcast).toHaveBeenCalledWith(
