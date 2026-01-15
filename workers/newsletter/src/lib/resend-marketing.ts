@@ -1,0 +1,458 @@
+/**
+ * Resend Marketing API Service
+ *
+ * This module provides functions for interacting with Resend's Marketing API.
+ * Design principles:
+ * - D1 is master, Resend is cache (lazy sync)
+ * - Contacts created on first broadcast send, not on subscription
+ * - Temporary segments used for broadcast targeting
+ */
+
+import type { ResendContact, ResendSegment } from '../types';
+
+// ============================================================================
+// Configuration Types
+// ============================================================================
+
+export interface ResendMarketingConfig {
+  apiKey: string;
+  /** Default audience/segment ID for contacts */
+  defaultSegmentId?: string;
+}
+
+export interface CreateContactResult {
+  success: boolean;
+  contactId?: string;
+  error?: string;
+  /** Whether the contact already existed */
+  existed?: boolean;
+}
+
+export interface CreateSegmentResult {
+  success: boolean;
+  segmentId?: string;
+  error?: string;
+}
+
+export interface CreateBroadcastResult {
+  success: boolean;
+  broadcastId?: string;
+  error?: string;
+}
+
+export interface BroadcastOptions {
+  segmentId: string;
+  from: string;
+  subject: string;
+  html: string;
+  replyTo?: string;
+  /** Internal name for the broadcast */
+  name?: string;
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const RESEND_API_BASE = 'https://api.resend.com';
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Split a full name into firstName and lastName.
+ * Handles various cases:
+ * - "John Doe" -> { firstName: "John", lastName: "Doe" }
+ * - "John" -> { firstName: "John", lastName: "" }
+ * - "John Middle Doe" -> { firstName: "John", lastName: "Middle Doe" }
+ * - null/undefined -> { firstName: "", lastName: "" }
+ */
+export function splitName(fullName: string | null | undefined): {
+  firstName: string;
+  lastName: string;
+} {
+  if (!fullName || fullName.trim() === '') {
+    return { firstName: '', lastName: '' };
+  }
+
+  const trimmed = fullName.trim();
+  const parts = trimmed.split(/\s+/);
+
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(' ');
+
+  return { firstName, lastName };
+}
+
+/**
+ * Fetch with retry logic and exponential backoff.
+ * Only retries on 5xx errors or network failures.
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = MAX_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      // Don't retry on client errors (4xx), only on server errors (5xx)
+      if (response.ok || response.status < 500) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+
+    // Exponential backoff
+    if (attempt < maxRetries - 1) {
+      await sleep(RETRY_DELAY_MS * Math.pow(2, attempt));
+    }
+  }
+
+  throw lastError || new Error('Max retries exceeded');
+}
+
+// ============================================================================
+// Contact Management
+// ============================================================================
+
+interface ResendContactResponse {
+  object?: string;
+  id?: string;
+  error?: { message: string };
+}
+
+/**
+ * Ensure a contact exists in Resend (lazy sync).
+ * Creates the contact if it doesn't exist, or returns existing contact info.
+ *
+ * This implements the "D1 is master" pattern:
+ * - D1 subscribers are the source of truth
+ * - Resend contacts are synced lazily on first broadcast
+ */
+export async function ensureResendContact(
+  config: ResendMarketingConfig,
+  email: string,
+  name?: string | null
+): Promise<CreateContactResult> {
+  const { firstName, lastName } = splitName(name);
+
+  try {
+    const response = await fetchWithRetry(`${RESEND_API_BASE}/contacts`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        unsubscribed: false,
+      }),
+    });
+
+    const result: ResendContactResponse = await response.json();
+
+    // 409 Conflict means contact already exists
+    if (response.status === 409) {
+      console.log(`Contact already exists: ${email}`);
+      return { success: true, existed: true };
+    }
+
+    if (!response.ok || result.error) {
+      console.error('Resend create contact error:', {
+        status: response.status,
+        error: result.error,
+        email,
+      });
+      return {
+        success: false,
+        error: result.error?.message || `Failed to create contact (HTTP ${response.status})`,
+      };
+    }
+
+    return {
+      success: true,
+      contactId: result.id,
+      existed: false,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Contact creation error:', { error: errorMessage, email });
+    return {
+      success: false,
+      error: `Contact creation error: ${errorMessage}`,
+    };
+  }
+}
+
+// ============================================================================
+// Segment Management
+// ============================================================================
+
+interface ResendSegmentResponse {
+  id?: string;
+  error?: { message: string };
+}
+
+/**
+ * Create a temporary segment for broadcast targeting.
+ * After the broadcast is sent, delete the segment with deleteSegment().
+ */
+export async function createTempSegment(
+  config: ResendMarketingConfig,
+  name: string
+): Promise<CreateSegmentResult> {
+  try {
+    const response = await fetchWithRetry(`${RESEND_API_BASE}/segments`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    const result: ResendSegmentResponse = await response.json();
+
+    if (!response.ok || result.error) {
+      console.error('Resend create segment error:', {
+        status: response.status,
+        error: result.error,
+        name,
+      });
+      return {
+        success: false,
+        error: result.error?.message || `Failed to create segment (HTTP ${response.status})`,
+      };
+    }
+
+    return {
+      success: true,
+      segmentId: result.id,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Segment creation error:', { error: errorMessage, name });
+    return {
+      success: false,
+      error: `Segment creation error: ${errorMessage}`,
+    };
+  }
+}
+
+interface AddContactToSegmentResponse {
+  success?: boolean;
+  error?: { message: string };
+}
+
+/**
+ * Add contacts to a segment in batch.
+ * Contacts can be specified by ID or email.
+ */
+export async function addContactsToSegment(
+  config: ResendMarketingConfig,
+  segmentId: string,
+  emails: string[]
+): Promise<{ success: boolean; added: number; errors: string[] }> {
+  const errors: string[] = [];
+  let added = 0;
+
+  // Process contacts one by one (Resend API doesn't support batch add to segment)
+  for (const email of emails) {
+    try {
+      const response = await fetchWithRetry(
+        `${RESEND_API_BASE}/contacts/segments/${segmentId}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      const result: AddContactToSegmentResponse = await response.json();
+
+      if (!response.ok || result.error) {
+        errors.push(`${email}: ${result.error?.message || `HTTP ${response.status}`}`);
+      } else {
+        added++;
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      errors.push(`${email}: ${errorMessage}`);
+    }
+  }
+
+  return {
+    success: errors.length === 0,
+    added,
+    errors,
+  };
+}
+
+/**
+ * Delete a segment (cleanup after broadcast).
+ */
+export async function deleteSegment(
+  config: ResendMarketingConfig,
+  segmentId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetchWithRetry(`${RESEND_API_BASE}/segments/${segmentId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      const error = (result as { error?: { message: string } }).error;
+      console.error('Resend delete segment error:', {
+        status: response.status,
+        error,
+        segmentId,
+      });
+      return {
+        success: false,
+        error: error?.message || `Failed to delete segment (HTTP ${response.status})`,
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Segment deletion error:', { error: errorMessage, segmentId });
+    return {
+      success: false,
+      error: `Segment deletion error: ${errorMessage}`,
+    };
+  }
+}
+
+// ============================================================================
+// Broadcast Management
+// ============================================================================
+
+interface ResendBroadcastResponse {
+  id?: string;
+  error?: { message: string };
+}
+
+interface SendBroadcastResponse {
+  id?: string;
+  error?: { message: string };
+}
+
+/**
+ * Create and send a broadcast to a segment.
+ *
+ * Workflow:
+ * 1. Create broadcast (returns draft)
+ * 2. Send broadcast
+ */
+export async function createAndSendBroadcast(
+  config: ResendMarketingConfig,
+  options: BroadcastOptions
+): Promise<CreateBroadcastResult> {
+  try {
+    // Step 1: Create broadcast
+    const createResponse = await fetchWithRetry(`${RESEND_API_BASE}/broadcasts`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        segment_id: options.segmentId,
+        from: options.from,
+        subject: options.subject,
+        html: options.html,
+        reply_to: options.replyTo,
+        name: options.name,
+      }),
+    });
+
+    const createResult: ResendBroadcastResponse = await createResponse.json();
+
+    if (!createResponse.ok || createResult.error) {
+      console.error('Resend create broadcast error:', {
+        status: createResponse.status,
+        error: createResult.error,
+      });
+      return {
+        success: false,
+        error:
+          createResult.error?.message ||
+          `Failed to create broadcast (HTTP ${createResponse.status})`,
+      };
+    }
+
+    const broadcastId = createResult.id;
+    if (!broadcastId) {
+      return {
+        success: false,
+        error: 'Broadcast created but no ID returned',
+      };
+    }
+
+    // Step 2: Send broadcast
+    const sendResponse = await fetchWithRetry(
+      `${RESEND_API_BASE}/broadcasts/${broadcastId}/send`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+      }
+    );
+
+    const sendResult: SendBroadcastResponse = await sendResponse.json();
+
+    if (!sendResponse.ok || sendResult.error) {
+      console.error('Resend send broadcast error:', {
+        status: sendResponse.status,
+        error: sendResult.error,
+        broadcastId,
+      });
+      return {
+        success: false,
+        broadcastId,
+        error:
+          sendResult.error?.message ||
+          `Failed to send broadcast (HTTP ${sendResponse.status})`,
+      };
+    }
+
+    return {
+      success: true,
+      broadcastId,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Broadcast error:', { error: errorMessage });
+    return {
+      success: false,
+      error: `Broadcast error: ${errorMessage}`,
+    };
+  }
+}

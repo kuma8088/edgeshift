@@ -8,6 +8,8 @@ export interface Env {
   SENDER_NAME: string;
   SITE_URL: string;
   RESEND_WEBHOOK_SECRET: string;
+  RESEND_AUDIENCE_ID?: string; // Optional: Resend audience ID for Marketing API
+  USE_BROADCAST_API?: string; // Optional: set to 'true' to use Broadcast API
   ADMIN_EMAIL?: string; // Optional: for milestone achievement notifications
   RATE_LIMIT_KV?: KVNamespace; // Optional: only required when rate limiting is enabled
   CF_ACCESS_AUD?: string; // Optional: Cloudflare Access Application Audience Tag
@@ -525,4 +527,40 @@ export interface TestSendRequest {
   content: string;
   subject: string;
   to: string;
+}
+
+// Resend Marketing API types
+export interface ResendContact {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  created_at: string;
+  unsubscribed: boolean;
+}
+
+export interface ResendSegment {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface ResendBroadcast {
+  id: string;
+  name: string;
+  audience_id: string;
+  from: string;
+  subject: string;
+  reply_to?: string;
+  preview_text?: string;
+  status: 'draft' | 'queued' | 'sending' | 'sent';
+  created_at: string;
+  scheduled_at?: string;
+  sent_at?: string;
+}
+
+export interface ResendAudience {
+  id: string;
+  name: string;
+  created_at: string;
 }

@@ -1,7 +1,8 @@
-import type { Env, BrandSettings } from '../types';
+import type { Env, BrandSettings, Subscriber, SequenceStep } from '../types';
 import { sendEmail } from './email';
 import { recordSequenceDeliveryLog } from './delivery';
 import { renderEmail, getDefaultBrandSettings } from './templates';
+import { sendSequenceStepViaBroadcast } from './broadcast-sender';
 
 interface PendingSequenceEmail {
   subscriber_sequence_id: string;
@@ -178,40 +179,132 @@ export async function processSequenceEmails(env: Env): Promise<void> {
       const templateId = email.template_id || brandSettings.default_template_id || 'simple';
       const unsubscribeUrl = `${env.SITE_URL}/api/newsletter/unsubscribe/${email.unsubscribe_token}`;
 
-      const result = await sendEmail(
-        env.RESEND_API_KEY,
-        `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
-        {
-          to: email.email,
+      // Render HTML content once (used by both Email API and Broadcast API)
+      const html = renderEmail({
+        templateId,
+        content: email.content,
+        subject: email.subject,
+        brandSettings,
+        subscriber: { name: email.name, email: email.email },
+        unsubscribeUrl,
+        siteUrl: env.SITE_URL,
+      });
+
+      // Check if Broadcast API should be used
+      const useBroadcastApi = env.USE_BROADCAST_API === 'true' && !!env.RESEND_AUDIENCE_ID;
+
+      let sendSuccess = false;
+
+      if (useBroadcastApi) {
+        // Use Broadcast API for sequence step
+        // Construct Subscriber object from query data
+        const subscriber: Subscriber = {
+          id: email.subscriber_id,
+          email: email.email,
+          name: email.name,
+          status: 'active',
+          confirm_token: null,
+          unsubscribe_token: email.unsubscribe_token,
+          signup_page_slug: null,
+          subscribed_at: null,
+          unsubscribed_at: null,
+          created_at: 0,
+          referral_code: null,
+          referred_by: null,
+          referral_count: 0,
+        };
+
+        // Construct SequenceStep object from query data
+        const step: SequenceStep = {
+          id: email.step_id,
+          sequence_id: email.sequence_id,
+          step_number: email.step_number,
+          delay_days: 0,
           subject: email.subject,
-          html: renderEmail({
-            templateId,
-            content: email.content,
+          content: email.content,
+          template_id: email.template_id,
+          is_enabled: 1,
+          created_at: 0,
+        };
+
+        const broadcastResult = await sendSequenceStepViaBroadcast(env, subscriber, step, html);
+        sendSuccess = broadcastResult.success;
+
+        // sendSequenceStepViaBroadcast already records delivery logs
+        if (!sendSuccess) {
+          console.error(`Failed to send sequence email via Broadcast API to ${email.email}:`, broadcastResult.error);
+        }
+      } else {
+        // Use traditional Email API (Transactional API)
+        const result = await sendEmail(
+          env.RESEND_API_KEY,
+          `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
+          {
+            to: email.email,
             subject: email.subject,
-            brandSettings,
-            subscriber: { name: email.name, email: email.email },
-            unsubscribeUrl,
-            siteUrl: env.SITE_URL,
-          }),
-        }
-      );
+            html,
+          }
+        );
 
-      if (result.success) {
-        // Record delivery log
-        try {
-          await recordSequenceDeliveryLog(env, {
-            sequenceId: email.sequence_id,
-            sequenceStepId: email.step_id,
-            subscriberId: email.subscriber_id,
-            email: email.email,
-            emailSubject: email.subject,
-            resendId: result.id,
-          });
-        } catch (logError) {
-          console.error('Failed to record sequence delivery log:', logError);
-          // Continue - email was sent successfully
-        }
+        sendSuccess = result.success;
 
+        if (result.success) {
+          // Record delivery log for Email API
+          try {
+            await recordSequenceDeliveryLog(env, {
+              sequenceId: email.sequence_id,
+              sequenceStepId: email.step_id,
+              subscriberId: email.subscriber_id,
+              email: email.email,
+              emailSubject: email.subject,
+              resendId: result.id,
+            });
+          } catch (logError) {
+            // Partial failure: email was sent but delivery tracking is broken
+            // This will cause analytics gaps and potential duplicate sends on retry
+            console.error('Failed to record sequence delivery log:', {
+              error: logError instanceof Error ? logError.message : String(logError),
+              context: {
+                sequenceId: email.sequence_id,
+                stepId: email.step_id,
+                subscriberId: email.subscriber_id,
+                email: email.email,
+              },
+              consequence: 'Delivery analytics will be incomplete; subscriber progress will still be updated',
+            });
+          }
+        } else {
+          // Record failed delivery log for Email API
+          try {
+            await recordSequenceDeliveryLog(env, {
+              sequenceId: email.sequence_id,
+              sequenceStepId: email.step_id,
+              subscriberId: email.subscriber_id,
+              email: email.email,
+              emailSubject: email.subject,
+              status: 'failed',
+              errorMessage: result.error,
+            });
+          } catch (logError) {
+            // Failed to record the failure - this creates a gap in delivery analytics
+            // but the actual send failure is still logged below
+            console.error('Failed to record sequence delivery failure log:', {
+              error: logError instanceof Error ? logError.message : String(logError),
+              context: {
+                sequenceId: email.sequence_id,
+                stepId: email.step_id,
+                subscriberId: email.subscriber_id,
+                email: email.email,
+              },
+              consequence: 'Failed delivery will not appear in analytics; send error is logged separately',
+            });
+          }
+          console.error(`Failed to send sequence email to ${email.email}:`, result.error);
+        }
+      }
+
+      // Update subscriber_sequences progress if send was successful
+      if (sendSuccess) {
         // Check if this is the last step (only count enabled steps)
         const totalSteps = await env.DB.prepare(
           'SELECT COUNT(*) as count FROM sequence_steps WHERE sequence_id = ? AND is_enabled = 1'
@@ -232,22 +325,6 @@ export async function processSequenceEmails(env: Env): Promise<void> {
         ).run();
 
         console.log(`Sequence step ${email.step_number} sent to ${email.email}${isComplete ? ' (completed)' : ''}`);
-      } else {
-        // Record failed delivery log
-        try {
-          await recordSequenceDeliveryLog(env, {
-            sequenceId: email.sequence_id,
-            sequenceStepId: email.step_id,
-            subscriberId: email.subscriber_id,
-            email: email.email,
-            emailSubject: email.subject,
-            status: 'failed',
-            errorMessage: result.error,
-          });
-        } catch (logError) {
-          console.error('Failed to record sequence delivery log:', logError);
-        }
-        console.error(`Failed to send sequence email to ${email.email}:`, result.error);
       }
     }
   } catch (error) {
@@ -282,8 +359,17 @@ export async function enrollSubscriberInSequences(env: Env, subscriberId: string
 
         console.log(`Enrolled subscriber ${subscriberId} in sequence ${seq.id}`);
       } catch (error) {
-        // Ignore duplicate key errors (already enrolled)
-        console.log(`Subscriber ${subscriberId} already enrolled in sequence ${seq.id}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('UNIQUE constraint failed')) {
+          console.log(`Subscriber ${subscriberId} already enrolled in sequence ${seq.id}`);
+        } else {
+          console.error('Failed to enroll subscriber in sequence:', {
+            subscriberId,
+            sequenceId: seq.id,
+            error: errorMessage,
+          });
+          // Don't throw - continue with other sequences
+        }
       }
     }
   } catch (error) {

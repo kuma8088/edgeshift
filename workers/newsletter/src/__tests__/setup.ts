@@ -15,6 +15,8 @@ export function getTestEnv() {
     SENDER_NAME: 'Test Newsletter',
     SITE_URL: 'http://localhost:4321',
     RESEND_WEBHOOK_SECRET: webhookSecret,
+    RESEND_AUDIENCE_ID: 'test-audience-id',
+    USE_BROADCAST_API: 'false', // Default to Email API for backwards compatibility
     // RATE_LIMIT_KV is NOT included by default
     // Tests that need rate limiting must provide it explicitly
   };
@@ -35,7 +37,8 @@ export async function setupTestDb() {
       created_at INTEGER DEFAULT (unixepoch()),
       referral_code TEXT UNIQUE,
       referred_by TEXT,
-      referral_count INTEGER DEFAULT 0
+      referral_count INTEGER DEFAULT 0,
+      resend_contact_id TEXT
     )`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS campaigns (
       id TEXT PRIMARY KEY,

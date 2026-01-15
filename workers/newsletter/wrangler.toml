@@ -152,3 +152,6 @@ bucket_name = "edgeshift-newsletter-images"
 # - TURNSTILE_SECRET_KEY
 # - ADMIN_API_KEY
 # - RESEND_WEBHOOK_SECRET (for webhook signature verification)
+
+# Resend Marketing API (set via wrangler secret put in production)
+# RESEND_AUDIENCE_ID = "your-audience-id"
