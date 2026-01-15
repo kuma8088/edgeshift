@@ -9,6 +9,7 @@ export interface Env {
   SITE_URL: string;
   RESEND_WEBHOOK_SECRET: string;
   RESEND_AUDIENCE_ID?: string; // Optional: Resend audience ID for Marketing API
+  USE_BROADCAST_API?: string; // Optional: set to 'true' to use Broadcast API
   ADMIN_EMAIL?: string; // Optional: for milestone achievement notifications
   RATE_LIMIT_KV?: KVNamespace; // Optional: only required when rate limiting is enabled
   CF_ACCESS_AUD?: string; // Optional: Cloudflare Access Application Audience Tag

@@ -1,6 +1,7 @@
 import type { Env, Campaign, Subscriber, BrandSettings } from '../types';
 import { isAuthorizedAsync } from '../lib/auth';
 import { sendBatchEmails } from '../lib/email';
+import { sendCampaignViaBroadcast } from '../lib/broadcast-sender';
 import { recordDeliveryLogs, getDeliveryStats } from '../lib/delivery';
 import { errorResponse, successResponse } from '../lib/response';
 import { renderEmail, getDefaultBrandSettings } from '../lib/templates';
@@ -27,6 +28,44 @@ export async function sendCampaign(
     if (campaign.status === 'sent') {
       return errorResponse('Campaign already sent', 400);
     }
+
+    // Check if Broadcast API should be used
+    const useBroadcastApi = env.USE_BROADCAST_API === 'true' && !!env.RESEND_AUDIENCE_ID;
+
+    if (useBroadcastApi) {
+      // Use Broadcast API
+      const result = await sendCampaignViaBroadcast(campaign, env);
+
+      if (!result.success) {
+        // Update campaign status to failed
+        await env.DB.prepare(`
+          UPDATE campaigns SET status = 'failed' WHERE id = ?
+        `).bind(campaignId).run();
+
+        return errorResponse(result.error || 'Broadcast send failed', 500);
+      }
+
+      // Update campaign status
+      const now = Math.floor(Date.now() / 1000);
+      await env.DB.prepare(`
+        UPDATE campaigns
+        SET status = 'sent', sent_at = ?, recipient_count = ?
+        WHERE id = ?
+      `).bind(now, result.sent, campaignId).run();
+
+      // Get delivery stats
+      const stats = await getDeliveryStats(env, campaignId);
+
+      return successResponse({
+        campaignId,
+        sent: result.sent,
+        total: result.sent + result.failed,
+        broadcastId: result.broadcastId,
+        stats,
+      });
+    }
+
+    // Original Email API flow continues below...
 
     // Get active subscribers (list-based or broadcast)
     let subscribersResult;
