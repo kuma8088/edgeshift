@@ -192,7 +192,12 @@ export async function getCampaignStats(
       clickRate: stats.total > 0 ? (stats.clicked / stats.total * 100).toFixed(2) + '%' : '0%',
     });
   } catch (error) {
-    console.error('Get campaign stats error:', error);
-    return errorResponse('Internal server error', 500);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Get campaign stats error:', {
+      campaignId,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return errorResponse(`Failed to get campaign stats: ${errorMessage}`, 500);
   }
 }

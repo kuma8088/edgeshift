@@ -46,21 +46,32 @@ export async function getTargetSubscribers(
   campaign: Campaign,
   env: Env
 ): Promise<Subscriber[]> {
-  let result;
+  try {
+    let result;
 
-  if (campaign.contact_list_id) {
-    result = await env.DB.prepare(`
-      SELECT s.* FROM subscribers s
-      JOIN contact_list_members clm ON s.id = clm.subscriber_id
-      WHERE clm.contact_list_id = ? AND s.status = 'active'
-    `).bind(campaign.contact_list_id).all<Subscriber>();
-  } else {
-    result = await env.DB.prepare(
-      "SELECT * FROM subscribers WHERE status = 'active'"
-    ).all<Subscriber>();
+    if (campaign.contact_list_id) {
+      result = await env.DB.prepare(`
+        SELECT s.* FROM subscribers s
+        JOIN contact_list_members clm ON s.id = clm.subscriber_id
+        WHERE clm.contact_list_id = ? AND s.status = 'active'
+      `).bind(campaign.contact_list_id).all<Subscriber>();
+    } else {
+      result = await env.DB.prepare(
+        "SELECT * FROM subscribers WHERE status = 'active'"
+      ).all<Subscriber>();
+    }
+
+    return result.results || [];
+  } catch (error) {
+    console.error('Failed to get target subscribers:', {
+      campaignId: campaign.id,
+      contactListId: campaign.contact_list_id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new Error(
+      `Failed to get target subscribers for campaign ${campaign.id}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
-
-  return result.results || [];
 }
 
 /**
@@ -215,7 +226,7 @@ export async function sendCampaignViaBroadcast(
       };
     }
 
-    // 7. Record delivery logs
+    // 7. Record delivery logs (best effort - don't fail if logging fails)
     const successfulSubscribers = subscribers.filter((sub) =>
       results.find((r) => r.email === sub.email && r.success)
     );
@@ -226,7 +237,18 @@ export async function sendCampaignViaBroadcast(
       resendId: broadcastResult.broadcastId,
     }));
 
-    await recordDeliveryLogs(env, campaign.id, successfulSubscribers, deliveryResults);
+    try {
+      await recordDeliveryLogs(env, campaign.id, successfulSubscribers, deliveryResults);
+    } catch (logError) {
+      // Broadcast was already sent successfully - don't fail the operation
+      // Just log the error for debugging
+      console.error('Failed to record delivery logs after successful broadcast:', {
+        campaignId: campaign.id,
+        broadcastId: broadcastResult.broadcastId,
+        subscriberCount: successfulSubscribers.length,
+        error: logError instanceof Error ? logError.message : String(logError),
+      });
+    }
 
     const successCount = results.filter((r) => r.success).length;
     const failedCount = results.filter((r) => !r.success).length;

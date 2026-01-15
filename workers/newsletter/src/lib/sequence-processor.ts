@@ -260,8 +260,18 @@ export async function processSequenceEmails(env: Env): Promise<void> {
               resendId: result.id,
             });
           } catch (logError) {
-            console.error('Failed to record sequence delivery log:', logError);
-            // Continue - email was sent successfully
+            // Partial failure: email was sent but delivery tracking is broken
+            // This will cause analytics gaps and potential duplicate sends on retry
+            console.error('Failed to record sequence delivery log:', {
+              error: logError instanceof Error ? logError.message : String(logError),
+              context: {
+                sequenceId: email.sequence_id,
+                stepId: email.step_id,
+                subscriberId: email.subscriber_id,
+                email: email.email,
+              },
+              consequence: 'Delivery analytics will be incomplete; subscriber progress will still be updated',
+            });
           }
         } else {
           // Record failed delivery log for Email API
