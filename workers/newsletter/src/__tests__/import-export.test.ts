@@ -131,6 +131,27 @@ describe('CSV Import/Export', () => {
     });
   });
 
+  describe('isValidEmail', () => {
+    it('should accept valid email formats', async () => {
+      const { isValidEmail } = await import('../routes/import-export');
+      expect(isValidEmail('user@example.com')).toBe(true);
+      expect(isValidEmail('user.name@example.co.jp')).toBe(true);
+      expect(isValidEmail('user+tag@example.com')).toBe(true);
+      expect(isValidEmail('test123@test.org')).toBe(true);
+    });
+
+    it('should reject invalid email formats', async () => {
+      const { isValidEmail } = await import('../routes/import-export');
+      expect(isValidEmail('invalid')).toBe(false);
+      expect(isValidEmail('@example.com')).toBe(false);
+      expect(isValidEmail('user@')).toBe(false);
+      expect(isValidEmail('user@.com')).toBe(false);
+      expect(isValidEmail('')).toBe(false);
+      expect(isValidEmail('user @example.com')).toBe(false);
+      expect(isValidEmail('user@ example.com')).toBe(false);
+    });
+  });
+
   describe('handleImport', () => {
     beforeEach(async () => {
       // Clear subscribers table

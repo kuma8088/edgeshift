@@ -48,9 +48,13 @@ export function ImportModal({ isOpen, onClose, onSuccess }: Props) {
       const res = await getContactLists();
       if (res.success && res.data) {
         setContactLists(res.data.lists);
+      } else {
+        console.error('Failed to load contact lists:', res.error);
+        setError(res.error || 'コンタクトリストの取得に失敗しました');
       }
     } catch (err) {
       console.error('Failed to load contact lists:', err);
+      setError('コンタクトリストの取得に失敗しました');
     }
   }
 
