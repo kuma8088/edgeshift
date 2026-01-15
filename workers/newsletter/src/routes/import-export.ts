@@ -309,3 +309,124 @@ export async function handleImport(
     );
   }
 }
+
+// ============================================================================
+// CSV Export Utilities
+// ============================================================================
+
+/**
+ * Escape a value for CSV output.
+ * Handles commas, quotes, and newlines.
+ */
+function escapeCSVValue(value: string | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  // If value contains comma, quote, or newline, wrap in quotes
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  return value;
+}
+
+// ============================================================================
+// Export Handler
+// ============================================================================
+
+/**
+ * Handle GET /api/subscribers/export
+ *
+ * Exports subscribers to CSV format.
+ * Supports filtering by:
+ * - status: 'active' | 'unsubscribed' | 'all'
+ * - contact_list_id: Filter to members of a specific list
+ */
+export async function handleExport(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  // Check authorization
+  if (!isAuthorized(request, env)) {
+    return new Response(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const url = new URL(request.url);
+    const contactListId = url.searchParams.get('contact_list_id');
+    const status = url.searchParams.get('status') as 'active' | 'unsubscribed' | 'all' | null;
+
+    let query: string;
+    const params: (string | number)[] = [];
+
+    if (contactListId) {
+      query = `
+        SELECT s.* FROM subscribers s
+        INNER JOIN contact_list_members clm ON s.id = clm.subscriber_id
+        WHERE clm.contact_list_id = ?
+      `;
+      params.push(contactListId);
+
+      if (status && status !== 'all') {
+        query += ' AND s.status = ?';
+        params.push(status);
+      }
+    } else {
+      query = 'SELECT * FROM subscribers';
+
+      if (status && status !== 'all') {
+        query += ' WHERE status = ?';
+        params.push(status);
+      }
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    // Execute query with all bindings
+    const stmt = env.DB.prepare(query);
+    const boundStmt = params.length > 0 ? stmt.bind(...params) : stmt;
+    const result = await boundStmt.all<Subscriber>();
+    const subscribers = result.results || [];
+
+    // Build CSV
+    const headers = ['email', 'first_name', 'last_name', 'status', 'created_at'];
+    const lines: string[] = [headers.join(',')];
+
+    for (const sub of subscribers) {
+      const { firstName, lastName } = splitName(sub.name);
+      const createdAt = sub.created_at
+        ? new Date(sub.created_at).toISOString()
+        : '';
+
+      const row = [
+        escapeCSVValue(sub.email),
+        escapeCSVValue(firstName),
+        escapeCSVValue(lastName),
+        escapeCSVValue(sub.status),
+        escapeCSVValue(createdAt),
+      ];
+      lines.push(row.join(','));
+    }
+
+    const csv = lines.join('\n');
+    const filename = `subscribers_${new Date().toISOString().split('T')[0]}.csv`;
+
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (error) {
+    console.error('Export error:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Export failed' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}

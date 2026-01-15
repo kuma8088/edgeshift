@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
-import { handleImport } from '../routes/import-export';
+import { handleImport, handleExport } from '../routes/import-export';
 
 const env = getTestEnv();
 
@@ -267,6 +267,106 @@ describe('CSV Import/Export', () => {
 
       expect(response.status).toBe(400);
       expect(result.error).toContain('No file');
+    });
+  });
+
+  describe('handleExport', () => {
+    beforeEach(async () => {
+      await env.DB.prepare('DELETE FROM subscribers').run();
+      await env.DB.prepare('DELETE FROM contact_list_members').run();
+      await env.DB.prepare('DELETE FROM contact_lists').run();
+
+      // Insert test subscribers
+      const now = Date.now();
+      await env.DB.prepare(
+        `INSERT INTO subscribers (id, email, name, status, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind('sub-1', 'active@example.com', 'John Doe', 'active', now).run();
+
+      await env.DB.prepare(
+        `INSERT INTO subscribers (id, email, name, status, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind('sub-2', 'unsub@example.com', 'Jane Smith', 'unsubscribed', now).run();
+    });
+
+    it('should export all subscribers as CSV', async () => {
+      const request = new Request('http://localhost/api/subscribers/export', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleExport(request, env);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('text/csv');
+      expect(response.headers.get('Content-Disposition')).toContain('attachment');
+
+      const csv = await response.text();
+      expect(csv).toContain('email,first_name,last_name,status,created_at');
+      expect(csv).toContain('active@example.com');
+      expect(csv).toContain('unsub@example.com');
+    });
+
+    it('should filter by status=active', async () => {
+      const request = new Request('http://localhost/api/subscribers/export?status=active', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleExport(request, env);
+      const csv = await response.text();
+
+      expect(csv).toContain('active@example.com');
+      expect(csv).not.toContain('unsub@example.com');
+    });
+
+    it('should filter by contact list', async () => {
+      // Create list and add one subscriber
+      await env.DB.prepare(
+        `INSERT INTO contact_lists (id, name, created_at, updated_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind('list-1', 'Test List', Date.now(), Date.now()).run();
+
+      await env.DB.prepare(
+        `INSERT INTO contact_list_members (id, contact_list_id, subscriber_id, added_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind('mem-1', 'list-1', 'sub-1', Date.now()).run();
+
+      const request = new Request('http://localhost/api/subscribers/export?contact_list_id=list-1', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleExport(request, env);
+      const csv = await response.text();
+
+      expect(csv).toContain('active@example.com');
+      expect(csv).not.toContain('unsub@example.com');
+    });
+
+    it('should split name into first_name and last_name', async () => {
+      const request = new Request('http://localhost/api/subscribers/export', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${env.ADMIN_API_KEY}` },
+      });
+
+      const response = await handleExport(request, env);
+      const csv = await response.text();
+      const lines = csv.split('\n');
+
+      // Find the line with John Doe
+      const johnLine = lines.find(l => l.includes('active@example.com'));
+      expect(johnLine).toContain('John');
+      expect(johnLine).toContain('Doe');
+    });
+
+    it('should return 401 without authorization', async () => {
+      const request = new Request('http://localhost/api/subscribers/export', {
+        method: 'GET',
+      });
+
+      const response = await handleExport(request, env);
+      expect(response.status).toBe(401);
     });
   });
 });
