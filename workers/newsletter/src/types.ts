@@ -526,3 +526,39 @@ export interface TestSendRequest {
   subject: string;
   to: string;
 }
+
+// Resend Marketing API types
+export interface ResendContact {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  created_at: string;
+  unsubscribed: boolean;
+}
+
+export interface ResendSegment {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface ResendBroadcast {
+  id: string;
+  name: string;
+  audience_id: string;
+  from: string;
+  subject: string;
+  reply_to?: string;
+  preview_text?: string;
+  status: 'draft' | 'queued' | 'sending' | 'sent';
+  created_at: string;
+  scheduled_at?: string;
+  sent_at?: string;
+}
+
+export interface ResendAudience {
+  id: string;
+  name: string;
+  created_at: string;
+}
