@@ -17,6 +17,8 @@ import {
   addContactsToSegment,
   deleteSegment,
   createAndSendBroadcast,
+  sleep,
+  RESEND_RATE_LIMIT_DELAY_MS,
   type ResendMarketingConfig,
 } from './resend-marketing';
 import { recordDeliveryLogs, recordSequenceDeliveryLog } from './delivery';
@@ -28,6 +30,7 @@ export interface BroadcastSendResult {
   sent: number;
   failed: number;
   error?: string;
+  warnings?: string[];
   results: Array<{ email: string; success: boolean; contactId?: string; error?: string }>;
 }
 
@@ -107,6 +110,7 @@ export async function sendCampaignViaBroadcast(
 
   let segmentId: string | null = null;
   const results: Array<{ email: string; success: boolean; contactId?: string; error?: string }> = [];
+  const warnings: string[] = [];
 
   try {
     // 1. Get target subscribers
@@ -123,20 +127,38 @@ export async function sendCampaignViaBroadcast(
     }
 
     // 2. Ensure Resend Contact for each subscriber
-    const successfulEmails: string[] = [];
+    // Add delay between requests to respect Resend rate limit (2 req/sec)
+    // Collect contactIds for segment addition (Resend API requires contactId, not email)
+    const contactIds: string[] = [];
 
-    for (const subscriber of subscribers) {
+    for (let i = 0; i < subscribers.length; i++) {
+      const subscriber = subscribers[i];
+
+      // Add delay between requests (skip for first request)
+      if (i > 0) {
+        await sleep(RESEND_RATE_LIMIT_DELAY_MS);
+      }
+
       const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
 
-      if (contactResult.success) {
-        successfulEmails.push(subscriber.email);
+      if (contactResult.success && contactResult.contactId) {
+        // Contact available (new or existing with returned ID)
+        contactIds.push(contactResult.contactId);
         results.push({
           email: subscriber.email,
           success: true,
           contactId: contactResult.contactId,
         });
+      } else if (contactResult.success && contactResult.existed) {
+        // Existing contact but Resend didn't return contactId in 409 response
+        console.warn(`Contact exists but no contactId available for ${subscriber.email} - cannot add to segment`);
+        results.push({
+          email: subscriber.email,
+          success: false,
+          error: 'Contact exists in Resend but contactId not available for segment addition',
+        });
       } else {
-        // Skip subscriber but continue with others
+        // Failed to create/ensure contact
         console.warn(`Skipping subscriber ${subscriber.email}: ${contactResult.error}`);
         results.push({
           email: subscriber.email,
@@ -146,12 +168,12 @@ export async function sendCampaignViaBroadcast(
       }
     }
 
-    if (successfulEmails.length === 0) {
+    if (contactIds.length === 0) {
       return {
         success: false,
         sent: 0,
         failed: results.length,
-        error: 'Failed to create contacts for all subscribers',
+        error: 'Failed to get contactIds for any subscribers (existing contacts cannot be added to segments)',
         results,
       };
     }
@@ -171,8 +193,8 @@ export async function sendCampaignViaBroadcast(
 
     segmentId = segmentResult.segmentId;
 
-    // 4. Add contacts to Segment (using emails)
-    const addResult = await addContactsToSegment(config, segmentId, successfulEmails);
+    // 4. Add contacts to Segment (using contactIds)
+    const addResult = await addContactsToSegment(config, segmentId, contactIds);
 
     if (!addResult.success) {
       return {
@@ -248,10 +270,29 @@ export async function sendCampaignViaBroadcast(
         subscriberCount: successfulSubscribers.length,
         error: logError instanceof Error ? logError.message : String(logError),
       });
+      warnings.push(`Delivery log recording failed: ${logError instanceof Error ? logError.message : 'Unknown error'}`);
     }
 
     const successCount = results.filter((r) => r.success).length;
     const failedCount = results.filter((r) => !r.success).length;
+
+    // 8. Cleanup: Delete temp Segment (best effort)
+    if (segmentId) {
+      const currentSegmentId = segmentId;
+      const deleteResult = await deleteSegment(config, currentSegmentId).catch((e) => {
+        console.error('Segment cleanup failed:', {
+          segmentId: currentSegmentId,
+          error: e instanceof Error ? e.message : String(e),
+          note: 'Manual cleanup may be required via Resend dashboard',
+        });
+        return { success: false };
+      });
+      if (!deleteResult.success) {
+        warnings.push(`Segment cleanup failed: ${currentSegmentId} - manual cleanup may be required`);
+      }
+      // Mark as cleaned up so finally block doesn't re-attempt
+      segmentId = null;
+    }
 
     return {
       success: true,
@@ -259,21 +300,19 @@ export async function sendCampaignViaBroadcast(
       sent: successCount,
       failed: failedCount,
       results,
+      ...(warnings.length > 0 && { warnings }),
     };
   } finally {
-    // 8. Cleanup: Delete temp Segment (best effort)
+    // Cleanup on error path only: Delete temp Segment (best effort)
+    // On success path, segmentId is set to null after cleanup
     if (segmentId) {
-      const deleteResult = await deleteSegment(config, segmentId).catch((e) => {
+      await deleteSegment(config, segmentId).catch((e) => {
         console.error('Segment cleanup failed:', {
           segmentId,
           error: e instanceof Error ? e.message : String(e),
           note: 'Manual cleanup may be required via Resend dashboard',
         });
-        return { success: false };
       });
-      if (!deleteResult.success) {
-        console.warn('Segment cleanup incomplete - segment may remain in Resend:', segmentId);
-      }
     }
   }
 }
@@ -332,6 +371,30 @@ export async function sendSequenceStepViaBroadcast(
       };
     }
 
+    // Check if we have contactId (required for segment addition)
+    if (!contactResult.contactId) {
+      const errorMessage = contactResult.existed
+        ? 'Contact exists in Resend but contactId not available for segment addition'
+        : 'Contact created but no contactId returned';
+
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: step.sequence_id,
+        sequenceStepId: step.id,
+        subscriberId: subscriber.id,
+        email: subscriber.email,
+        emailSubject: step.subject,
+        status: 'failed',
+        errorMessage,
+      });
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+
+    const contactId = contactResult.contactId;
+
     // 3. Create single-contact temp Segment
     const segmentName = `sequence-${step.sequence_id}-step-${step.step_number}-${subscriber.id.slice(0, 8)}`;
     const segmentResult = await createTempSegment(config, segmentName);
@@ -355,8 +418,8 @@ export async function sendSequenceStepViaBroadcast(
 
     segmentId = segmentResult.segmentId;
 
-    // 4. Add contact to Segment
-    const addResult = await addContactsToSegment(config, segmentId, [subscriber.email]);
+    // 4. Add contact to Segment (using contactId)
+    const addResult = await addContactsToSegment(config, segmentId, [contactId]);
 
     if (!addResult.success) {
       await recordSequenceDeliveryLog(env, {

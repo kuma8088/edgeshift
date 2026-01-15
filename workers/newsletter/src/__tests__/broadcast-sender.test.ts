@@ -14,6 +14,9 @@ vi.mock('../lib/resend-marketing', () => ({
   addContactsToSegment: vi.fn(),
   deleteSegment: vi.fn(),
   createAndSendBroadcast: vi.fn(),
+  // Utility exports for rate limiting
+  sleep: vi.fn().mockResolvedValue(undefined),
+  RESEND_RATE_LIMIT_DELAY_MS: 550,
 }));
 
 // Mock delivery module
@@ -340,7 +343,7 @@ describe('Broadcast Sender', () => {
       expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
         expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
         'segment-123',
-        ['user1@example.com', 'user2@example.com']
+        ['contact-123', 'contact-123']
       );
       expect(mockedCreateAndSendBroadcast).toHaveBeenCalledWith(
         expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
@@ -483,7 +486,7 @@ describe('Broadcast Sender', () => {
       const result = await sendCampaignViaBroadcast(campaign, env);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Failed to create contacts for all subscribers');
+      expect(result.error).toBe('Failed to get contactIds for any subscribers (existing contacts cannot be added to segments)');
       expect(result.failed).toBe(1);
     });
 
@@ -562,6 +565,56 @@ describe('Broadcast Sender', () => {
         expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
         'segment-123'
       );
+    });
+
+    it('should handle existing contact without contactId from 409 response', async () => {
+      const env = getTestEnv();
+
+      // Create subscriber
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
+        VALUES ('sub-1', 'existing@example.com', 'Existing User', 'active', 'token-1')
+      `).run();
+
+      // Mock: contact exists but no contactId returned (409 without ID)
+      mockedEnsureResendContact.mockResolvedValue({
+        success: true,
+        existed: true,
+        contactId: undefined,
+      });
+
+      const campaign: Campaign = {
+        id: 'camp-1',
+        subject: 'Test Subject',
+        content: 'Test Content',
+        status: 'draft',
+        created_at: Math.floor(Date.now() / 1000),
+        contact_list_id: null,
+        template_id: null,
+        scheduled_at: null,
+        schedule_type: null,
+        schedule_config: null,
+        last_sent_at: null,
+        sent_at: null,
+        recipient_count: null,
+        slug: null,
+        is_published: 0,
+        published_at: null,
+        excerpt: null,
+        ab_test_enabled: 0,
+        ab_subject_b: null,
+        ab_from_name_b: null,
+        ab_wait_hours: 4,
+        ab_test_sent_at: null,
+        ab_winner: null,
+      };
+
+      const result = await sendCampaignViaBroadcast(campaign, env);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('existing contacts cannot be added to segments');
+      expect(result.results[0].success).toBe(false);
+      expect(result.results[0].error).toContain('contactId not available');
     });
 
     it('should handle segment creation failure', async () => {
@@ -680,6 +733,78 @@ describe('Broadcast Sender', () => {
         'segment-123'
       );
     });
+
+    it('should include warning when segment cleanup fails', async () => {
+      const env = getTestEnv();
+
+      // Create subscriber
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
+        VALUES ('sub-1', 'user@example.com', 'User', 'active', 'token-1')
+      `).run();
+
+      // Create brand settings
+      await env.DB.prepare(`
+        INSERT INTO brand_settings (id, primary_color, secondary_color, footer_text, default_template_id)
+        VALUES ('default', '#7c3aed', '#1e1e1e', 'EdgeShift Newsletter', 'simple')
+      `).run();
+
+      mockedEnsureResendContact.mockResolvedValue({
+        success: true,
+        contactId: 'contact-123',
+      });
+
+      mockedCreateTempSegment.mockResolvedValue({
+        success: true,
+        segmentId: 'segment-123',
+      });
+
+      mockedAddContactsToSegment.mockResolvedValue({
+        success: true,
+        added: 1,
+        errors: [],
+      });
+
+      mockedCreateAndSendBroadcast.mockResolvedValue({
+        success: true,
+        broadcastId: 'broadcast-123',
+      });
+
+      // Segment deletion fails
+      mockedDeleteSegment.mockResolvedValue({ success: false });
+
+      const campaign: Campaign = {
+        id: 'camp-1',
+        subject: 'Test Subject',
+        content: 'Test Content',
+        status: 'draft',
+        created_at: Math.floor(Date.now() / 1000),
+        contact_list_id: null,
+        template_id: null,
+        scheduled_at: null,
+        schedule_type: null,
+        schedule_config: null,
+        last_sent_at: null,
+        sent_at: null,
+        recipient_count: null,
+        slug: null,
+        is_published: 0,
+        published_at: null,
+        excerpt: null,
+        ab_test_enabled: 0,
+        ab_subject_b: null,
+        ab_from_name_b: null,
+        ab_wait_hours: 4,
+        ab_test_sent_at: null,
+        ab_winner: null,
+      };
+
+      const result = await sendCampaignViaBroadcast(campaign, env);
+
+      expect(result.success).toBe(true);
+      expect(result.warnings).toBeDefined();
+      expect(result.warnings).toContain('Segment cleanup failed: segment-123 - manual cleanup may be required');
+    });
   });
 
   // ==========================================================================
@@ -780,7 +905,7 @@ describe('Broadcast Sender', () => {
       expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
         expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
         'segment-123',
-        [subscriber.email]
+        ['contact-123']
       );
 
       expect(mockedCreateAndSendBroadcast).toHaveBeenCalledWith(
