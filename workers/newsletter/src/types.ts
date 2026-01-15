@@ -564,3 +564,21 @@ export interface ResendAudience {
   name: string;
   created_at: string;
 }
+
+// CSV Import/Export types
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: ImportError[];
+}
+
+export interface ImportError {
+  row: number;
+  email: string;
+  reason: string;
+}
+
+export interface ExportOptions {
+  contactListId?: string;
+  status?: 'active' | 'unsubscribed' | 'all';
+}
