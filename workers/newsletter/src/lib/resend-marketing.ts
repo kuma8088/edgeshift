@@ -140,6 +140,7 @@ async function fetchWithRetry(
         });
 
         if (attempt < maxRetries - 1) {
+          console.log(`Retrying after rate limit...`, { nextAttempt: attempt + 2, url });
           await sleep(delayMs);
           continue;
         }
@@ -340,8 +341,8 @@ interface AddContactToSegmentResponse {
  * Add contacts to a segment in batch.
  * Contacts must be specified by contact ID (not email).
  *
- * Resend API: POST /contacts/segments/add
- * Body: { contactId, segmentId }
+ * Resend API: POST /contacts/:contact_id/segments/:segment_id
+ * (Path parameters, no request body needed)
  */
 export async function addContactsToSegment(
   config: ResendMarketingConfig,
@@ -362,17 +363,12 @@ export async function addContactsToSegment(
 
     try {
       const response = await fetchWithRetry(
-        `${RESEND_API_BASE}/contacts/segments/add`,
+        `${RESEND_API_BASE}/contacts/${contactId}/segments/${segmentId}`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${config.apiKey}`,
-            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            contactId,
-            segmentId,
-          }),
         }
       );
 
@@ -390,6 +386,15 @@ export async function addContactsToSegment(
         errors.push(`${contactId}: Invalid JSON response (HTTP ${response.status}): ${preview}`);
         continue;
       }
+
+      // Log the actual response for debugging
+      console.log('addContactsToSegment response', {
+        contactId,
+        segmentId,
+        status: response.status,
+        ok: response.ok,
+        result,
+      });
 
       if (!response.ok || result.error) {
         errors.push(`${contactId}: ${result.error?.message || `HTTP ${response.status}`}`);
@@ -531,6 +536,8 @@ export async function createAndSendBroadcast(
     }
 
     // Step 2: Send broadcast
+    console.log('Sending broadcast', { broadcastId, segmentId: options.segmentId });
+
     const sendResponse = await fetchWithRetry(
       `${RESEND_API_BASE}/broadcasts/${broadcastId}/send`,
       {
@@ -560,6 +567,14 @@ export async function createAndSendBroadcast(
       };
     }
 
+    // Log the final result of broadcast send (after retries if any)
+    console.log('Broadcast send response', {
+      broadcastId,
+      status: sendResponse.status,
+      ok: sendResponse.ok,
+      result: sendResult,
+    });
+
     if (!sendResponse.ok || sendResult.error) {
       console.error('Resend send broadcast error:', {
         status: sendResponse.status,
@@ -574,6 +589,8 @@ export async function createAndSendBroadcast(
           `Failed to send broadcast (HTTP ${sendResponse.status})`,
       };
     }
+
+    console.log('Broadcast sent successfully', { broadcastId });
 
     return {
       success: true,

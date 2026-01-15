@@ -127,17 +127,31 @@ export async function sendCampaignViaBroadcast(
     }
 
     // 2. Ensure Resend Contact for each subscriber
-    // Add delay between requests to respect Resend rate limit (2 req/sec)
+    // First check D1 for cached resend_contact_id, then fall back to Resend API
     // Collect contactIds for segment addition (Resend API requires contactId, not email)
     const contactIds: string[] = [];
+    let apiCallCount = 0;
 
     for (let i = 0; i < subscribers.length; i++) {
       const subscriber = subscribers[i];
 
-      // Add delay between requests (skip for first request)
-      if (i > 0) {
+      // Check if we already have the contactId cached in D1
+      if (subscriber.resend_contact_id) {
+        console.log(`Using cached resend_contact_id for ${subscriber.email}: ${subscriber.resend_contact_id}`);
+        contactIds.push(subscriber.resend_contact_id);
+        results.push({
+          email: subscriber.email,
+          success: true,
+          contactId: subscriber.resend_contact_id,
+        });
+        continue;
+      }
+
+      // Add delay between API requests (skip for first API call)
+      if (apiCallCount > 0) {
         await sleep(RESEND_RATE_LIMIT_DELAY_MS);
       }
+      apiCallCount++;
 
       const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
 
@@ -149,6 +163,17 @@ export async function sendCampaignViaBroadcast(
           success: true,
           contactId: contactResult.contactId,
         });
+
+        // Cache the contactId in D1 for future use
+        try {
+          await env.DB.prepare(
+            'UPDATE subscribers SET resend_contact_id = ? WHERE id = ?'
+          ).bind(contactResult.contactId, subscriber.id).run();
+          console.log(`Cached resend_contact_id for ${subscriber.email}: ${contactResult.contactId}`);
+        } catch (dbError) {
+          console.warn(`Failed to cache resend_contact_id for ${subscriber.email}:`, dbError);
+          // Continue anyway - caching failure shouldn't block the send
+        }
       } else if (contactResult.success && contactResult.existed) {
         // Existing contact but Resend didn't return contactId in 409 response
         console.warn(`Contact exists but no contactId available for ${subscriber.email} - cannot add to segment`);
@@ -277,8 +302,12 @@ export async function sendCampaignViaBroadcast(
     const failedCount = results.filter((r) => !r.success).length;
 
     // 8. Cleanup: Delete temp Segment (best effort)
+    // TEMPORARY: Delay segment deletion to test if immediate deletion breaks Broadcast
+    // Resend Broadcast API may be async - deleting segment too early may prevent delivery
     if (segmentId) {
       const currentSegmentId = segmentId;
+      console.log('Delaying segment cleanup by 30s to allow Broadcast processing', { segmentId: currentSegmentId });
+      await sleep(30000); // Wait 30 seconds before deleting
       const deleteResult = await deleteSegment(config, currentSegmentId).catch((e) => {
         console.error('Segment cleanup failed:', {
           segmentId: currentSegmentId,
@@ -350,50 +379,69 @@ export async function sendSequenceStepViaBroadcast(
   let segmentId: string | null = null;
 
   try {
-    // 2. Ensure Resend Contact (lazy sync)
-    const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
+    // 2. Get or create Resend Contact
+    // First check if we have a cached contactId in D1
+    let contactId: string | null = subscriber.resend_contact_id;
 
-    if (!contactResult.success) {
-      // Record failure and return
-      await recordSequenceDeliveryLog(env, {
-        sequenceId: step.sequence_id,
-        sequenceStepId: step.id,
-        subscriberId: subscriber.id,
-        email: subscriber.email,
-        emailSubject: step.subject,
-        status: 'failed',
-        errorMessage: contactResult.error || 'Failed to ensure Resend contact',
-      });
+    if (!contactId) {
+      // Need to call Resend API
+      const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
 
-      return {
-        success: false,
-        error: `Failed to ensure Resend contact: ${contactResult.error}`,
-      };
+      if (!contactResult.success) {
+        // Record failure and return
+        await recordSequenceDeliveryLog(env, {
+          sequenceId: step.sequence_id,
+          sequenceStepId: step.id,
+          subscriberId: subscriber.id,
+          email: subscriber.email,
+          emailSubject: step.subject,
+          status: 'failed',
+          errorMessage: contactResult.error || 'Failed to ensure Resend contact',
+        });
+
+        return {
+          success: false,
+          error: `Failed to ensure Resend contact: ${contactResult.error}`,
+        };
+      }
+
+      // Check if we have contactId (required for segment addition)
+      if (!contactResult.contactId) {
+        const errorMessage = contactResult.existed
+          ? 'Contact exists in Resend but contactId not available for segment addition'
+          : 'Contact created but no contactId returned';
+
+        await recordSequenceDeliveryLog(env, {
+          sequenceId: step.sequence_id,
+          sequenceStepId: step.id,
+          subscriberId: subscriber.id,
+          email: subscriber.email,
+          emailSubject: step.subject,
+          status: 'failed',
+          errorMessage,
+        });
+
+        return {
+          success: false,
+          error: errorMessage,
+        };
+      }
+
+      contactId = contactResult.contactId;
+
+      // Cache the contactId in D1 for future use
+      try {
+        await env.DB.prepare(
+          'UPDATE subscribers SET resend_contact_id = ? WHERE id = ?'
+        ).bind(contactId, subscriber.id).run();
+        console.log(`Cached resend_contact_id for ${subscriber.email}: ${contactId}`);
+      } catch (dbError) {
+        console.warn(`Failed to cache resend_contact_id for ${subscriber.email}:`, dbError);
+        // Continue anyway - caching failure shouldn't block the send
+      }
+    } else {
+      console.log(`Using cached resend_contact_id for ${subscriber.email}: ${contactId}`);
     }
-
-    // Check if we have contactId (required for segment addition)
-    if (!contactResult.contactId) {
-      const errorMessage = contactResult.existed
-        ? 'Contact exists in Resend but contactId not available for segment addition'
-        : 'Contact created but no contactId returned';
-
-      await recordSequenceDeliveryLog(env, {
-        sequenceId: step.sequence_id,
-        sequenceStepId: step.id,
-        subscriberId: subscriber.id,
-        email: subscriber.email,
-        emailSubject: step.subject,
-        status: 'failed',
-        errorMessage,
-      });
-
-      return {
-        success: false,
-        error: errorMessage,
-      };
-    }
-
-    const contactId = contactResult.contactId;
 
     // 3. Create single-contact temp Segment
     const segmentName = `sequence-${step.sequence_id}-step-${step.step_number}-${subscriber.id.slice(0, 8)}`;

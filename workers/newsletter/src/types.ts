@@ -32,6 +32,8 @@ export interface Subscriber {
   referral_code: string | null;
   referred_by: string | null;
   referral_count: number;
+  // Resend Marketing API
+  resend_contact_id: string | null;
 }
 
 export type CampaignStatus = 'draft' | 'scheduled' | 'sent' | 'failed';
