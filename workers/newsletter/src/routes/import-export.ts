@@ -302,9 +302,11 @@ export async function handleImport(
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Import error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('Import error:', errorMessage, errorStack);
     return new Response(
-      JSON.stringify({ success: false, error: 'Import failed' }),
+      JSON.stringify({ success: false, error: `Import failed: ${errorMessage}` }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
