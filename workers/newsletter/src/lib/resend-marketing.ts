@@ -340,8 +340,8 @@ interface AddContactToSegmentResponse {
  * Add contacts to a segment in batch.
  * Contacts must be specified by contact ID (not email).
  *
- * Resend API: POST /contacts/segments/add
- * Body: { contactId, segmentId }
+ * Resend API: POST /contacts/{contact_id}/segments/{segment_id}
+ * (Path parameters, no request body)
  */
 export async function addContactsToSegment(
   config: ResendMarketingConfig,
@@ -361,18 +361,15 @@ export async function addContactsToSegment(
     }
 
     try {
+      // Correct endpoint: /contacts/{contact_id}/segments/{segment_id}
       const response = await fetchWithRetry(
-        `${RESEND_API_BASE}/contacts/segments/add`,
+        `${RESEND_API_BASE}/contacts/${contactId}/segments/${segmentId}`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${config.apiKey}`,
-            'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            contactId,
-            segmentId,
-          }),
+          // No body - contact_id and segment_id are path parameters
         }
       );
 

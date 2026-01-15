@@ -347,13 +347,12 @@ describe('Resend Marketing API Service', () => {
       expect(result.errors).toHaveLength(0);
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
-      // Verify correct API endpoint: POST /contacts/segments/add with body
+      // Verify correct API endpoint: POST /contacts/{contact_id}/segments/{segment_id}
       expect(mockFetch).toHaveBeenNthCalledWith(
         1,
-        'https://api.resend.com/contacts/segments/add',
+        'https://api.resend.com/contacts/contact-1/segments/segment-123',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ contactId: 'contact-1', segmentId: 'segment-123' }),
         })
       );
     });
