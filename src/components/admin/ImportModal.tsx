@@ -77,9 +77,13 @@ export function ImportModal({ isOpen, onClose, onSuccess }: Props) {
         return;
       }
 
-      // Detect header
+      // Detect header (supports English and Japanese)
       const header = lines[0].toLowerCase();
-      const hasHeader = header.includes('email') || header.includes('name');
+      const hasHeader =
+        header.includes('email') ||
+        header.includes('name') ||
+        header.includes('eメール') ||
+        header.includes('メールアドレス');
       const dataStart = hasHeader ? 1 : 0;
 
       const rows: PreviewRow[] = [];
