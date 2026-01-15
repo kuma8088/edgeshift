@@ -10,7 +10,7 @@
  * 6. Records delivery logs
  */
 
-import type { Env, Campaign, Subscriber, BrandSettings } from '../types';
+import type { Env, Campaign, Subscriber, BrandSettings, SequenceStep } from '../types';
 import {
   ensureResendContact,
   createTempSegment,
@@ -19,7 +19,7 @@ import {
   createAndSendBroadcast,
   type ResendMarketingConfig,
 } from './resend-marketing';
-import { recordDeliveryLogs } from './delivery';
+import { recordDeliveryLogs, recordSequenceDeliveryLog } from './delivery';
 import { renderEmail, getDefaultBrandSettings } from './templates';
 
 export interface BroadcastSendResult {
@@ -29,6 +29,12 @@ export interface BroadcastSendResult {
   failed: number;
   error?: string;
   results: Array<{ email: string; success: boolean; contactId?: string; error?: string }>;
+}
+
+export interface SequenceBroadcastResult {
+  success: boolean;
+  broadcastId?: string;
+  error?: string;
 }
 
 /**
@@ -237,6 +243,155 @@ export async function sendCampaignViaBroadcast(
     if (segmentId) {
       await deleteSegment(config, segmentId).catch((e) =>
         console.error('Segment cleanup failed:', e)
+      );
+    }
+  }
+}
+
+/**
+ * Send a sequence step email to a single subscriber via Resend Broadcast API.
+ *
+ * Flow:
+ * 1. Check for RESEND_AUDIENCE_ID config
+ * 2. Ensure Resend Contact (lazy sync)
+ * 3. Create single-contact temp Segment
+ * 4. Add contact to Segment
+ * 5. Create & Send Broadcast
+ * 6. Delete temp Segment (cleanup in finally)
+ * 7. Record delivery log (success or failure)
+ */
+export async function sendSequenceStepViaBroadcast(
+  env: Env,
+  subscriber: Subscriber,
+  step: SequenceStep,
+  html: string
+): Promise<SequenceBroadcastResult> {
+  // 1. Check for required config
+  if (!env.RESEND_AUDIENCE_ID) {
+    return {
+      success: false,
+      error: 'RESEND_AUDIENCE_ID is not configured',
+    };
+  }
+
+  const config: ResendMarketingConfig = {
+    apiKey: env.RESEND_API_KEY,
+  };
+
+  let segmentId: string | null = null;
+
+  try {
+    // 2. Ensure Resend Contact (lazy sync)
+    const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
+
+    if (!contactResult.success) {
+      // Record failure and return
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: step.sequence_id,
+        sequenceStepId: step.id,
+        subscriberId: subscriber.id,
+        email: subscriber.email,
+        emailSubject: step.subject,
+        status: 'failed',
+        errorMessage: contactResult.error || 'Failed to ensure Resend contact',
+      });
+
+      return {
+        success: false,
+        error: `Failed to ensure Resend contact: ${contactResult.error}`,
+      };
+    }
+
+    // 3. Create single-contact temp Segment
+    const segmentName = `sequence-${step.sequence_id}-step-${step.step_number}-${subscriber.id.slice(0, 8)}`;
+    const segmentResult = await createTempSegment(config, segmentName);
+
+    if (!segmentResult.success || !segmentResult.segmentId) {
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: step.sequence_id,
+        sequenceStepId: step.id,
+        subscriberId: subscriber.id,
+        email: subscriber.email,
+        emailSubject: step.subject,
+        status: 'failed',
+        errorMessage: segmentResult.error || 'Failed to create segment',
+      });
+
+      return {
+        success: false,
+        error: `Failed to create segment: ${segmentResult.error}`,
+      };
+    }
+
+    segmentId = segmentResult.segmentId;
+
+    // 4. Add contact to Segment
+    const addResult = await addContactsToSegment(config, segmentId, [subscriber.email]);
+
+    if (!addResult.success) {
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: step.sequence_id,
+        sequenceStepId: step.id,
+        subscriberId: subscriber.id,
+        email: subscriber.email,
+        emailSubject: step.subject,
+        status: 'failed',
+        errorMessage: `Failed to add contact to segment: ${addResult.errors.join(', ')}`,
+      });
+
+      return {
+        success: false,
+        error: `Failed to add contact to segment: ${addResult.errors.join(', ')}`,
+      };
+    }
+
+    // 5. Create & Send Broadcast
+    const broadcastResult = await createAndSendBroadcast(config, {
+      segmentId,
+      from: `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
+      subject: step.subject,
+      html,
+      name: `Sequence ${step.sequence_id} Step ${step.step_number}: ${step.subject}`,
+    });
+
+    if (!broadcastResult.success) {
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: step.sequence_id,
+        sequenceStepId: step.id,
+        subscriberId: subscriber.id,
+        email: subscriber.email,
+        emailSubject: step.subject,
+        status: 'failed',
+        errorMessage: broadcastResult.error || 'Failed to send broadcast',
+      });
+
+      return {
+        success: false,
+        broadcastId: broadcastResult.broadcastId,
+        error: `Failed to send broadcast: ${broadcastResult.error}`,
+      };
+    }
+
+    // 6. Record success delivery log
+    await recordSequenceDeliveryLog(env, {
+      sequenceId: step.sequence_id,
+      sequenceStepId: step.id,
+      subscriberId: subscriber.id,
+      email: subscriber.email,
+      emailSubject: step.subject,
+      resendId: broadcastResult.broadcastId,
+      status: 'sent',
+    });
+
+    return {
+      success: true,
+      broadcastId: broadcastResult.broadcastId,
+    };
+  } finally {
+    // 7. Cleanup: Delete temp Segment (best effort)
+    if (segmentId) {
+      await deleteSegment(config, segmentId).catch((e) =>
+        console.error('Sequence segment cleanup failed:', e)
       );
     }
   }
