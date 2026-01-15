@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
-import { getTargetSubscribers, sendCampaignViaBroadcast } from '../lib/broadcast-sender';
-import type { Campaign } from '../types';
+import { getTargetSubscribers, sendCampaignViaBroadcast, sendSequenceStepViaBroadcast } from '../lib/broadcast-sender';
+import type { Campaign, SequenceStep, Subscriber } from '../types';
 
 // ============================================================================
 // Mock Setup
@@ -19,6 +19,7 @@ vi.mock('../lib/resend-marketing', () => ({
 // Mock delivery module
 vi.mock('../lib/delivery', () => ({
   recordDeliveryLogs: vi.fn(),
+  recordSequenceDeliveryLog: vi.fn(),
 }));
 
 // Mock templates module - renderEmail only, getDefaultBrandSettings will use real implementation
@@ -44,7 +45,7 @@ import {
   deleteSegment,
   createAndSendBroadcast,
 } from '../lib/resend-marketing';
-import { recordDeliveryLogs } from '../lib/delivery';
+import { recordDeliveryLogs, recordSequenceDeliveryLog } from '../lib/delivery';
 
 const mockedEnsureResendContact = vi.mocked(ensureResendContact);
 const mockedCreateTempSegment = vi.mocked(createTempSegment);
@@ -52,6 +53,7 @@ const mockedAddContactsToSegment = vi.mocked(addContactsToSegment);
 const mockedDeleteSegment = vi.mocked(deleteSegment);
 const mockedCreateAndSendBroadcast = vi.mocked(createAndSendBroadcast);
 const mockedRecordDeliveryLogs = vi.mocked(recordDeliveryLogs);
+const mockedRecordSequenceDeliveryLog = vi.mocked(recordSequenceDeliveryLog);
 
 // ============================================================================
 // Tests
@@ -671,6 +673,320 @@ describe('Broadcast Sender', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Failed to add contacts to segment');
+
+      // Segment should still be cleaned up (finally block)
+      expect(mockedDeleteSegment).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+        'segment-123'
+      );
+    });
+  });
+
+  // ==========================================================================
+  // sendSequenceStepViaBroadcast() Tests
+  // ==========================================================================
+
+  describe('sendSequenceStepViaBroadcast', () => {
+    const createTestSubscriber = (): Subscriber => ({
+      id: 'sub-1',
+      email: 'user@example.com',
+      name: 'Test User',
+      status: 'active',
+      confirm_token: null,
+      unsubscribe_token: 'unsub-token-1',
+      signup_page_slug: null,
+      subscribed_at: Math.floor(Date.now() / 1000),
+      unsubscribed_at: null,
+      created_at: Math.floor(Date.now() / 1000),
+      referral_code: null,
+      referred_by: null,
+      referral_count: 0,
+    });
+
+    const createTestSequenceStep = (): SequenceStep => ({
+      id: 'step-1',
+      sequence_id: 'seq-1',
+      step_number: 1,
+      delay_days: 0,
+      delay_time: '09:00',
+      delay_minutes: null,
+      subject: 'Welcome to our newsletter!',
+      content: 'Thank you for subscribing.',
+      template_id: null,
+      is_enabled: 1,
+      created_at: Math.floor(Date.now() / 1000),
+    });
+
+    it('should return error if RESEND_AUDIENCE_ID is not configured', async () => {
+      const env = { ...getTestEnv(), RESEND_AUDIENCE_ID: undefined };
+      const subscriber = createTestSubscriber();
+      const step = createTestSequenceStep();
+      const html = '<html><body>Test</body></html>';
+
+      const result = await sendSequenceStepViaBroadcast(env, subscriber, step, html);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('RESEND_AUDIENCE_ID is not configured');
+    });
+
+    it('should successfully send sequence step via broadcast', async () => {
+      const env = getTestEnv();
+      const subscriber = createTestSubscriber();
+      const step = createTestSequenceStep();
+      const html = '<html><body>Welcome!</body></html>';
+
+      // Setup mocks for successful flow
+      mockedEnsureResendContact.mockResolvedValue({
+        success: true,
+        contactId: 'contact-123',
+        existed: false,
+      });
+
+      mockedCreateTempSegment.mockResolvedValue({
+        success: true,
+        segmentId: 'segment-123',
+      });
+
+      mockedAddContactsToSegment.mockResolvedValue({
+        success: true,
+        added: 1,
+        errors: [],
+      });
+
+      mockedCreateAndSendBroadcast.mockResolvedValue({
+        success: true,
+        broadcastId: 'broadcast-123',
+      });
+
+      mockedDeleteSegment.mockResolvedValue({ success: true });
+
+      const result = await sendSequenceStepViaBroadcast(env, subscriber, step, html);
+
+      expect(result.success).toBe(true);
+      expect(result.broadcastId).toBe('broadcast-123');
+
+      // Verify the flow
+      expect(mockedEnsureResendContact).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+        subscriber.email,
+        subscriber.name
+      );
+
+      expect(mockedCreateTempSegment).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+        expect.stringContaining(`sequence-${step.sequence_id}-step-${step.step_number}`)
+      );
+
+      expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+        'segment-123',
+        [subscriber.email]
+      );
+
+      expect(mockedCreateAndSendBroadcast).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+        expect.objectContaining({
+          segmentId: 'segment-123',
+          subject: step.subject,
+          html,
+        })
+      );
+
+      // Verify success delivery log was recorded
+      expect(mockedRecordSequenceDeliveryLog).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          sequenceId: step.sequence_id,
+          sequenceStepId: step.id,
+          subscriberId: subscriber.id,
+          email: subscriber.email,
+          emailSubject: step.subject,
+          resendId: 'broadcast-123',
+          status: 'sent',
+        })
+      );
+
+      // Verify segment cleanup
+      expect(mockedDeleteSegment).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+        'segment-123'
+      );
+    });
+
+    it('should record failed delivery log on broadcast failure', async () => {
+      const env = getTestEnv();
+      const subscriber = createTestSubscriber();
+      const step = createTestSequenceStep();
+      const html = '<html><body>Welcome!</body></html>';
+
+      mockedEnsureResendContact.mockResolvedValue({
+        success: true,
+        contactId: 'contact-123',
+        existed: false,
+      });
+
+      mockedCreateTempSegment.mockResolvedValue({
+        success: true,
+        segmentId: 'segment-123',
+      });
+
+      mockedAddContactsToSegment.mockResolvedValue({
+        success: true,
+        added: 1,
+        errors: [],
+      });
+
+      // Broadcast fails
+      mockedCreateAndSendBroadcast.mockResolvedValue({
+        success: false,
+        error: 'Broadcast send failed',
+      });
+
+      mockedDeleteSegment.mockResolvedValue({ success: true });
+
+      const result = await sendSequenceStepViaBroadcast(env, subscriber, step, html);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Failed to send broadcast');
+
+      // Verify failed delivery log was recorded
+      expect(mockedRecordSequenceDeliveryLog).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          sequenceId: step.sequence_id,
+          sequenceStepId: step.id,
+          subscriberId: subscriber.id,
+          email: subscriber.email,
+          emailSubject: step.subject,
+          status: 'failed',
+          errorMessage: 'Broadcast send failed',
+        })
+      );
+
+      // Segment should still be cleaned up (finally block)
+      expect(mockedDeleteSegment).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+        'segment-123'
+      );
+    });
+
+    it('should record failed delivery log on contact creation failure', async () => {
+      const env = getTestEnv();
+      const subscriber = createTestSubscriber();
+      const step = createTestSequenceStep();
+      const html = '<html><body>Welcome!</body></html>';
+
+      mockedEnsureResendContact.mockResolvedValue({
+        success: false,
+        error: 'Invalid email format',
+      });
+
+      const result = await sendSequenceStepViaBroadcast(env, subscriber, step, html);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Failed to ensure Resend contact');
+
+      // Verify failed delivery log was recorded
+      expect(mockedRecordSequenceDeliveryLog).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          sequenceId: step.sequence_id,
+          sequenceStepId: step.id,
+          subscriberId: subscriber.id,
+          email: subscriber.email,
+          emailSubject: step.subject,
+          status: 'failed',
+          errorMessage: 'Invalid email format',
+        })
+      );
+
+      // No segment was created, so no cleanup
+      expect(mockedDeleteSegment).not.toHaveBeenCalled();
+    });
+
+    it('should record failed delivery log on segment creation failure', async () => {
+      const env = getTestEnv();
+      const subscriber = createTestSubscriber();
+      const step = createTestSequenceStep();
+      const html = '<html><body>Welcome!</body></html>';
+
+      mockedEnsureResendContact.mockResolvedValue({
+        success: true,
+        contactId: 'contact-123',
+        existed: false,
+      });
+
+      mockedCreateTempSegment.mockResolvedValue({
+        success: false,
+        error: 'Segment limit reached',
+      });
+
+      const result = await sendSequenceStepViaBroadcast(env, subscriber, step, html);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Failed to create segment');
+
+      // Verify failed delivery log was recorded
+      expect(mockedRecordSequenceDeliveryLog).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          sequenceId: step.sequence_id,
+          sequenceStepId: step.id,
+          subscriberId: subscriber.id,
+          email: subscriber.email,
+          emailSubject: step.subject,
+          status: 'failed',
+          errorMessage: 'Segment limit reached',
+        })
+      );
+
+      // No segment was created successfully, so no cleanup
+      expect(mockedDeleteSegment).not.toHaveBeenCalled();
+    });
+
+    it('should record failed delivery log on add contact to segment failure', async () => {
+      const env = getTestEnv();
+      const subscriber = createTestSubscriber();
+      const step = createTestSequenceStep();
+      const html = '<html><body>Welcome!</body></html>';
+
+      mockedEnsureResendContact.mockResolvedValue({
+        success: true,
+        contactId: 'contact-123',
+        existed: false,
+      });
+
+      mockedCreateTempSegment.mockResolvedValue({
+        success: true,
+        segmentId: 'segment-123',
+      });
+
+      mockedAddContactsToSegment.mockResolvedValue({
+        success: false,
+        added: 0,
+        errors: ['Contact not found in audience'],
+      });
+
+      mockedDeleteSegment.mockResolvedValue({ success: true });
+
+      const result = await sendSequenceStepViaBroadcast(env, subscriber, step, html);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Failed to add contact to segment');
+
+      // Verify failed delivery log was recorded
+      expect(mockedRecordSequenceDeliveryLog).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({
+          sequenceId: step.sequence_id,
+          sequenceStepId: step.id,
+          subscriberId: subscriber.id,
+          email: subscriber.email,
+          emailSubject: step.subject,
+          status: 'failed',
+          errorMessage: expect.stringContaining('Failed to add contact to segment'),
+        })
+      );
 
       // Segment should still be cleaned up (finally block)
       expect(mockedDeleteSegment).toHaveBeenCalledWith(
