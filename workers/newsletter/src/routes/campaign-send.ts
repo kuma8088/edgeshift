@@ -155,8 +155,13 @@ export async function sendCampaign(
       stats,
     });
   } catch (error) {
-    console.error('Send campaign error:', error);
-    return errorResponse('Internal server error', 500);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Send campaign error:', {
+      campaignId,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return errorResponse(`Campaign send failed: ${errorMessage}`, 500);
   }
 }
 

@@ -98,6 +98,19 @@ describe('sendCampaign', () => {
     const response = await sendCampaign(request, env, 'camp-1');
     expect(response.status).toBe(401);
   });
+
+  it('should return 404 for non-existent campaign', async () => {
+    const env = getTestEnv();
+    const request = new Request('http://localhost/api/campaigns/non-existent/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+
+    const response = await sendCampaign(request, env, 'non-existent');
+    expect(response.status).toBe(404);
+    const result = await response.json();
+    expect(result.error).toContain('Campaign not found');
+  });
 });
 
 describe('getCampaignStats', () => {
@@ -158,6 +171,19 @@ describe('getCampaignStats', () => {
 
     const response = await getCampaignStats(request, env, 'camp-1');
     expect(response.status).toBe(401);
+  });
+
+  it('should return 404 for non-existent campaign stats', async () => {
+    const env = getTestEnv();
+    const request = new Request('http://localhost/api/campaigns/non-existent/stats', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+
+    const response = await getCampaignStats(request, env, 'non-existent');
+    expect(response.status).toBe(404);
+    const result = await response.json();
+    expect(result.error).toContain('Campaign not found');
   });
 });
 
@@ -354,5 +380,42 @@ describe('Campaign Send with Broadcast API', () => {
     expect(result.data.broadcastId).toBeUndefined();
     expect(sendCampaignViaBroadcast).not.toHaveBeenCalled();
     expect(sendBatchEmails).toHaveBeenCalled();
+  });
+
+  it('should update campaign status to failed when Broadcast API fails', async () => {
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+
+    // Mock broadcast-sender to return failure
+    vi.mocked(sendCampaignViaBroadcast).mockResolvedValueOnce({
+      success: false,
+      error: 'Resend API error: rate limit exceeded',
+      sent: 0,
+      failed: 0,
+      results: [],
+    });
+
+    const baseEnv = getTestEnv();
+    const env = {
+      ...baseEnv,
+      USE_BROADCAST_API: 'true',
+      RESEND_AUDIENCE_ID: 'aud_test_123',
+    };
+
+    const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+    });
+
+    const response = await sendCampaign(request, env, 'camp-broadcast-1');
+    const result = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('rate limit exceeded');
+
+    // Verify campaign status updated to failed
+    const campaign = await env.DB.prepare('SELECT status FROM campaigns WHERE id = ?')
+      .bind('camp-broadcast-1').first();
+    expect(campaign?.status).toBe('failed');
   });
 });

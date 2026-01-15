@@ -241,9 +241,17 @@ export async function sendCampaignViaBroadcast(
   } finally {
     // 8. Cleanup: Delete temp Segment (best effort)
     if (segmentId) {
-      await deleteSegment(config, segmentId).catch((e) =>
-        console.error('Segment cleanup failed:', e)
-      );
+      const deleteResult = await deleteSegment(config, segmentId).catch((e) => {
+        console.error('Segment cleanup failed:', {
+          segmentId,
+          error: e instanceof Error ? e.message : String(e),
+          note: 'Manual cleanup may be required via Resend dashboard',
+        });
+        return { success: false };
+      });
+      if (!deleteResult.success) {
+        console.warn('Segment cleanup incomplete - segment may remain in Resend:', segmentId);
+      }
     }
   }
 }
@@ -390,9 +398,17 @@ export async function sendSequenceStepViaBroadcast(
   } finally {
     // 7. Cleanup: Delete temp Segment (best effort)
     if (segmentId) {
-      await deleteSegment(config, segmentId).catch((e) =>
-        console.error('Sequence segment cleanup failed:', e)
-      );
+      const deleteResult = await deleteSegment(config, segmentId).catch((e) => {
+        console.error('Sequence segment cleanup failed:', {
+          segmentId,
+          error: e instanceof Error ? e.message : String(e),
+          note: 'Manual cleanup may be required via Resend dashboard',
+        });
+        return { success: false };
+      });
+      if (!deleteResult.success) {
+        console.warn('Sequence segment cleanup incomplete - segment may remain in Resend:', segmentId);
+      }
     }
   }
 }

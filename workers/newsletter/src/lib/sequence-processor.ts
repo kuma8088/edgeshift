@@ -338,8 +338,17 @@ export async function enrollSubscriberInSequences(env: Env, subscriberId: string
 
         console.log(`Enrolled subscriber ${subscriberId} in sequence ${seq.id}`);
       } catch (error) {
-        // Ignore duplicate key errors (already enrolled)
-        console.log(`Subscriber ${subscriberId} already enrolled in sequence ${seq.id}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('UNIQUE constraint failed')) {
+          console.log(`Subscriber ${subscriberId} already enrolled in sequence ${seq.id}`);
+        } else {
+          console.error('Failed to enroll subscriber in sequence:', {
+            subscriberId,
+            sequenceId: seq.id,
+            error: errorMessage,
+          });
+          // Don't throw - continue with other sequences
+        }
       }
     }
   } catch (error) {
