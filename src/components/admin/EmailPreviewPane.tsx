@@ -17,67 +17,6 @@ interface EmailPreviewPaneProps {
   subject?: string;
 }
 
-/**
- * Extract YouTube video ID from various URL formats
- * Reused from workers/newsletter/src/scheduled.ts
- */
-function extractYoutubeVideoId(url: string): string | null {
-  const patterns = [
-    /youtube\.com\/watch\?v=([^&\s]+)/,
-    /youtu\.be\/([^?\s]+)/,
-    /youtube\.com\/embed\/([^?\s]+)/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
-}
-
-/**
- * Convert YouTube URL to clickable thumbnail HTML
- * Styles match workers/newsletter/src/lib/templates/styles.ts
- */
-function youtubeUrlToThumbnail(url: string): string {
-  const videoId = extractYoutubeVideoId(url);
-  if (!videoId) return url;
-
-  // Sanitize video ID to prevent XSS - only allow valid YouTube ID characters
-  const safeVideoId = videoId.replace(/[^a-zA-Z0-9_-]/g, '');
-  if (safeVideoId !== videoId) {
-    // Video ID contained unexpected characters, return original URL
-    return url;
-  }
-
-  const thumbnailUrl = `https://img.youtube.com/vi/${safeVideoId}/maxresdefault.jpg`;
-  const videoUrl = `https://www.youtube.com/watch?v=${safeVideoId}`;
-
-  // Styles from STYLES.youtubeLink and STYLES.youtubeThumbnail
-  return `<a href="${videoUrl}" style="display: block; margin: 24px 0; text-decoration: none;" target="_blank" rel="noopener noreferrer">
-    <img src="${thumbnailUrl}" alt="YouTube Video" style="width: 100%; max-width: 480px; border-radius: 8px; display: block;" />
-  </a>`;
-}
-
-/**
- * Convert YouTube URLs in HTML content to clickable thumbnails
- * Processes both:
- * 1. Standalone URLs (plain text YouTube links)
- * 2. [YouTube Video] link text created by RichTextEditor
- */
-function convertYoutubeUrlsToThumbnails(html: string): string {
-  // Pattern 1: Handle [YouTube Video] anchor tags
-  // e.g., <a href="https://youtube.com/watch?v=xxx">[YouTube Video]</a>
-  const youtubeAnchorRegex = /<a\s+href="(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[^"]+)"[^>]*>\[YouTube Video\]<\/a>/gi;
-  html = html.replace(youtubeAnchorRegex, (_, url) => youtubeUrlToThumbnail(url));
-
-  // Pattern 2: Handle standalone YouTube URLs not inside anchor tags
-  // Negative lookbehind to avoid URLs already in href or src attributes
-  const standaloneYoutubeRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[^\s<>"]+)(?![^<]*<\/a>)/g;
-  html = html.replace(standaloneYoutubeRegex, (url) => youtubeUrlToThumbnail(url));
-
-  return html;
-}
-
 // Font stack optimized for Japanese + cross-platform (from styles.ts)
 const FONT_FAMILY = [
   '-apple-system',
@@ -169,10 +108,10 @@ export function EmailPreviewPane({ content, subject }: EmailPreviewPaneProps) {
       >
         {/* Render HTML content with proper styling */}
         {/* Content is admin-generated via TipTap editor - safe to render */}
-        {/* YouTube URLs are converted to clickable thumbnails for preview */}
+        {/* YouTube thumbnails are inserted directly via editor - no auto-conversion needed */}
         <div
           className="email-content-preview"
-          dangerouslySetInnerHTML={{ __html: convertYoutubeUrlsToThumbnails(content) }}
+          dangerouslySetInnerHTML={{ __html: content }}
           style={{
             // Reset and apply email styles
             wordBreak: 'break-word',

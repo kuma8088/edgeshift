@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 interface YouTubeInsertModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onInsert: (url: string) => void;
+  onInsert: (url: string, mode: 'thumbnail' | 'link') => void;
 }
 
 /**
@@ -46,6 +46,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
   const [error, setError] = useState('');
   const [videoId, setVideoId] = useState<string | null>(null);
   const [thumbnailError, setThumbnailError] = useState(false);
+  const [insertMode, setInsertMode] = useState<'thumbnail' | 'link'>('thumbnail');
 
   // Reset state when modal opens
   useEffect(() => {
@@ -54,6 +55,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
       setError('');
       setVideoId(null);
       setThumbnailError(false);
+      setInsertMode('thumbnail');
     }
   }, [isOpen]);
 
@@ -86,7 +88,7 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
       return;
     }
 
-    onInsert(url.trim());
+    onInsert(url.trim(), insertMode);
     onClose();
   };
 
@@ -167,8 +169,39 @@ export function YouTubeInsertModal({ isOpen, onClose, onInsert }: YouTubeInsertM
             </div>
           )}
 
+          {/* Insert Mode Selection */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">挿入形式</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="insertMode"
+                value="thumbnail"
+                checked={insertMode === 'thumbnail'}
+                onChange={() => setInsertMode('thumbnail')}
+                className="text-blue-600"
+              />
+              <span className="text-sm">サムネイル付きリンク</span>
+              <span className="text-xs text-gray-400">- クリック可能な画像</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="insertMode"
+                value="link"
+                checked={insertMode === 'link'}
+                onChange={() => setInsertMode('link')}
+                className="text-blue-600"
+              />
+              <span className="text-sm">テキストリンクのみ</span>
+              <span className="text-xs text-gray-400">- 通常のリンク</span>
+            </label>
+          </div>
+
           <p className="text-xs text-gray-500">
-            メール送信時に動画URLがクリック可能なサムネイルに変換されます。
+            {insertMode === 'thumbnail'
+              ? 'サムネイル画像がクリック可能なリンクとして挿入されます。'
+              : 'YouTube URLがテキストリンクとして挿入されます。'}
           </p>
         </div>
 

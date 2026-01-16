@@ -50,6 +50,29 @@ export function MenuBar({ editor }: MenuBarProps) {
     setIsVariableDropdownOpen(false);
   };
 
+  const insertImageWithOptionalLink = (imageUrl: string) => {
+    const linkUrl = window.prompt('画像にリンクを追加しますか？（空白でスキップ）');
+
+    let imgHtml: string;
+    if (linkUrl && linkUrl.trim()) {
+      try {
+        const parsedUrl = new URL(linkUrl.trim());
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+          alert('無効なURLです（http/httpsのみ対応）');
+          return;
+        }
+        imgHtml = `<a href="${linkUrl.trim()}" target="_blank"><img src="${imageUrl}" alt="Image" style="display: block; max-width: 100%; height: auto;" /></a>`;
+      } catch {
+        alert('無効なURLです');
+        return;
+      }
+    } else {
+      imgHtml = `<img src="${imageUrl}" alt="Image" style="display: block; max-width: 100%; height: auto;" />`;
+    }
+
+    editor?.chain().focus().insertContent(imgHtml).run();
+  };
+
   const handleInsertImage = () => {
     // Trigger file input click
     fileInputRef.current?.click();
@@ -84,9 +107,8 @@ export function MenuBar({ editor }: MenuBarProps) {
         return;
       }
 
-      // Insert image into editor
-      const imgHtml = `<img src="${result.data.url}" alt="Image" style="display: block; max-width: 100%; height: auto;" />`;
-      editor?.chain().focus().insertContent(imgHtml).run();
+      // Insert image into editor with optional link
+      insertImageWithOptionalLink(result.data.url);
     } catch (error) {
       console.error('Image upload error:', {
         error,
@@ -100,7 +122,7 @@ export function MenuBar({ editor }: MenuBarProps) {
     }
   };
 
-  const handleInsertYouTube = (url: string) => {
+  const handleInsertYouTube = (url: string, mode: 'thumbnail' | 'link') => {
     // Extract video ID for safety (defense in depth)
     const patterns = [
       /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
@@ -124,8 +146,16 @@ export function MenuBar({ editor }: MenuBarProps) {
 
     // Use canonical URL format (safe)
     const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const youtubeHtml = `<p><a href="${canonicalUrl}" target="_blank">[YouTube Video]</a></p>`;
-    editor.chain().focus().insertContent(youtubeHtml).run();
+
+    let html: string;
+    if (mode === 'thumbnail') {
+      const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      html = `<p><a href="${canonicalUrl}" target="_blank"><img src="${thumbnailUrl}" alt="YouTube Video" style="display: block; max-width: 100%; height: auto; border-radius: 8px;" /></a></p>`;
+    } else {
+      html = `<p><a href="${canonicalUrl}" target="_blank">YouTube Video</a></p>`;
+    }
+
+    editor.chain().focus().insertContent(html).run();
   };
 
   const handleSelectFromLibrary = (url: string) => {
@@ -141,8 +171,8 @@ export function MenuBar({ editor }: MenuBarProps) {
       return;
     }
 
-    const imgHtml = `<img src="${url}" alt="Image" style="display: block; max-width: 100%; height: auto;" />`;
-    editor?.chain().focus().insertContent(imgHtml).run();
+    // Insert image with optional link
+    insertImageWithOptionalLink(url);
   };
 
   const buttonClass = (isActive: boolean) =>
