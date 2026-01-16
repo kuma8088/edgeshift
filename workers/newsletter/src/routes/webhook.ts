@@ -2,6 +2,24 @@ import type { Env, ResendWebhookEvent, DeliveryStatus } from '../types';
 import { verifyWebhookSignature } from '../lib/webhook';
 import { findDeliveryLogByResendId, updateDeliveryStatus, recordClickEvent } from '../lib/delivery';
 
+/**
+ * Handle contact.updated event from Resend.
+ * When a contact is unsubscribed via Resend's built-in unsubscribe link,
+ * update the subscriber status in D1.
+ */
+async function handleContactUpdated(env: Env, data: { email?: string; unsubscribed?: boolean }): Promise<void> {
+  if (!data.email || !data.unsubscribed) {
+    return;
+  }
+
+  // Update subscriber status to unsubscribed
+  await env.DB.prepare(
+    `UPDATE subscribers SET status = 'unsubscribed', unsubscribed_at = ? WHERE email = ? AND status = 'active'`
+  ).bind(Date.now(), data.email.toLowerCase()).run();
+
+  console.log(`Subscriber ${data.email} unsubscribed via Resend`);
+}
+
 export async function handleResendWebhook(
   request: Request,
   env: Env
@@ -51,9 +69,18 @@ export async function handleResendWebhook(
     });
   }
 
-  console.log(`Received webhook event: ${event.type} for email_id: ${event.data.email_id}`);
+  console.log(`Received webhook event: ${event.type}`, { data: event.data });
 
-  // Find delivery log by resend_id (email_id)
+  // Handle contact events (no email_id)
+  if (event.type === 'contact.updated') {
+    await handleContactUpdated(env, event.data as { email?: string; unsubscribed?: boolean });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Find delivery log by resend_id (email_id) for email events
   const deliveryLog = await findDeliveryLogByResendId(env, event.data.email_id);
 
   if (!deliveryLog) {
