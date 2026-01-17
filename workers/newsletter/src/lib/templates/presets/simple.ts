@@ -13,10 +13,15 @@ export interface PresetRenderOptions {
 export function renderSimple(options: PresetRenderOptions): string {
   const { content, brandSettings, unsubscribeUrl, siteUrl } = options;
 
+  const signatureHtml = brandSettings.email_signature
+    ? `<div style="${STYLES.signature}">${brandSettings.email_signature.replace(/\n/g, '<br>')}</div>`
+    : '';
+
   const innerContent = `
     <div style="${STYLES.content}">
       ${applyListStyles(content)}
     </div>
+    ${signatureHtml}
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">
         <a href="${siteUrl}" style="${STYLES.link(brandSettings.primary_color)}">${brandSettings.footer_text}</a><br>

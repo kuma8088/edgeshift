@@ -9,6 +9,10 @@ export function renderNewsletter(options: PresetRenderOptions): string {
     ? `<img src="${brandSettings.logo_url}" alt="${brandSettings.footer_text}" style="max-height: 40px; margin-bottom: 16px;">`
     : '';
 
+  const signatureHtml = brandSettings.email_signature
+    ? `<div style="${STYLES.signature}">${brandSettings.email_signature.replace(/\n/g, '<br>')}</div>`
+    : '';
+
   const innerContent = `
     <div style="text-align: center; margin-bottom: 24px;">
       ${logoHtml}
@@ -17,6 +21,7 @@ export function renderNewsletter(options: PresetRenderOptions): string {
     <div style="${STYLES.content}">
       ${applyListStyles(content)}
     </div>
+    ${signatureHtml}
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">
         <a href="${siteUrl}" style="${STYLES.link(brandSettings.primary_color)}">${brandSettings.footer_text}</a><br>

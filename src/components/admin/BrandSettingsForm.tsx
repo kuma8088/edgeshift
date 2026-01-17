@@ -24,6 +24,7 @@ export function BrandSettingsForm() {
   const [primaryColor, setPrimaryColor] = useState('#7c3aed');
   const [secondaryColor, setSecondaryColor] = useState('#1e1e1e');
   const [footerText, setFooterText] = useState('EdgeShift Newsletter');
+  const [emailSignature, setEmailSignature] = useState('');
   const [defaultTemplateId, setDefaultTemplateId] = useState('simple');
 
   // Preview state
@@ -56,6 +57,7 @@ export function BrandSettingsForm() {
         setPrimaryColor(s.primary_color || '#7c3aed');
         setSecondaryColor(s.secondary_color || '#1e1e1e');
         setFooterText(s.footer_text || 'EdgeShift Newsletter');
+        setEmailSignature(s.email_signature || '');
         setDefaultTemplateId(s.default_template_id || 'simple');
       }
 
@@ -81,6 +83,7 @@ export function BrandSettingsForm() {
         primary_color: primaryColor,
         secondary_color: secondaryColor,
         footer_text: footerText,
+        email_signature: emailSignature,
         default_template_id: defaultTemplateId,
       });
 
@@ -115,6 +118,7 @@ export function BrandSettingsForm() {
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           footer_text: footerText,
+          email_signature: emailSignature,
           default_template_id: defaultTemplateId,
         },
       });
@@ -245,6 +249,22 @@ export function BrandSettingsForm() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                メール署名
+              </label>
+              <textarea
+                value={emailSignature}
+                onChange={(e) => setEmailSignature(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-800 focus:border-transparent resize-y"
+                placeholder="山田 太郎&#10;EdgeShift&#10;https://edgeshift.tech"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                メール本文の後、フッターの前に表示される署名。改行は保持されます。
+              </p>
             </div>
 
             <div>

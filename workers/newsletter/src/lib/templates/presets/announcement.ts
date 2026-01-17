@@ -5,6 +5,10 @@ import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
 export function renderAnnouncement(options: PresetRenderOptions): string {
   const { content, subject, brandSettings, unsubscribeUrl, siteUrl } = options;
 
+  const signatureHtml = brandSettings.email_signature
+    ? `<div style="${STYLES.signature}">${brandSettings.email_signature.replace(/\n/g, '<br>')}</div>`
+    : '';
+
   const innerContent = `
     <div style="background-color: ${brandSettings.primary_color}; color: white; padding: 24px; text-align: center; border-radius: 8px; margin-bottom: 24px;">
       <h1 style="${STYLES.headingLarge('white')}">📢 ${subject}</h1>
@@ -12,6 +16,7 @@ export function renderAnnouncement(options: PresetRenderOptions): string {
     <div style="${STYLES.content}">
       ${applyListStyles(content)}
     </div>
+    ${signatureHtml}
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">
         <a href="${siteUrl}" style="${STYLES.link(brandSettings.primary_color)}">${brandSettings.footer_text}</a><br>

@@ -253,6 +253,7 @@ CREATE TABLE IF NOT EXISTS brand_settings (
   primary_color TEXT DEFAULT '#7c3aed',
   secondary_color TEXT DEFAULT '#1e1e1e',
   footer_text TEXT DEFAULT 'EdgeShift Newsletter',
+  email_signature TEXT DEFAULT '',
   default_template_id TEXT DEFAULT 'simple',
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch())
