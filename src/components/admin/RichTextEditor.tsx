@@ -93,6 +93,7 @@ export function RichTextEditor({
           {/* White content box - matches email format */}
           <div
             style={{
+              boxSizing: 'content-box', // Match email template (not Tailwind's border-box)
               backgroundColor: '#ffffff',
               maxWidth: '540px',
               margin: '0 auto',
