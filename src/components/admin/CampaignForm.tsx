@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, forwardRef, useImperativeHandle, type FormEvent } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle, type FormEvent } from 'react';
 import { RichTextEditor } from './RichTextEditor';
 import { ListSelector } from './ListSelector';
 import { TemplateSelector } from './TemplateSelector';
@@ -86,6 +86,16 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testSendError, setTestSendError] = useState('');
   const [testSendSuccess, setTestSendSuccess] = useState('');
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+    };
+  }, []);
 
   const generateSlug = () => {
     if (!subject.trim()) {
@@ -137,11 +147,20 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
   };
 
   const handleTestSend = async () => {
+    // Validate template is selected (required by backend)
+    if (!templateId) {
+      setTestSendError('テンプレートを選択してください');
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = setTimeout(() => setTestSendError(''), 5000);
+      return;
+    }
+
     const email = window.prompt('テストメールの送信先アドレスを入力してください:');
     if (!email || !email.trim()) return;
 
-    // Simple validation
-    if (!email.includes('@')) {
+    // Proper email validation (matches backend regex)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
       alert('有効なメールアドレスを入力してください');
       return;
     }
@@ -149,25 +168,30 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
     setIsSendingTest(true);
     setTestSendError('');
     setTestSendSuccess('');
+    // Clear any existing timeouts
+    if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
 
     try {
+      // templateId is guaranteed to be defined here (checked above)
       const result = await sendTestEmail({
         to: email.trim(),
         subject: subject.trim(),
         content: content.trim(),
-        templateId: templateId,
+        templateId: templateId!, // Non-null assertion (validated above)
       });
 
       if (result.success) {
         setTestSendSuccess(`テストメールを ${email} に送信しました`);
-        // Clear message after 3 seconds
-        setTimeout(() => setTestSendSuccess(''), 3000);
+        successTimeoutRef.current = setTimeout(() => setTestSendSuccess(''), 3000);
       } else {
         setTestSendError(result.error || 'テストメールの送信に失敗しました');
+        errorTimeoutRef.current = setTimeout(() => setTestSendError(''), 5000);
       }
     } catch (err) {
       console.error('Test send error:', err);
       setTestSendError('テストメールの送信に失敗しました');
+      errorTimeoutRef.current = setTimeout(() => setTestSendError(''), 5000);
     } finally {
       setIsSendingTest(false);
     }
