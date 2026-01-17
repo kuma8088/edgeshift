@@ -9,6 +9,7 @@ describe('Template Engine', () => {
     primary_color: '#7c3aed',
     secondary_color: '#1e1e1e',
     footer_text: 'EdgeShift Newsletter',
+    email_signature: '',
     default_template_id: 'simple',
     created_at: 0,
     updated_at: 0,

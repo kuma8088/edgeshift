@@ -8,6 +8,18 @@
  */
 
 /**
+ * Escape HTML special characters to prevent XSS
+ */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
  * Font stack optimized for Japanese + cross-platform
  * Priority: Apple (Mac/iOS) -> Windows -> fallback
  */
@@ -120,6 +132,9 @@ export const STYLES = {
 
   /** Content wrapper */
   content: `margin-bottom: ${SPACING.sectionGap};`,
+
+  /** Email signature (between content and footer) */
+  signature: `margin: ${SPACING.sectionGap} 0; padding-top: ${SPACING.sectionGap}; border-top: 1px solid ${COLORS.border}; font-size: ${TYPOGRAPHY.small.fontSize}; color: ${COLORS.text.secondary}; line-height: 1.6;`,
 
   /** List styles (ol/ul) */
   list: `margin: 0 0 ${SPACING.paragraphGap} 0; padding-left: 16px;`,

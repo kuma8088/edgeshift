@@ -63,6 +63,10 @@ export async function updateBrandSettings(
         updates.push('footer_text = ?');
         values.push(body.footer_text);
       }
+      if (body.email_signature !== undefined) {
+        updates.push('email_signature = ?');
+        values.push(body.email_signature);
+      }
       if (body.default_template_id !== undefined) {
         updates.push('default_template_id = ?');
         values.push(body.default_template_id);
@@ -78,14 +82,15 @@ export async function updateBrandSettings(
     } else {
       const defaults = getDefaultBrandSettings();
       await env.DB.prepare(`
-        INSERT INTO brand_settings (id, logo_url, primary_color, secondary_color, footer_text, default_template_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO brand_settings (id, logo_url, primary_color, secondary_color, footer_text, email_signature, default_template_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         'default',
         body.logo_url ?? defaults.logo_url,
         body.primary_color ?? defaults.primary_color,
         body.secondary_color ?? defaults.secondary_color,
         body.footer_text ?? defaults.footer_text,
+        body.email_signature ?? defaults.email_signature,
         body.default_template_id ?? defaults.default_template_id,
         now,
         now

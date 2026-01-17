@@ -5,6 +5,30 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { MenuBar } from './MenuBar';
 import { useEffect } from 'react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+
+/**
+ * Detect if text looks like Markdown
+ * Checks for common Markdown patterns: headings, lists, emphasis, code blocks, etc.
+ */
+function isMarkdownLike(text: string): boolean {
+  const patterns = [
+    /^#{1,6}\s/m, // Headings: # ## ### etc.
+    /^[-*+]\s/m, // Unordered lists: - * +
+    /^\d+\.\s/m, // Ordered lists: 1. 2. etc.
+    /\*\*[^*]+\*\*/, // Bold: **text**
+    /__[^_]+__/, // Bold: __text__
+    /\*[^*]+\*/, // Italic: *text*
+    /_[^_]+_/, // Italic: _text_
+    /^>\s/m, // Blockquote: >
+    /```[\s\S]*?```/, // Code block: ```code```
+    /`[^`]+`/, // Inline code: `code`
+    /\[.+\]\(.+\)/, // Links: [text](url)
+  ];
+
+  return patterns.some((pattern) => pattern.test(text));
+}
 
 interface RichTextEditorProps {
   value: string;
@@ -12,6 +36,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   /** Render editor as email preview format (540px white box on gray background) */
   emailPreviewStyle?: boolean;
+  /** When true, editor is read-only */
+  disabled?: boolean;
 }
 
 // Font stack optimized for Japanese + cross-platform (from email styles)
@@ -30,8 +56,10 @@ export function RichTextEditor({
   onChange,
   placeholder = 'Start typing...',
   emailPreviewStyle = false,
+  disabled = false,
 }: RichTextEditorProps) {
   const editor = useEditor({
+    editable: !disabled,
     extensions: [
       StarterKit.configure({
         // Exclude link from StarterKit to avoid duplication
@@ -64,6 +92,21 @@ export function RichTextEditor({
           ? 'email-editor-content min-h-[300px] focus:outline-none'
           : 'prose prose-sm max-w-none min-h-[300px] p-4 focus:outline-none',
       },
+      handlePaste: (_view, event) => {
+        const text = event.clipboardData?.getData('text/plain');
+        // Only convert if it looks like Markdown and there's no HTML content
+        const hasHtml = event.clipboardData?.types.includes('text/html');
+        if (text && !hasHtml && isMarkdownLike(text)) {
+          event.preventDefault();
+          // Use sync mode explicitly and sanitize output to prevent XSS
+          const html = marked.parse(text, { async: false });
+          const sanitizedHtml = DOMPurify.sanitize(html);
+          // Use the editor's insertContent for proper HTML parsing
+          editor?.chain().focus().insertContent(sanitizedHtml).run();
+          return true;
+        }
+        return false;
+      },
     },
   });
 
@@ -77,17 +120,21 @@ export function RichTextEditor({
   if (emailPreviewStyle) {
     return (
       <div className="rounded-lg overflow-hidden">
-        {/* MenuBar at top */}
-        <div className="bg-white border border-gray-300 rounded-t-lg">
-          <MenuBar editor={editor} />
-        </div>
+        {/* MenuBar at top - sticky when scrolling, hidden when disabled */}
+        {!disabled && (
+          <div className="sticky top-0 z-10 bg-white border border-gray-300 rounded-t-lg">
+            <MenuBar editor={editor} />
+          </div>
+        )}
 
-        {/* Email preview styled editor */}
+        {/* Email preview styled editor with scroll */}
         <div
-          className="rounded-b-lg"
+          className={disabled ? 'rounded-lg' : 'rounded-b-lg'}
           style={{
             backgroundColor: '#f5f5f5',
             padding: '24px 16px',
+            maxHeight: '70vh',
+            overflowY: 'auto',
           }}
         >
           {/* White content box - matches email format */}
@@ -212,9 +259,15 @@ export function RichTextEditor({
   }
 
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-      <MenuBar editor={editor} />
-      <EditorContent editor={editor} />
+    <div className="border border-gray-300 rounded-lg overflow-hidden bg-white flex flex-col">
+      {!disabled && (
+        <div className="sticky top-0 z-10 flex-shrink-0">
+          <MenuBar editor={editor} />
+        </div>
+      )}
+      <div className="overflow-y-auto" style={{ maxHeight: '70vh' }}>
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

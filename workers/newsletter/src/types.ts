@@ -494,6 +494,7 @@ export interface BrandSettings {
   primary_color: string;
   secondary_color: string;
   footer_text: string;
+  email_signature: string;
   default_template_id: string;
   created_at: number;
   updated_at: number;
@@ -504,6 +505,7 @@ export interface UpdateBrandSettingsRequest {
   primary_color?: string;
   secondary_color?: string;
   footer_text?: string;
+  email_signature?: string;
   default_template_id?: string;
 }
 

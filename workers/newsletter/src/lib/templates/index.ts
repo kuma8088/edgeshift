@@ -46,6 +46,7 @@ export function getDefaultBrandSettings(): BrandSettings {
     primary_color: '#7c3aed',
     secondary_color: '#1e1e1e',
     footer_text: 'EdgeShift Newsletter',
+    email_signature: '',
     default_template_id: 'simple',
     created_at: Math.floor(Date.now() / 1000),
     updated_at: Math.floor(Date.now() / 1000),

@@ -8,9 +8,10 @@ interface Props {
   onChange: (listId: string | null) => void;
   label?: string;
   allowNull?: boolean;
+  disabled?: boolean;
 }
 
-export function ListSelector({ value, onChange, label = 'Contact List', allowNull = true }: Props) {
+export function ListSelector({ value, onChange, label = 'Contact List', allowNull = true, disabled = false }: Props) {
   const [lists, setLists] = useState<ContactList[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +41,8 @@ export function ListSelector({ value, onChange, label = 'Contact List', allowNul
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value || null)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-800 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+        disabled={disabled}
       >
         {allowNull && <option value="">全員配信（リスト未選択）</option>}
         {lists.map((list) => (
