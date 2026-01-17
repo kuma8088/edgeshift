@@ -57,6 +57,8 @@ export function youtubeUrlToThumbnail(url: string): string {
 /**
  * Convert anchor tags with YouTube URLs to clickable thumbnails
  * Handles format: <a href="YOUTUBE_URL">...</a>
+ *
+ * @deprecated No longer used - YouTube thumbnail conversion now happens at insert time in the editor
  */
 export function convertYoutubeAnchors(html: string): string {
   // Match <a> tags where href is a YouTube URL
@@ -78,6 +80,8 @@ export function convertYoutubeAnchors(html: string): string {
 /**
  * Convert YouTube URLs in text to clickable thumbnails
  * Processes standalone YouTube URLs (on their own line or surrounded by whitespace)
+ *
+ * @deprecated No longer used - YouTube thumbnail conversion now happens at insert time in the editor
  */
 export function convertYoutubeUrls(text: string): string {
   // Match YouTube URLs that are not already inside HTML tags
@@ -129,27 +133,27 @@ export function ensureImageMaxWidth(html: string): string {
  * Convert plain text URLs to clickable links
  * Matches URLs starting with http:// or https://
  * Uses negative lookbehind to avoid matching URLs already inside HTML attributes
- * Note: YouTube URLs are handled separately by convertYoutubeUrls
+ *
+ * Note: YouTube thumbnail conversion is now handled at insert time in the editor.
+ * This function only linkifies plain text URLs.
  */
 export function linkifyUrls(text: string): string {
-  // First, convert YouTube anchor tags to thumbnails
-  let result = convertYoutubeAnchors(text);
+  // YouTube auto-conversion removed - URLs inserted as thumbnails keep their format,
+  // URLs inserted as links remain as links
+  let result = text;
 
-  // Then, convert standalone YouTube URLs to thumbnails
-  result = convertYoutubeUrls(result);
-
-  // Then linkify remaining URLs (excluding YouTube URLs that weren't converted and existing links)
+  // Linkify plain text URLs (not inside HTML attributes or anchor tags)
   // Negative lookbehind (?<!...) to skip URLs inside HTML attributes like href="..." or src="..."
   // Also skip URLs that are already inside <a> tags
   const urlRegex = /(?<!href="|src="|<a [^>]*>)(https?:\/\/[^\s<>"。、！？]+)(?![^<]*<\/a>)/g;
   result = result.replace(urlRegex, (match) => {
-    // Skip if it's a YouTube URL (already handled) or YouTube thumbnail URL
-    if (isYoutubeUrl(match) || match.includes('img.youtube.com')) {
+    // Skip YouTube thumbnail URLs (img.youtube.com) - these are part of embedded thumbnails
+    if (match.includes('img.youtube.com')) {
       return match;
     }
     return `<a href="${match}" style="${STYLES.link(COLORS.accent)}">${match}</a>`;
   });
 
-  // Finally, ensure all images have responsive styles for email
+  // Ensure all images have responsive styles for email
   return ensureImageMaxWidth(result);
 }
