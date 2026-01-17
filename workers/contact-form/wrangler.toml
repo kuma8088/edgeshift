@@ -2,11 +2,12 @@ name = "edgeshift-contact-form"
 main = "src/index.ts"
 compatibility_date = "2024-12-01"
 
-[vars]
-RECIPIENT_EMAIL = "contact@edgeshift.tech"
-ALLOWED_ORIGIN = "https://edgeshift.tech"
-
 # Production route
 routes = [
   { pattern = "edgeshift.tech/api/contact", zone_name = "edgeshift.tech" }
 ]
+
+[vars]
+RECIPIENT_EMAIL = "contact@edgeshift.tech"
+SENDER_EMAIL = "noreply@send.edgeshift.tech"
+ALLOWED_ORIGIN = "https://edgeshift.tech"
