@@ -254,20 +254,22 @@ describe('Content Processor', () => {
       expect(result).toContain('>https://example.com</a>');
     });
 
-    it('should convert YouTube URL to thumbnail (not just link)', () => {
+    it('should convert YouTube URL to regular link (no auto-thumbnail)', () => {
       const text = 'Watch https://www.youtube.com/watch?v=test123';
       const result = linkifyUrls(text);
-      expect(result).toContain('https://img.youtube.com/vi/test123/maxresdefault.jpg');
-      expect(result).toContain('<img src=');
+      // YouTube URLs should be linkified as regular links, not converted to thumbnails
+      expect(result).toContain('<a href="https://www.youtube.com/watch?v=test123"');
+      expect(result).not.toContain('<img src=');
     });
 
-    it('should handle mixed YouTube and regular URLs', () => {
+    it('should handle mixed YouTube and regular URLs (all as links)', () => {
       const text = `
         Check this video: https://youtu.be/ytVideo
         And visit https://example.com for more
       `;
       const result = linkifyUrls(text);
-      expect(result).toContain('https://img.youtube.com/vi/ytVideo/maxresdefault.jpg');
+      // Both URLs should be converted to regular links
+      expect(result).toContain('<a href="https://youtu.be/ytVideo"');
       expect(result).toContain('<a href="https://example.com"');
     });
 
@@ -278,10 +280,11 @@ describe('Content Processor', () => {
       expect(result.match(/<a /g)?.length).toBe(1);
     });
 
-    it('should convert YouTube anchor to thumbnail', () => {
+    it('should preserve YouTube anchor tags (no auto-thumbnail conversion)', () => {
       const html = '<a href="https://www.youtube.com/watch?v=anchorTest">Video</a>';
       const result = linkifyUrls(html);
-      expect(result).toContain('https://img.youtube.com/vi/anchorTest/maxresdefault.jpg');
+      // YouTube anchors should be preserved as-is, not converted to thumbnails
+      expect(result).toBe(html);
     });
 
     it('should handle URL followed by Japanese period (。)', () => {
@@ -318,6 +321,15 @@ describe('Content Processor', () => {
       expect(result).not.toContain('<a href="https://img.youtube.com');
     });
 
+    it('should preserve pre-inserted YouTube thumbnail with link', () => {
+      // This is what the editor inserts when user chooses "thumbnail" mode
+      const html = '<a href="https://www.youtube.com/watch?v=abc123" target="_blank"><img src="https://img.youtube.com/vi/abc123/maxresdefault.jpg" alt="YouTube Video" /></a>';
+      const result = linkifyUrls(html);
+      // Should preserve the structure as-is
+      expect(result).toContain('href="https://www.youtube.com/watch?v=abc123"');
+      expect(result).toContain('src="https://img.youtube.com/vi/abc123/maxresdefault.jpg"');
+    });
+
     it('should handle empty string', () => {
       const result = linkifyUrls('');
       expect(result).toBe('');
@@ -343,7 +355,8 @@ describe('Content Processor', () => {
       `;
       const result = linkifyUrls(html);
       expect(result).toContain('<a href="https://example.com"');
-      expect(result).toContain('https://img.youtube.com/vi/video1/maxresdefault.jpg');
+      // YouTube anchor should be preserved, not converted to thumbnail
+      expect(result).toContain('href="https://youtu.be/video1"');
       expect(result).toContain('<a href="https://another.com/path?query=1"');
     });
 

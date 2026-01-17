@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, forwardRef, useImperativeHandle, type FormEvent } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle, type FormEvent } from 'react';
 import { RichTextEditor } from './RichTextEditor';
 import { ListSelector } from './ListSelector';
 import { TemplateSelector } from './TemplateSelector';
 import { EmailPreviewModal } from './EmailPreviewModal';
+import { sendTestEmail } from '../../utils/admin-api';
 
 export interface CampaignFormRef {
   setSubject: (subject: string) => void;
@@ -81,6 +82,21 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
     (campaign?.ab_wait_hours as 1 | 2 | 4) || 4
   );
 
+  // Test send state
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testSendError, setTestSendError] = useState('');
+  const [testSendSuccess, setTestSendSuccess] = useState('');
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+    };
+  }, []);
+
   const generateSlug = () => {
     if (!subject.trim()) {
       setError('件名を入力してからスラッグを生成してください');
@@ -128,6 +144,57 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleTestSend = async () => {
+    // Validate template is selected (required by backend)
+    if (!templateId) {
+      setTestSendError('テンプレートを選択してください');
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = setTimeout(() => setTestSendError(''), 5000);
+      return;
+    }
+
+    const email = window.prompt('テストメールの送信先アドレスを入力してください:');
+    if (!email || !email.trim()) return;
+
+    // Proper email validation (matches backend regex)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      alert('有効なメールアドレスを入力してください');
+      return;
+    }
+
+    setIsSendingTest(true);
+    setTestSendError('');
+    setTestSendSuccess('');
+    // Clear any existing timeouts
+    if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+
+    try {
+      // templateId is guaranteed to be defined here (checked above)
+      const result = await sendTestEmail({
+        to: email.trim(),
+        subject: subject.trim(),
+        content: content.trim(),
+        templateId: templateId!, // Non-null assertion (validated above)
+      });
+
+      if (result.success) {
+        setTestSendSuccess(`テストメールを ${email} に送信しました`);
+        successTimeoutRef.current = setTimeout(() => setTestSendSuccess(''), 3000);
+      } else {
+        setTestSendError(result.error || 'テストメールの送信に失敗しました');
+        errorTimeoutRef.current = setTimeout(() => setTestSendError(''), 5000);
+      }
+    } catch (err) {
+      console.error('Test send error:', err);
+      setTestSendError('テストメールの送信に失敗しました');
+      errorTimeoutRef.current = setTimeout(() => setTestSendError(''), 5000);
+    } finally {
+      setIsSendingTest(false);
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -202,27 +269,59 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
         </div>
       )}
 
-      {/* 2-column layout: Editor (left ~540-600px) + Settings (right flexible) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(540px,600px)_1fr] gap-6">
+      {/* 2-column layout: Editor (left flexible) + Settings (right 320-380px) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(320px,380px)] gap-6">
         {/* Left Column: Email Content Editor (styled as email preview) */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
               メール本文
             </h2>
-            <button
-              type="button"
-              onClick={() => setShowPreview(true)}
-              disabled={!content.trim()}
-              className="px-3 py-1.5 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              プレビュー
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPreview(true)}
+                disabled={!content.trim()}
+                className="px-3 py-1.5 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                プレビュー
+              </button>
+              <button
+                type="button"
+                onClick={handleTestSend}
+                disabled={!content.trim() || !subject.trim() || isSendingTest}
+                className="px-3 py-1.5 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                {isSendingTest ? (
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                )}
+                {isSendingTest ? '送信中...' : 'テスト送信'}
+              </button>
+            </div>
           </div>
+
+          {/* Test send success/error messages */}
+          {testSendSuccess && (
+            <div className="p-2 bg-green-50 text-green-700 rounded-lg text-sm">
+              {testSendSuccess}
+            </div>
+          )}
+          {testSendError && (
+            <div className="p-2 bg-red-50 text-red-600 rounded-lg text-sm">
+              {testSendError}
+            </div>
+          )}
 
           {/* Rich Text Editor styled as email preview */}
           <RichTextEditor
