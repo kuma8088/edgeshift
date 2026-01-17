@@ -541,6 +541,26 @@ export async function testSendTemplate(data: TestSendTemplateData) {
   return apiRequest<{ message_id: string }>('/templates/test-send', { method: 'POST', body: data });
 }
 
+// Test send email (more flexible - templateId is optional)
+export interface SendTestEmailData {
+  to: string;
+  subject: string;
+  content: string;
+  templateId?: string;
+}
+
+export async function sendTestEmail(data: SendTestEmailData) {
+  return apiRequest<{ message: string; message_id?: string }>('/templates/test-send', {
+    method: 'POST',
+    body: {
+      to: data.to,
+      subject: data.subject,
+      content: data.content,
+      template_id: data.templateId,
+    },
+  });
+}
+
 // Premium Payment APIs
 export interface Plan {
   id: string;
