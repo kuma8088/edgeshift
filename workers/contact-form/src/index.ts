@@ -1,6 +1,7 @@
 interface Env {
   RESEND_API_KEY: string;
   RECIPIENT_EMAIL: string;
+  SENDER_EMAIL: string;
   ALLOWED_ORIGIN: string;
 }
 
@@ -160,7 +161,7 @@ async function sendEmail(env: Env, data: ContactFormData): Promise<void> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'EdgeShift Contact <noreply@mail.edgeshift.tech>',
+      from: `EdgeShift Contact <${env.SENDER_EMAIL}>`,
       to: env.RECIPIENT_EMAIL,
       reply_to: data.email,
       subject,

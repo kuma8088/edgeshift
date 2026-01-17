@@ -98,7 +98,7 @@ zone_name = "edgeshift.tech"
 
 [vars]
 ALLOWED_ORIGIN = "https://edgeshift.tech"
-SENDER_EMAIL = "newsletter@mail.edgeshift.tech"
+SENDER_EMAIL = "newsletter@send.edgeshift.tech"
 SENDER_NAME = "EdgeShift Newsletter"
 SITE_URL = "https://edgeshift.tech"
 IMAGES_PUBLIC_URL = "https://images.edgeshift.tech"
