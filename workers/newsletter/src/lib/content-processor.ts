@@ -57,6 +57,8 @@ export function youtubeUrlToThumbnail(url: string): string {
 /**
  * Convert anchor tags with YouTube URLs to clickable thumbnails
  * Handles format: <a href="YOUTUBE_URL">...</a>
+ *
+ * @deprecated No longer used - YouTube thumbnail conversion now happens at insert time in the editor
  */
 export function convertYoutubeAnchors(html: string): string {
   // Match <a> tags where href is a YouTube URL
@@ -78,6 +80,8 @@ export function convertYoutubeAnchors(html: string): string {
 /**
  * Convert YouTube URLs in text to clickable thumbnails
  * Processes standalone YouTube URLs (on their own line or surrounded by whitespace)
+ *
+ * @deprecated No longer used - YouTube thumbnail conversion now happens at insert time in the editor
  */
 export function convertYoutubeUrls(text: string): string {
   // Match YouTube URLs that are not already inside HTML tags
@@ -129,7 +133,9 @@ export function ensureImageMaxWidth(html: string): string {
  * Convert plain text URLs to clickable links
  * Matches URLs starting with http:// or https://
  * Uses negative lookbehind to avoid matching URLs already inside HTML attributes
- * Note: YouTube URLs are handled separately by convertYoutubeUrls
+ *
+ * Note: YouTube thumbnail conversion is now handled at insert time in the editor.
+ * This function only linkifies plain text URLs.
  */
 export function linkifyUrls(text: string): string {
   // YouTube auto-conversion removed - URLs inserted as thumbnails keep their format,

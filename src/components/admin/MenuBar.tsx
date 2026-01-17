@@ -61,8 +61,11 @@ export function MenuBar({ editor }: MenuBarProps) {
           alert('無効なURLです（http/httpsのみ対応）');
           return;
         }
-        imgHtml = `<a href="${linkUrl.trim()}" target="_blank"><img src="${imageUrl}" alt="Image" style="display: block; max-width: 100%; height: auto;" /></a>`;
-      } catch {
+        // Escape double quotes in URL to prevent XSS
+        const sanitizedUrl = linkUrl.trim().replace(/"/g, '&quot;');
+        imgHtml = `<a href="${sanitizedUrl}" target="_blank" rel="noopener noreferrer"><img src="${imageUrl}" alt="Image" style="display: block; max-width: 100%; height: auto;" /></a>`;
+      } catch (error) {
+        console.error('URL validation error:', { error, linkUrl: linkUrl.trim() });
         alert('無効なURLです');
         return;
       }
@@ -140,7 +143,8 @@ export function MenuBar({ editor }: MenuBarProps) {
     }
 
     if (!videoId) {
-      console.error('Invalid YouTube URL passed to handleInsertYouTube');
+      console.error('Invalid YouTube URL passed to handleInsertYouTube:', url);
+      alert('YouTube URLの形式が正しくありません。youtube.com/watch または youtu.be 形式を使用してください。');
       return;
     }
 
@@ -150,9 +154,9 @@ export function MenuBar({ editor }: MenuBarProps) {
     let html: string;
     if (mode === 'thumbnail') {
       const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-      html = `<p><a href="${canonicalUrl}" target="_blank"><img src="${thumbnailUrl}" alt="YouTube Video" style="display: block; max-width: 100%; height: auto; border-radius: 8px;" /></a></p>`;
+      html = `<p><a href="${canonicalUrl}" target="_blank" rel="noopener noreferrer"><img src="${thumbnailUrl}" alt="YouTube Video" style="display: block; max-width: 100%; height: auto; border-radius: 8px;" /></a></p>`;
     } else {
-      html = `<p><a href="${canonicalUrl}" target="_blank">YouTube Video</a></p>`;
+      html = `<p><a href="${canonicalUrl}" target="_blank" rel="noopener noreferrer">YouTube Video</a></p>`;
     }
 
     editor.chain().focus().insertContent(html).run();
@@ -163,11 +167,13 @@ export function MenuBar({ editor }: MenuBarProps) {
     try {
       const parsedUrl = new URL(url);
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-        console.error('Invalid URL protocol:', url);
+        console.error('Invalid URL protocol from library:', url);
+        alert('ライブラリから取得したURLが無効です。画像の再アップロードをお試しください。');
         return;
       }
-    } catch {
-      console.error('Invalid URL:', url);
+    } catch (error) {
+      console.error('Invalid URL from library:', { url, error });
+      alert('ライブラリから取得したURLが無効です。画像の再アップロードをお試しください。');
       return;
     }
 
