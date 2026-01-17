@@ -1,9 +1,13 @@
 import type { BrandSettings } from '../../../types';
 import type { PresetRenderOptions } from './simple';
-import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles, escapeHtml } from '../styles';
 
 export function renderAnnouncement(options: PresetRenderOptions): string {
   const { content, subject, brandSettings, unsubscribeUrl, siteUrl } = options;
+
+  const signatureHtml = brandSettings.email_signature
+    ? `<div style="${STYLES.signature}">${escapeHtml(brandSettings.email_signature).replace(/\n/g, '<br>')}</div>`
+    : '';
 
   const innerContent = `
     <div style="background-color: ${brandSettings.primary_color}; color: white; padding: 24px; text-align: center; border-radius: 8px; margin-bottom: 24px;">
@@ -12,6 +16,7 @@ export function renderAnnouncement(options: PresetRenderOptions): string {
     <div style="${STYLES.content}">
       ${applyListStyles(content)}
     </div>
+    ${signatureHtml}
     <div style="${STYLES.footerWrapper}">
       <p style="${STYLES.footer}">
         <a href="${siteUrl}" style="${STYLES.link(brandSettings.primary_color)}">${brandSettings.footer_text}</a><br>
