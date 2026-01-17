@@ -541,6 +541,31 @@ export async function testSendTemplate(data: TestSendTemplateData) {
   return apiRequest<{ message_id: string }>('/templates/test-send', { method: 'POST', body: data });
 }
 
+/**
+ * Send test email with template
+ * Note: Uses same endpoint as testSendTemplate but with camelCase interface
+ * Backend requires template_id, so templateId is effectively required
+ * @see testSendTemplate for snake_case interface
+ */
+export interface SendTestEmailData {
+  to: string;
+  subject: string;
+  content: string;
+  templateId: string; // Required by backend
+}
+
+export async function sendTestEmail(data: SendTestEmailData) {
+  return apiRequest<{ message_id: string }>('/templates/test-send', {
+    method: 'POST',
+    body: {
+      to: data.to,
+      subject: data.subject,
+      content: data.content,
+      template_id: data.templateId,
+    },
+  });
+}
+
 // Premium Payment APIs
 export interface Plan {
   id: string;
