@@ -6,12 +6,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { MenuBar } from './MenuBar';
 import { useEffect } from 'react';
 import { marked } from 'marked';
-
-// Configure marked for GFM (GitHub Flavored Markdown)
-marked.setOptions({
-  breaks: true, // Convert \n to <br>
-  gfm: true, // Enable GitHub Flavored Markdown
-});
+import DOMPurify from 'dompurify';
 
 /**
  * Detect if text looks like Markdown
@@ -103,9 +98,11 @@ export function RichTextEditor({
         const hasHtml = event.clipboardData?.types.includes('text/html');
         if (text && !hasHtml && isMarkdownLike(text)) {
           event.preventDefault();
-          const html = marked.parse(text) as string;
+          // Use sync mode explicitly and sanitize output to prevent XSS
+          const html = marked.parse(text, { async: false });
+          const sanitizedHtml = DOMPurify.sanitize(html);
           // Use the editor's insertContent for proper HTML parsing
-          editor?.chain().focus().insertContent(html).run();
+          editor?.chain().focus().insertContent(sanitizedHtml).run();
           return true;
         }
         return false;

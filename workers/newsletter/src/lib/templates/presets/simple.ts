@@ -1,5 +1,5 @@
 import type { BrandSettings } from '../../../types';
-import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles, escapeHtml } from '../styles';
 
 export interface PresetRenderOptions {
   content: string;
@@ -14,7 +14,7 @@ export function renderSimple(options: PresetRenderOptions): string {
   const { content, brandSettings, unsubscribeUrl, siteUrl } = options;
 
   const signatureHtml = brandSettings.email_signature
-    ? `<div style="${STYLES.signature}">${brandSettings.email_signature.replace(/\n/g, '<br>')}</div>`
+    ? `<div style="${STYLES.signature}">${escapeHtml(brandSettings.email_signature).replace(/\n/g, '<br>')}</div>`
     : '';
 
   const innerContent = `

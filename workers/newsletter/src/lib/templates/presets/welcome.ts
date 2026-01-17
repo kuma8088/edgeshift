@@ -1,6 +1,6 @@
 import type { BrandSettings } from '../../../types';
 import type { PresetRenderOptions } from './simple';
-import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from '../styles';
+import { STYLES, COLORS, wrapInEmailLayout, applyListStyles, escapeHtml } from '../styles';
 
 export function renderWelcome(options: PresetRenderOptions): string {
   const { content, brandSettings, subscriberName, unsubscribeUrl, siteUrl } = options;
@@ -9,7 +9,7 @@ export function renderWelcome(options: PresetRenderOptions): string {
   const name = subscriberName || 'ゲスト';
 
   const signatureHtml = brandSettings.email_signature
-    ? `<div style="${STYLES.signature}">${brandSettings.email_signature.replace(/\n/g, '<br>')}</div>`
+    ? `<div style="${STYLES.signature}">${escapeHtml(brandSettings.email_signature).replace(/\n/g, '<br>')}</div>`
     : '';
 
   const innerContent = `
