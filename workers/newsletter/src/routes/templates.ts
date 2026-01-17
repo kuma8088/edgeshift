@@ -116,8 +116,13 @@ export async function testSendTemplate(
       // 1. Ensure test recipient exists as Resend contact
       const contactResult = await ensureResendContact(config, body.to, 'テスト送信者');
 
-      if (!contactResult.success || !contactResult.contactId) {
+      if (!contactResult.success) {
         return errorResponse(contactResult.error || 'Failed to create contact', 500);
+      }
+
+      if (!contactResult.contactId) {
+        // Contact exists but ID unavailable (409 Conflict without ID in response)
+        return errorResponse('Contact exists but ID unavailable. Try again or use a different email.', 500);
       }
 
       // 2. Create temp segment for test
@@ -149,12 +154,25 @@ export async function testSendTemplate(
         }
 
         // 5. Cleanup segment
-        await deleteSegment(config, segmentResult.segmentId);
+        const cleanupResult = await deleteSegment(config, segmentResult.segmentId);
+        if (!cleanupResult.success) {
+          console.warn('Failed to cleanup test segment:', {
+            segmentId: segmentResult.segmentId,
+            error: cleanupResult.error,
+          });
+        }
 
-        return successResponse({ broadcast_id: broadcastResult.broadcastId });
+        return successResponse({
+          broadcast_id: broadcastResult.broadcastId,
+          ...(cleanupResult.success ? {} : { warning: 'Segment cleanup failed' }),
+        });
       } catch (error) {
         // Ensure cleanup on error
-        await deleteSegment(config, segmentResult.segmentId);
+        try {
+          await deleteSegment(config, segmentResult.segmentId);
+        } catch (cleanupError) {
+          console.error('Failed to cleanup segment after error:', cleanupError);
+        }
         throw error;
       }
     }
