@@ -8,6 +8,7 @@ interface TemplateSelectorProps {
   onChange: (templateId: string | undefined) => void;
   label?: string;
   showDefault?: boolean;
+  disabled?: boolean;
 }
 
 export function TemplateSelector({
@@ -15,6 +16,7 @@ export function TemplateSelector({
   onChange,
   label = 'Template',
   showDefault = true,
+  disabled = false,
 }: TemplateSelectorProps) {
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,8 @@ export function TemplateSelector({
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value || undefined)}
-        className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+        className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+        disabled={disabled}
       >
         {showDefault && (
           <option value="">Default Template</option>

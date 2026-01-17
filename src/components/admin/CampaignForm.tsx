@@ -55,6 +55,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
 ) {
   const [subject, setSubject] = useState(campaign?.subject || '');
   const [content, setContent] = useState(campaign?.content || '');
+  const isReadOnly = campaign?.status === 'sent';
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
@@ -293,7 +294,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
               <button
                 type="button"
                 onClick={handleTestSend}
-                disabled={!content.trim() || !subject.trim() || isSendingTest}
+                disabled={!content.trim() || !subject.trim() || isSendingTest || isReadOnly}
                 className="px-3 py-1.5 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 {isSendingTest ? (
@@ -329,6 +330,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
             onChange={setContent}
             placeholder="メール本文を入力..."
             emailPreviewStyle
+            disabled={isReadOnly}
           />
         </div>
 
@@ -351,8 +353,9 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="メールの件名を入力"
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white"
+                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                   required
+                  disabled={isReadOnly}
                 />
               </div>
 
@@ -361,6 +364,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                 value={templateId}
                 onChange={setTemplateId}
                 label="メールテンプレート"
+                disabled={isReadOnly}
               />
 
               {/* Contact List Selector */}
@@ -369,6 +373,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                 onChange={setContactListId}
                 label="配信対象リスト"
                 allowNull
+                disabled={isReadOnly}
               />
 
               {/* Schedule */}
@@ -381,7 +386,8 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                   id="scheduledAt"
                   value={scheduledAt}
                   onChange={(e) => setScheduledAt(e.target.value)}
-                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white"
+                  className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  disabled={isReadOnly}
                 />
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">
                   未設定の場合は下書きとして保存
@@ -391,12 +397,13 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
               {/* A/B Test Settings - only show when scheduled */}
               {scheduledAt && (
                 <div className="space-y-4 border-t border-[var(--color-border)] pt-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className={`flex items-center gap-2 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                     <input
                       type="checkbox"
                       checked={abTestEnabled}
                       onChange={(e) => setAbTestEnabled(e.target.checked)}
                       className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-2 focus:ring-[var(--color-accent)]"
+                      disabled={isReadOnly}
                     />
                     <span className="font-medium text-[var(--color-text-primary)] text-sm">A/Bテストを有効にする</span>
                   </label>
@@ -412,9 +419,10 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                           id="abSubjectB"
                           value={abSubjectB}
                           onChange={(e) => setAbSubjectB(e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                          className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                           placeholder="テストする別の件名"
                           required={abTestEnabled}
+                          disabled={isReadOnly}
                         />
                       </div>
 
@@ -427,8 +435,9 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                           id="abFromNameB"
                           value={abFromNameB}
                           onChange={(e) => setAbFromNameB(e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all"
+                          className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                           placeholder="テストする別の送信者名"
+                          disabled={isReadOnly}
                         />
                       </div>
 
@@ -438,7 +447,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                         </label>
                         <div className="flex gap-3">
                           {([1, 2, 4] as const).map((hours) => (
-                            <label key={hours} className="flex items-center cursor-pointer">
+                            <label key={hours} className={`flex items-center ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                               <input
                                 type="radio"
                                 name="abWaitHours"
@@ -446,6 +455,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                                 checked={abWaitHours === hours}
                                 onChange={() => setAbWaitHours(hours)}
                                 className="mr-1.5 text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
+                                disabled={isReadOnly}
                               />
                               <span className="text-xs text-[var(--color-text-secondary)]">{hours}時間</span>
                             </label>
@@ -483,12 +493,14 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
                     placeholder="newsletter-slug"
-                    className="flex-1 px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white"
+                    className="flex-1 px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    disabled={isReadOnly}
                   />
                   <button
                     type="button"
                     onClick={generateSlug}
-                    className="px-3 py-2 text-xs bg-white text-[var(--color-text-secondary)] rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                    className="px-3 py-2 text-xs bg-white text-[var(--color-text-secondary)] rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isReadOnly}
                   >
                     自動生成
                   </button>
@@ -499,12 +511,13 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
               </div>
 
               <div>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className={`flex items-center gap-2 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
                     checked={isPublished}
                     onChange={(e) => setIsPublished(e.target.checked)}
                     className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-2 focus:ring-[var(--color-accent)]"
+                    disabled={isReadOnly}
                   />
                   <span className="text-sm font-medium text-[var(--color-text-secondary)]">
                     アーカイブに公開
@@ -523,12 +536,14 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                     onChange={(e) => setExcerpt(e.target.value)}
                     placeholder="ニュースレターの要約を入力..."
                     rows={2}
-                    className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all resize-none bg-white"
+                    className="w-full px-3 py-2 text-sm border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-all resize-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    disabled={isReadOnly}
                   />
                   <button
                     type="button"
                     onClick={generateExcerpt}
-                    className="px-3 py-1.5 text-xs bg-white text-[var(--color-text-secondary)] rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                    className="px-3 py-1.5 text-xs bg-white text-[var(--color-text-secondary)] rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isReadOnly}
                   >
                     本文から自動生成
                   </button>
@@ -549,7 +564,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isReadOnly}
               className="flex-1 px-4 py-2.5 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {loading ? '保存中...' : campaign?.id ? '更新' : '作成'}

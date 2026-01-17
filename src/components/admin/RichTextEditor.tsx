@@ -12,6 +12,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   /** Render editor as email preview format (540px white box on gray background) */
   emailPreviewStyle?: boolean;
+  /** When true, editor is read-only */
+  disabled?: boolean;
 }
 
 // Font stack optimized for Japanese + cross-platform (from email styles)
@@ -30,8 +32,10 @@ export function RichTextEditor({
   onChange,
   placeholder = 'Start typing...',
   emailPreviewStyle = false,
+  disabled = false,
 }: RichTextEditorProps) {
   const editor = useEditor({
+    editable: !disabled,
     extensions: [
       StarterKit.configure({
         // Exclude link from StarterKit to avoid duplication
@@ -77,14 +81,16 @@ export function RichTextEditor({
   if (emailPreviewStyle) {
     return (
       <div className="rounded-lg overflow-hidden">
-        {/* MenuBar at top */}
-        <div className="bg-white border border-gray-300 rounded-t-lg">
-          <MenuBar editor={editor} />
-        </div>
+        {/* MenuBar at top - hidden when disabled */}
+        {!disabled && (
+          <div className="bg-white border border-gray-300 rounded-t-lg">
+            <MenuBar editor={editor} />
+          </div>
+        )}
 
         {/* Email preview styled editor */}
         <div
-          className="rounded-b-lg"
+          className={disabled ? 'rounded-lg' : 'rounded-b-lg'}
           style={{
             backgroundColor: '#f5f5f5',
             padding: '24px 16px',
@@ -213,7 +219,7 @@ export function RichTextEditor({
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-      <MenuBar editor={editor} />
+      {!disabled && <MenuBar editor={editor} />}
       <EditorContent editor={editor} />
     </div>
   );
