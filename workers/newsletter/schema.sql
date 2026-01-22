@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS campaigns (
   is_published INTEGER DEFAULT 0,
   published_at INTEGER,
   excerpt TEXT,
+  -- Soft delete flag
+  is_deleted INTEGER DEFAULT 0,
   -- A/B Testing fields
   ab_test_enabled INTEGER DEFAULT 0,
   ab_subject_b TEXT,
@@ -158,6 +160,7 @@ CREATE TABLE IF NOT EXISTS contact_lists (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
+  resend_segment_id TEXT,  -- Resend segment ID for targeting this list in broadcasts
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch())
 );
