@@ -9,15 +9,6 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
 /**
- * Process HTML to preserve empty paragraphs
- * TipTap outputs empty paragraphs as <p></p>, which renders with zero height.
- * Convert them to <p><br></p> to maintain visible line breaks.
- */
-function processEmptyParagraphs(html: string): string {
-  return html.replace(/<p><\/p>/g, '<p><br></p>');
-}
-
-/**
  * Detect if text looks like Markdown
  * Checks for common Markdown patterns: headings, lists, emphasis, code blocks, etc.
  */
@@ -93,9 +84,7 @@ export function RichTextEditor({
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      // Process empty paragraphs to preserve line breaks
-      const html = processEmptyParagraphs(editor.getHTML());
-      onChange(html);
+      onChange(editor.getHTML());
     },
     editorProps: {
       attributes: {
@@ -182,6 +171,9 @@ export function RichTextEditor({
           }
           .email-editor-content p:last-child {
             margin-bottom: 0;
+          }
+          .email-editor-content p:empty {
+            min-height: 1.5em;
           }
           .email-editor-content p.is-editor-empty:first-child::before {
             color: #adb5bd;
