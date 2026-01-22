@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { listCampaigns, deleteCampaign, sendCampaign } from '../../utils/admin-api';
+import { listCampaigns, deleteCampaign, sendCampaign, copyCampaign } from '../../utils/admin-api';
 import { ConfirmModal } from './ConfirmModal';
 
 interface CampaignStats {
@@ -45,7 +45,7 @@ export function CampaignList() {
   const [error, setError] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    type: 'delete' | 'send';
+    type: 'delete' | 'send' | 'copy';
     campaignId: string;
     campaignSubject: string;
   }>({
@@ -54,6 +54,7 @@ export function CampaignList() {
     campaignId: '',
     campaignSubject: '',
   });
+  const [copyLoading, setCopyLoading] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchCampaigns = async () => {
@@ -89,6 +90,22 @@ export function CampaignList() {
       campaignId: campaign.id,
       campaignSubject: campaign.subject,
     });
+  };
+
+  const handleCopy = async (campaign: Campaign) => {
+    setCopyLoading(campaign.id);
+    try {
+      const result = await copyCampaign(campaign.id);
+      if (result.success) {
+        await fetchCampaigns(); // Refresh list
+      } else {
+        setError(result.error || 'Failed to copy campaign');
+      }
+    } catch (err) {
+      setError('Unexpected error occurred');
+    } finally {
+      setCopyLoading(null);
+    }
   };
 
   const confirmAction = async () => {
@@ -223,6 +240,14 @@ export function CampaignList() {
                 >
                   編集
                 </a>
+                <button
+                  onClick={() => handleCopy(campaign)}
+                  disabled={copyLoading === campaign.id}
+                  className="px-3 py-1 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+                  title="コピーを作成"
+                >
+                  {copyLoading === campaign.id ? '...' : '📋'}
+                </button>
                 {campaign.status === 'draft' && (
                   <button
                     onClick={() => handleSend(campaign)}

@@ -9,6 +9,7 @@ import {
   listCampaigns,
   updateCampaign,
   deleteCampaign,
+  copyCampaign,
 } from './routes/campaigns';
 import { sendCampaign, getCampaignStats } from './routes/campaign-send';
 import {
@@ -172,6 +173,9 @@ export default {
         response = await createCampaign(request, env);
       } else if (path === '/api/campaigns' && request.method === 'GET') {
         response = await listCampaigns(request, env);
+      } else if (path.match(/^\/api\/campaigns\/[^\/]+\/copy$/) && request.method === 'POST') {
+        const id = path.replace('/api/campaigns/', '').replace('/copy', '');
+        response = await copyCampaign(request, env, id);
       } else if (path.match(/^\/api\/campaigns\/[^\/]+\/send$/) && request.method === 'POST') {
         const id = path.replace('/api/campaigns/', '').replace('/send', '');
         response = await sendCampaign(request, env, id);
