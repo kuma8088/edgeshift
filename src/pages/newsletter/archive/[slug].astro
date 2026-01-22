@@ -61,9 +61,10 @@ if (notFound || !article) {
   return new Response('Article not found', { status: 404 });
 }
 
-// Format date
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+// Format date (sent_at is Unix timestamp in seconds)
+function formatDate(timestamp: string | number): string {
+  const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+  const date = new Date(ts * 1000); // Convert seconds to milliseconds
   return date.toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: 'long',

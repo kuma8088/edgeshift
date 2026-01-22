@@ -59,9 +59,10 @@ function extractExcerpt(html: string): string {
   return text.length > 200 ? text.substring(0, 200) + '...' : text;
 }
 
-// Format date to Japanese format
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+// Format date to Japanese format (sent_at is Unix timestamp in seconds)
+function formatDate(timestamp: string | number): string {
+  const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+  const date = new Date(ts * 1000); // Convert seconds to milliseconds
   return date.toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: 'long',
