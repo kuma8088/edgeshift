@@ -96,6 +96,10 @@ zone_name = "edgeshift.tech"
 pattern = "edgeshift.tech/api/images/*"
 zone_name = "edgeshift.tech"
 
+[[routes]]
+pattern = "edgeshift.tech/api/mailserver/*"
+zone_name = "edgeshift.tech"
+
 [vars]
 ALLOWED_ORIGIN = "https://edgeshift.tech"
 SENDER_EMAIL = "newsletter@send.edgeshift.tech"

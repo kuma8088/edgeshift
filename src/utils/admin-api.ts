@@ -927,8 +927,14 @@ export async function getImages(): Promise<{ success: boolean; data?: { images: 
 }
 
 // Mailserver API (for reply-to address selection)
-const MAILSERVER_API_BASE = 'https://admin.kuma8088.com';
+// Proxied through newsletter worker to avoid CORS issues
+// Note: MailUser type is also defined in workers/newsletter/src/types.ts
+// Keep in sync when modifying
 
+/**
+ * Represents a mail user from the mailserver system.
+ * @source External API: admin.kuma8088.com/api/mailserver/users
+ */
 export interface MailUser {
   id: number;
   email: string;
@@ -942,57 +948,6 @@ export interface MailUserListResponse {
 }
 
 export async function listMailUsers(): Promise<{ success: boolean; data?: MailUserListResponse; error?: string }> {
-  try {
-    const response = await fetch(`${MAILSERVER_API_BASE}/api/mailserver/users?enabled_only=true`, {
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-      let errorDetail = `HTTP ${response.status}`;
-
-      // Try to get error message from response body
-      try {
-        const errorBody = await response.json();
-        if (errorBody.error || errorBody.message) {
-          errorDetail = errorBody.error || errorBody.message;
-        }
-      } catch {
-        // Response body is not JSON, use status-based message
-        if (response.status === 401) {
-          errorDetail = '認証が必要です。再ログインしてください';
-        } else if (response.status === 403) {
-          errorDetail = 'メールユーザーへのアクセス権限がありません';
-        } else if (response.status >= 500) {
-          errorDetail = 'メールサーバーが一時的に利用できません';
-        }
-      }
-
-      console.error('listMailUsers API error:', { status: response.status, error: errorDetail });
-      return { success: false, error: errorDetail };
-    }
-
-    // Parse JSON with error handling
-    let data: MailUserListResponse;
-    try {
-      data = await response.json();
-    } catch (parseError) {
-      console.error('listMailUsers: Invalid JSON response', {
-        status: response.status,
-        error: parseError instanceof Error ? parseError.message : String(parseError),
-      });
-      return { success: false, error: 'メールサーバーからの応答が不正です' };
-    }
-
-    // Validate response structure
-    if (!data || !Array.isArray(data.users)) {
-      console.error('listMailUsers: Unexpected response structure', { data });
-      return { success: false, error: 'メールサーバーからの応答形式が不正です' };
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('listMailUsers network error:', { error: message });
-    return { success: false, error: `ネットワークエラー: ${message}` };
-  }
+  // Use the newsletter worker proxy endpoint to avoid CORS issues
+  return apiRequest<MailUserListResponse>('/mailserver/users?enabled_only=true');
 }
