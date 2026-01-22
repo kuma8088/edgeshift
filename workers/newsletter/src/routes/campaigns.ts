@@ -105,6 +105,7 @@ export async function createCampaign(
       slug: providedSlug,
       excerpt: providedExcerpt,
       is_published,
+      reply_to,
       // A/B Testing fields
       ab_test_enabled = false,
       ab_subject_b = null,
@@ -126,8 +127,8 @@ export async function createCampaign(
     const excerpt = providedExcerpt || generateExcerpt(content, 150);
 
     await env.DB.prepare(`
-      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, template_id, slug, excerpt, is_published, ab_test_enabled, ab_subject_b, ab_from_name_b, ab_wait_hours)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (id, subject, content, status, scheduled_at, schedule_type, schedule_config, last_sent_at, sent_at, recipient_count, contact_list_id, template_id, slug, excerpt, is_published, reply_to, ab_test_enabled, ab_subject_b, ab_from_name_b, ab_wait_hours)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       subject,
@@ -144,6 +145,7 @@ export async function createCampaign(
       slug,
       excerpt,
       is_published !== undefined ? (is_published ? 1 : 0) : 0,  // Default to unpublished
+      reply_to || null,
       ab_test_enabled ? 1 : 0,
       ab_subject_b,
       ab_from_name_b,
@@ -360,6 +362,10 @@ export async function updateCampaign(
     if (body.is_published !== undefined) {
       updates.push('is_published = ?');
       bindings.push(body.is_published ? 1 : 0);
+    }
+    if (body.reply_to !== undefined) {
+      updates.push('reply_to = ?');
+      bindings.push(body.reply_to || null);
     }
     // A/B Testing fields
     if (body.ab_test_enabled !== undefined) {
