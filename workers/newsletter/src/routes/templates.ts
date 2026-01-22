@@ -3,13 +3,6 @@ import { isAuthorizedAsync } from '../lib/auth';
 import { errorResponse, successResponse } from '../lib/response';
 import { renderEmail, getDefaultBrandSettings, getTemplateList } from '../lib/templates';
 import { sendEmail } from '../lib/email';
-import {
-  ensureResendContact,
-  createTempSegment,
-  addContactsToSegment,
-  deleteSegment,
-  createAndSendBroadcast,
-} from '../lib/resend-marketing';
 
 export async function getTemplates(
   request: Request,
@@ -107,77 +100,8 @@ export async function testSendTemplate(
 
     const from = `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`;
 
-    // Use Broadcast API if available (same as production)
-    const useBroadcastApi = env.USE_BROADCAST_API === 'true' && !!env.RESEND_AUDIENCE_ID;
-
-    if (useBroadcastApi) {
-      const config = { apiKey: env.RESEND_API_KEY };
-
-      // 1. Ensure test recipient exists as Resend contact
-      const contactResult = await ensureResendContact(config, body.to, 'テスト送信者');
-
-      if (!contactResult.success) {
-        return errorResponse(contactResult.error || 'Failed to create contact', 500);
-      }
-
-      if (!contactResult.contactId) {
-        // Contact exists but ID unavailable (409 Conflict without ID in response)
-        return errorResponse('Contact exists but ID unavailable. Try again or use a different email.', 500);
-      }
-
-      // 2. Create temp segment for test
-      const segmentResult = await createTempSegment(config, `test-${Date.now()}`);
-      if (!segmentResult.success || !segmentResult.segmentId) {
-        return errorResponse(segmentResult.error || 'Failed to create segment', 500);
-      }
-
-      try {
-        // 3. Add contact to segment
-        const addResult = await addContactsToSegment(config, segmentResult.segmentId, [contactResult.contactId]);
-        if (!addResult.success) {
-          await deleteSegment(config, segmentResult.segmentId);
-          return errorResponse(addResult.errors.join(', ') || 'Failed to add contact to segment', 500);
-        }
-
-        // 4. Send broadcast
-        const broadcastResult = await createAndSendBroadcast(config, {
-          segmentId: segmentResult.segmentId,
-          from,
-          subject,
-          html,
-          name: `Test: ${subject}`,
-        });
-
-        if (!broadcastResult.success) {
-          await deleteSegment(config, segmentResult.segmentId);
-          return errorResponse(broadcastResult.error || 'Failed to send broadcast', 500);
-        }
-
-        // 5. Cleanup segment
-        const cleanupResult = await deleteSegment(config, segmentResult.segmentId);
-        if (!cleanupResult.success) {
-          console.warn('Failed to cleanup test segment:', {
-            segmentId: segmentResult.segmentId,
-            error: cleanupResult.error,
-          });
-        }
-
-        return successResponse({
-          broadcast_id: broadcastResult.broadcastId,
-          ...(cleanupResult.success ? {} : { warning: 'Segment cleanup failed' }),
-        });
-      } catch (error) {
-        // Ensure cleanup on error
-        try {
-          await deleteSegment(config, segmentResult.segmentId);
-        } catch (cleanupError) {
-          console.error('Failed to cleanup segment after error:', cleanupError);
-        }
-        throw error;
-      }
-    }
-
-    // Fallback to Transactional API
+    // Always use Transactional API for test emails
+    // (Broadcast API has segment limits and is unnecessary for single test sends)
     const result = await sendEmail(env.RESEND_API_KEY, from, {
       to: body.to,
       subject,

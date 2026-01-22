@@ -1,6 +1,6 @@
 import type { Env, ResendWebhookEvent, DeliveryStatus } from '../types';
 import { verifyWebhookSignature } from '../lib/webhook';
-import { findDeliveryLogByResendId, updateDeliveryStatus, recordClickEvent } from '../lib/delivery';
+import { findDeliveryLogByResendId, findDeliveryLogByBroadcastAndEmail, updateDeliveryStatus, recordClickEvent } from '../lib/delivery';
 
 /**
  * Handle contact.updated event from Resend.
@@ -80,12 +80,24 @@ export async function handleResendWebhook(
     });
   }
 
-  // Find delivery log by resend_id (email_id) for email events
-  const deliveryLog = await findDeliveryLogByResendId(env, event.data.email_id);
+  // Find delivery log - try email_id first (Transactional API), then broadcast_id + email (Broadcast API)
+  let deliveryLog = await findDeliveryLogByResendId(env, event.data.email_id);
+
+  // If not found by email_id, try broadcast_id + email (Broadcast API case)
+  if (!deliveryLog && event.data.broadcast_id && event.data.to?.[0]) {
+    deliveryLog = await findDeliveryLogByBroadcastAndEmail(
+      env,
+      event.data.broadcast_id,
+      event.data.to[0]
+    );
+    if (deliveryLog) {
+      console.log(`Found delivery log via broadcast_id: ${event.data.broadcast_id}, email: ${event.data.to[0]}`);
+    }
+  }
 
   if (!deliveryLog) {
     // Not found is OK - might be a test email or already processed
-    console.log(`No delivery log found for email_id: ${event.data.email_id}`);
+    console.log(`No delivery log found for email_id: ${event.data.email_id}, broadcast_id: ${event.data.broadcast_id || 'none'}`);
     return new Response(JSON.stringify({ success: true, message: 'No matching delivery log' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
