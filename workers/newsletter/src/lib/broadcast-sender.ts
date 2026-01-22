@@ -220,13 +220,16 @@ export async function sendCampaignViaBroadcast(
   });
 
   // 4. Create & Send Broadcast to permanent segment
+  // Use campaign's reply_to if set, otherwise fall back to env default
+  const replyTo = campaign.reply_to || env.REPLY_TO_EMAIL;
+
   const broadcastResult = await createAndSendBroadcast(config, {
     segmentId,
     from: `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
     subject: campaign.subject,
     html,
     name: `Campaign: ${campaign.subject}`,
-    replyTo: env.REPLY_TO_EMAIL,
+    replyTo,
   });
 
   if (!broadcastResult.success) {
@@ -284,8 +287,9 @@ export async function sendCampaignViaBroadcast(
  * 1. Check for RESEND_SEGMENT_ID config
  * 2. Ensure Resend Contact (lazy sync)
  * 3. Add new contact to permanent segment (if just created)
- * 4. Create & Send Broadcast to permanent segment
- * 5. Record delivery log (success or failure)
+ * 4. Get sequence's reply_to address
+ * 5. Create & Send Broadcast to permanent segment
+ * 6. Record delivery log (success or failure)
  */
 export async function sendSequenceStepViaBroadcast(
   env: Env,
@@ -379,14 +383,22 @@ export async function sendSequenceStepViaBroadcast(
     }
   }
 
-  // 4. Create & Send Broadcast to permanent segment
+  // 4. Get sequence's reply_to address
+  const sequence = await env.DB.prepare(
+    'SELECT reply_to FROM sequences WHERE id = ?'
+  ).bind(step.sequence_id).first<{ reply_to: string | null }>();
+
+  // Use sequence's reply_to if set, otherwise fall back to env default
+  const replyTo = sequence?.reply_to || env.REPLY_TO_EMAIL;
+
+  // 5. Create & Send Broadcast to permanent segment
   const broadcastResult = await createAndSendBroadcast(config, {
     segmentId,
     from: `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
     subject: step.subject,
     html,
     name: `Sequence ${step.sequence_id} Step ${step.step_number}: ${step.subject}`,
-    replyTo: env.REPLY_TO_EMAIL,
+    replyTo,
   });
 
   if (!broadcastResult.success) {
@@ -407,7 +419,7 @@ export async function sendSequenceStepViaBroadcast(
     };
   }
 
-  // 5. Record success delivery log (best effort - don't fail if logging fails)
+  // 6. Record success delivery log (best effort - don't fail if logging fails)
   try {
     await recordSequenceDeliveryLog(env, {
       sequenceId: step.sequence_id,
