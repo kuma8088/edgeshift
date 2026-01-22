@@ -84,6 +84,8 @@ export interface Campaign {
   excerpt: string;
   is_published: number;  // 0 or 1
   created_at: number;
+  // Reply-To address (Issue #124)
+  reply_to: string | null;
   // A/B Testing fields
   ab_test_enabled: number;  // 0 or 1
   ab_subject_b: string | null;
@@ -147,6 +149,7 @@ export interface CreateCampaignRequest {
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
+  reply_to?: string;
   // A/B Testing fields
   ab_test_enabled?: boolean;
   ab_subject_b?: string;
@@ -163,6 +166,7 @@ export interface UpdateCampaignRequest {
   slug?: string;
   excerpt?: string;
   is_published?: boolean;
+  reply_to?: string;
   // A/B Testing fields
   ab_test_enabled?: boolean;
   ab_subject_b?: string | null;
@@ -177,6 +181,8 @@ export interface Sequence {
   default_send_time: string; // "HH:MM" format, JST
   is_active: number;
   created_at: number;
+  // Reply-To address (Issue #124)
+  reply_to: string | null;
 }
 
 export interface SequenceStep {
@@ -244,6 +250,7 @@ export interface CreateSequenceRequest {
   name: string;
   description?: string;
   default_send_time: string; // Required, "HH:MM" format
+  reply_to?: string;
   steps: {
     delay_days: number;
     delay_time?: string; // Optional, "HH:MM" format
@@ -259,6 +266,7 @@ export interface UpdateSequenceRequest {
   description?: string;
   default_send_time?: string;
   is_active?: number;
+  reply_to?: string;
   steps?: {
     delay_days: number;
     delay_time?: string;

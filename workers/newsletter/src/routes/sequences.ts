@@ -34,11 +34,11 @@ export async function createSequence(
 
     const sequenceId = crypto.randomUUID();
 
-    // Create sequence with default_send_time
+    // Create sequence with default_send_time and reply_to
     await env.DB.prepare(`
-      INSERT INTO sequences (id, name, description, default_send_time)
-      VALUES (?, ?, ?, ?)
-    `).bind(sequenceId, name, description || null, default_send_time).run();
+      INSERT INTO sequences (id, name, description, default_send_time, reply_to)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(sequenceId, name, description || null, default_send_time, body.reply_to || null).run();
 
     // Create steps (already validated above)
     for (let i = 0; i < steps.length; i++) {
@@ -161,6 +161,10 @@ export async function updateSequence(
     if (body.is_active !== undefined) {
       updates.push('is_active = ?');
       bindings.push(body.is_active);
+    }
+    if (body.reply_to !== undefined) {
+      updates.push('reply_to = ?');
+      bindings.push(body.reply_to || null);
     }
 
     // Update sequence metadata if any fields provided

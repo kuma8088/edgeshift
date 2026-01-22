@@ -282,3 +282,7 @@ CREATE TABLE IF NOT EXISTS ab_test_remaining (
 -- ALTER TABLE campaigns ADD COLUMN ab_test_sent_at TEXT;
 -- ALTER TABLE campaigns ADD COLUMN ab_winner TEXT;
 -- ALTER TABLE delivery_logs ADD COLUMN ab_variant TEXT;
+
+-- Reply-To feature (issue #124):
+-- ALTER TABLE campaigns ADD COLUMN reply_to TEXT;
+-- ALTER TABLE sequences ADD COLUMN reply_to TEXT;
