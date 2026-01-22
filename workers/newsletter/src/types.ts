@@ -17,6 +17,16 @@ export interface Env {
   IMAGES_BUCKET?: R2Bucket; // Optional: R2 bucket for image uploads
   IMAGES_PUBLIC_URL?: string; // Optional: Public URL base for R2 images
   REPLY_TO_EMAIL?: string; // Optional: Reply-To email address for newsletters
+  CF_ACCESS_CLIENT_ID?: string; // Optional: Cloudflare Access Service Token Client ID
+  CF_ACCESS_CLIENT_SECRET?: string; // Optional: Cloudflare Access Service Token Client Secret
+}
+
+// Mailserver types
+export interface MailUser {
+  id: number;
+  email: string;
+  domain_name: string;
+  enabled: boolean;
 }
 
 export interface Subscriber {

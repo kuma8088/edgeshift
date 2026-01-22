@@ -67,6 +67,7 @@ import { getBrandSettings, updateBrandSettings } from './routes/brand-settings';
 import { getTemplates, previewTemplate, testSendTemplate } from './routes/templates';
 import { handleImageUpload, handleListImages } from './routes/images';
 import { handleImport, handleExport } from './routes/import-export';
+import { handleListMailUsers } from './routes/mailserver';
 import { isAuthorizedAsync } from './lib/auth';
 
 export default {
@@ -333,6 +334,10 @@ export default {
         response = await handleListImages(request, env);
       } else if (path === '/api/images/upload' && request.method === 'POST') {
         response = await handleImageUpload(request, env);
+      }
+      // Mailserver proxy routes
+      else if (path === '/api/mailserver/users' && request.method === 'GET') {
+        response = await handleListMailUsers(request, env);
       }
       // Manual cron trigger endpoint for E2E testing
       else if (path === '/api/admin/trigger-cron' && request.method === 'POST') {
