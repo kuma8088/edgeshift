@@ -1,7 +1,7 @@
 import type { Env, Campaign, CreateCampaignRequest, UpdateCampaignRequest, ApiResponse, AbVariantStats, AbTestStats } from '../types';
 import { isAuthorizedAsync } from '../lib/auth';
 import { jsonResponse, errorResponse, successResponse } from '../lib/response';
-import { generateSlug } from '../lib/slug';
+import { generateSlug, ensureUniqueSlug } from '../lib/slug';
 import { generateExcerpt } from '../lib/excerpt';
 import { calculateAbScore, determineWinner } from '../utils/ab-testing';
 
@@ -175,7 +175,7 @@ export async function getCampaign(
 
   try {
     const campaign = await env.DB.prepare(
-      'SELECT * FROM campaigns WHERE id = ?'
+      'SELECT * FROM campaigns WHERE id = ? AND is_deleted = 0'
     ).bind(id).first<Campaign>();
 
     if (!campaign) {
@@ -221,13 +221,13 @@ export async function listCampaigns(
     const limit = parseInt(url.searchParams.get('limit') || '50', 10);
     const offset = parseInt(url.searchParams.get('offset') || '0', 10);
 
-    let query = 'SELECT * FROM campaigns';
-    let countQuery = 'SELECT COUNT(*) as count FROM campaigns';
+    let query = 'SELECT * FROM campaigns WHERE is_deleted = 0';
+    let countQuery = 'SELECT COUNT(*) as count FROM campaigns WHERE is_deleted = 0';
     const bindings: (string | number)[] = [];
 
     if (status) {
-      query += ' WHERE status = ?';
-      countQuery += ' WHERE status = ?';
+      query += ' AND status = ?';
+      countQuery += ' AND status = ?';
       bindings.push(status);
     }
 
@@ -306,9 +306,9 @@ export async function updateCampaign(
   }
 
   try {
-    // Check if campaign exists and is not sent
+    // Check if campaign exists, is not deleted, and is not sent
     const existing = await env.DB.prepare(
-      'SELECT * FROM campaigns WHERE id = ?'
+      'SELECT * FROM campaigns WHERE id = ? AND is_deleted = 0'
     ).bind(id).first<Campaign>();
 
     if (!existing) {
@@ -409,26 +409,93 @@ export async function deleteCampaign(
   }
 
   try {
-    // Check if campaign exists
+    // Check if campaign exists and is not already deleted
     const existing = await env.DB.prepare(
-      'SELECT * FROM campaigns WHERE id = ?'
+      'SELECT * FROM campaigns WHERE id = ? AND is_deleted = 0'
     ).bind(id).first<Campaign>();
 
     if (!existing) {
       return errorResponse('Campaign not found', 404);
     }
 
-    if (existing.status === 'sent') {
-      return errorResponse('Cannot delete sent campaign', 400);
-    }
-
+    // Soft delete: set is_deleted = 1
+    // Note: delivery_logs are preserved for historical data
     await env.DB.prepare(
-      'DELETE FROM campaigns WHERE id = ?'
+      'UPDATE campaigns SET is_deleted = 1 WHERE id = ?'
     ).bind(id).run();
 
-    return successResponse({ message: 'Campaign deleted successfully' });
+    return successResponse({ message: 'Campaign deleted' });
   } catch (error) {
     console.error('Delete campaign error:', error);
+    return errorResponse('Internal server error', 500);
+  }
+}
+
+export async function copyCampaign(
+  request: Request,
+  env: Env,
+  id: string
+): Promise<Response> {
+  if (!(await isAuthorizedAsync(request, env))) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  try {
+    // Check if original campaign exists and is not deleted
+    const original = await env.DB.prepare(
+      'SELECT * FROM campaigns WHERE id = ? AND is_deleted = 0'
+    ).bind(id).first<Campaign>();
+
+    if (!original) {
+      return errorResponse('Campaign not found', 404);
+    }
+
+    // Generate new ID and slug
+    const newId = crypto.randomUUID();
+    const newSubject = `[コピー] ${original.subject}`;
+
+    // Generate unique slug based on the new subject
+    const baseSlug = await generateSlug(env.DB, newSubject);
+    const newSlug = await ensureUniqueSlug(baseSlug, env.DB);
+
+    // Create the copied campaign (including A/B test fields)
+    await env.DB.prepare(`
+      INSERT INTO campaigns (
+        id, subject, content, status, scheduled_at, sent_at,
+        contact_list_id, template_id, slug, excerpt, is_published, is_deleted,
+        ab_test_enabled, ab_subject_b, ab_from_name_b, ab_wait_hours
+      )
+      VALUES (?, ?, ?, 'draft', NULL, NULL, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
+    `).bind(
+      newId,
+      newSubject,
+      original.content,
+      original.contact_list_id || null,
+      original.template_id || null,
+      newSlug,
+      original.excerpt || null,
+      original.ab_test_enabled || 0,
+      original.ab_subject_b || null,
+      original.ab_from_name_b || null,
+      original.ab_wait_hours || null
+    ).run();
+
+    // Fetch the newly created campaign
+    const newCampaign = await env.DB.prepare(
+      'SELECT * FROM campaigns WHERE id = ?'
+    ).bind(newId).first<Campaign>();
+
+    if (!newCampaign) {
+      console.error('Campaign created but failed to retrieve:', { newId });
+      return errorResponse('Campaign created but failed to retrieve', 500);
+    }
+
+    return jsonResponse<ApiResponse>({
+      success: true,
+      data: newCampaign,
+    }, 201);
+  } catch (error) {
+    console.error('Copy campaign error:', error);
     return errorResponse('Internal server error', 500);
   }
 }

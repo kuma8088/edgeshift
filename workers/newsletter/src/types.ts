@@ -8,13 +8,15 @@ export interface Env {
   SENDER_NAME: string;
   SITE_URL: string;
   RESEND_WEBHOOK_SECRET: string;
-  RESEND_AUDIENCE_ID?: string; // Optional: Resend audience ID for Marketing API
+  RESEND_AUDIENCE_ID?: string; // Deprecated: use RESEND_SEGMENT_ID
+  RESEND_SEGMENT_ID?: string;  // Resend permanent segment ID for Broadcast API
   USE_BROADCAST_API?: string; // Optional: set to 'true' to use Broadcast API
   ADMIN_EMAIL?: string; // Optional: for milestone achievement notifications
   RATE_LIMIT_KV?: KVNamespace; // Optional: only required when rate limiting is enabled
   CF_ACCESS_AUD?: string; // Optional: Cloudflare Access Application Audience Tag
   IMAGES_BUCKET?: R2Bucket; // Optional: R2 bucket for image uploads
   IMAGES_PUBLIC_URL?: string; // Optional: Public URL base for R2 images
+  REPLY_TO_EMAIL?: string; // Optional: Reply-To email address for newsletters
 }
 
 export interface Subscriber {
@@ -205,6 +207,8 @@ export interface ContactList {
   id: string;
   name: string;
   description: string | null;
+  /** Resend segment ID for targeting this list in broadcasts */
+  resend_segment_id: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -228,6 +232,8 @@ export interface CreateContactListRequest {
 export interface UpdateContactListRequest {
   name?: string;
   description?: string;
+  /** Resend segment ID for targeting this list in broadcasts */
+  resend_segment_id?: string | null;
 }
 
 export interface AddMembersRequest {

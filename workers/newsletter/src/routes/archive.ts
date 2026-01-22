@@ -15,17 +15,17 @@ export async function getArchiveList(
     const limit = parseInt(url.searchParams.get('limit') || '20', 10);
     const offset = parseInt(url.searchParams.get('offset') || '0', 10);
 
-    // Query only sent AND explicitly published campaigns
+    // Query only sent AND explicitly published campaigns (exclude soft-deleted)
     const query = `
       SELECT * FROM campaigns
-      WHERE status = 'sent' AND is_published = 1
+      WHERE status = 'sent' AND is_published = 1 AND is_deleted = 0
       ORDER BY sent_at DESC
       LIMIT ? OFFSET ?
     `;
 
     const countQuery = `
       SELECT COUNT(*) as count FROM campaigns
-      WHERE status = 'sent' AND is_published = 1
+      WHERE status = 'sent' AND is_published = 1 AND is_deleted = 0
     `;
 
     const campaigns = await env.DB.prepare(query)
@@ -61,7 +61,7 @@ export async function getArchiveArticle(
   try {
     const campaign = await env.DB.prepare(`
       SELECT * FROM campaigns
-      WHERE slug = ? AND status = 'sent' AND is_published = 1
+      WHERE slug = ? AND status = 'sent' AND is_published = 1 AND is_deleted = 0
     `).bind(slug).first<Campaign>();
 
     if (!campaign) {

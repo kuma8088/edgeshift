@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
 import { getArchiveList, getArchiveArticle } from '../routes/archive';
-import { createCampaign } from '../routes/campaigns';
+import { createCampaign, deleteCampaign } from '../routes/campaigns';
 
 describe('Archive API', () => {
   beforeEach(async () => {
@@ -336,6 +336,107 @@ describe('Archive API', () => {
       const response = await getArchiveArticle(request, env, slug);
 
       expect(response.status).toBe(404);
+    });
+
+    it('should return 404 for soft-deleted campaign', async () => {
+      const env = getTestEnv();
+
+      // Create a published campaign
+      const req = new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: 'Deleted Newsletter',
+          content: '<p>This will be deleted</p>',
+        }),
+      });
+      const res = await createCampaign(req, env);
+      const created = await res.json();
+      const campaignId = created.data.id;
+
+      // Mark as sent and published
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
+        .bind(Math.floor(Date.now() / 1000), campaignId).run();
+
+      // Get the slug
+      const campaign = await env.DB.prepare('SELECT slug FROM campaigns WHERE id = ?')
+        .bind(campaignId).first<{ slug: string }>();
+      const slug = campaign?.slug;
+
+      // Soft delete the campaign
+      await deleteCampaign(new Request(`http://localhost/api/campaigns/${campaignId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      }), env, campaignId);
+
+      // Try to access via archive
+      const request = new Request(`http://localhost/api/archive/${slug}`);
+      const response = await getArchiveArticle(request, env, slug);
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('getArchiveList with soft-deleted campaigns', () => {
+    it('should exclude soft-deleted campaigns from archive list', async () => {
+      const env = getTestEnv();
+
+      // Create two published campaigns
+      const req1 = new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: 'Keep This Newsletter',
+          content: '<p>Keep this</p>',
+        }),
+      });
+      const res1 = await createCampaign(req1, env);
+      const created1 = await res1.json();
+
+      const req2 = new Request('http://localhost/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.ADMIN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subject: 'Delete This Newsletter',
+          content: '<p>Delete this</p>',
+        }),
+      });
+      const res2 = await createCampaign(req2, env);
+      const created2 = await res2.json();
+
+      // Mark both as sent and published
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
+        .bind(Math.floor(Date.now() / 1000), created1.data.id).run();
+      await env.DB.prepare("UPDATE campaigns SET status = 'sent', sent_at = ?, is_published = 1 WHERE id = ?")
+        .bind(Math.floor(Date.now() / 1000) + 1, created2.data.id).run();
+
+      // Verify both appear in archive initially
+      const initialList = await getArchiveList(new Request('http://localhost/api/archive'), env);
+      const initialResult = await initialList.json();
+      expect(initialResult.data.articles).toHaveLength(2);
+
+      // Soft delete one campaign
+      await deleteCampaign(new Request(`http://localhost/api/campaigns/${created2.data.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${env.ADMIN_API_KEY}` },
+      }), env, created2.data.id);
+
+      // Verify only non-deleted campaign appears
+      const afterDelete = await getArchiveList(new Request('http://localhost/api/archive'), env);
+      const afterResult = await afterDelete.json();
+
+      expect(afterResult.data.articles).toHaveLength(1);
+      expect(afterResult.data.articles[0].subject).toBe('Keep This Newsletter');
+      expect(afterResult.data.total).toBe(1);
     });
   });
 });

@@ -130,6 +130,10 @@ export async function deleteCampaign(id: string) {
   return apiRequest(`/campaigns/${id}`, { method: 'DELETE' });
 }
 
+export async function copyCampaign(id: string) {
+  return apiRequest(`/campaigns/${id}/copy`, { method: 'POST' });
+}
+
 export async function sendCampaign(id: string) {
   return apiRequest(`/campaigns/${id}/send`, { method: 'POST' });
 }

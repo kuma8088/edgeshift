@@ -16,6 +16,7 @@ export function getTestEnv() {
     SITE_URL: 'http://localhost:4321',
     RESEND_WEBHOOK_SECRET: webhookSecret,
     RESEND_AUDIENCE_ID: 'test-audience-id',
+    RESEND_SEGMENT_ID: 'test-segment-id',
     USE_BROADCAST_API: 'false', // Default to Email API for backwards compatibility
     // RATE_LIMIT_KV is NOT included by default
     // Tests that need rate limiting must provide it explicitly
@@ -58,6 +59,7 @@ export async function setupTestDb() {
       is_published INTEGER DEFAULT 0,
       published_at INTEGER,
       excerpt TEXT,
+      is_deleted INTEGER DEFAULT 0,
       ab_test_enabled INTEGER DEFAULT 0,
       ab_subject_b TEXT,
       ab_from_name_b TEXT,
@@ -161,6 +163,7 @@ export async function setupTestDb() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
+      resend_segment_id TEXT,
       created_at INTEGER DEFAULT (unixepoch()),
       updated_at INTEGER DEFAULT (unixepoch())
     )`),
@@ -199,6 +202,7 @@ export async function setupTestDb() {
       secondary_color TEXT DEFAULT '#1e1e1e',
       footer_text TEXT DEFAULT 'EdgeShift Newsletter',
       default_template_id TEXT DEFAULT 'simple',
+      email_signature TEXT DEFAULT '',
       created_at INTEGER DEFAULT (unixepoch()),
       updated_at INTEGER DEFAULT (unixepoch())
     )`),
