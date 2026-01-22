@@ -244,6 +244,11 @@ export async function deleteSequence(
       return errorResponse('Sequence not found', 404);
     }
 
+    // Clear sequence references in delivery_logs (no CASCADE on these FKs)
+    await env.DB.prepare(
+      'UPDATE delivery_logs SET sequence_id = NULL, sequence_step_id = NULL WHERE sequence_id = ?'
+    ).bind(id).run();
+
     // Delete sequence (CASCADE will delete steps and enrollments)
     await env.DB.prepare('DELETE FROM sequences WHERE id = ?').bind(id).run();
 
