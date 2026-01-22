@@ -41,9 +41,11 @@ function escapeXml(unsafe: string): string {
 /**
  * Format date to RFC 822 (required by RSS 2.0)
  * Example: "Wed, 02 Oct 2002 13:00:00 GMT"
+ * Note: sent_at is Unix timestamp in seconds
  */
-function toRFC822(dateStr: string): string {
-  const date = new Date(dateStr);
+function toRFC822(timestamp: string | number): string {
+  const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+  const date = new Date(ts * 1000); // Convert seconds to milliseconds
   return date.toUTCString();
 }
 
