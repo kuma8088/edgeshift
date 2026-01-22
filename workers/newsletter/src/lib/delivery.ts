@@ -264,6 +264,23 @@ export async function findDeliveryLogByResendId(
   return result || null;
 }
 
+/**
+ * Find a delivery log by broadcast ID and email address.
+ * Used for Broadcast API where all recipients share the same broadcast_id
+ * but webhooks arrive with individual email_id per recipient.
+ */
+export async function findDeliveryLogByBroadcastAndEmail(
+  env: Env,
+  broadcastId: string,
+  email: string
+): Promise<DeliveryLog | null> {
+  const result = await env.DB.prepare(
+    'SELECT * FROM delivery_logs WHERE resend_id = ? AND email = ?'
+  ).bind(broadcastId, email.toLowerCase()).first<DeliveryLog>();
+
+  return result || null;
+}
+
 export interface RecordClickEventParams {
   deliveryLogId: string;
   subscriberId: string;
