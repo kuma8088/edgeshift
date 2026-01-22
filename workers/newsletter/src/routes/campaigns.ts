@@ -306,9 +306,9 @@ export async function updateCampaign(
   }
 
   try {
-    // Check if campaign exists and is not sent
+    // Check if campaign exists, is not deleted, and is not sent
     const existing = await env.DB.prepare(
-      'SELECT * FROM campaigns WHERE id = ?'
+      'SELECT * FROM campaigns WHERE id = ? AND is_deleted = 0'
     ).bind(id).first<Campaign>();
 
     if (!existing) {
@@ -458,13 +458,14 @@ export async function copyCampaign(
     const baseSlug = await generateSlug(env.DB, newSubject);
     const newSlug = await ensureUniqueSlug(baseSlug, env.DB);
 
-    // Create the copied campaign
+    // Create the copied campaign (including A/B test fields)
     await env.DB.prepare(`
       INSERT INTO campaigns (
         id, subject, content, status, scheduled_at, sent_at,
-        contact_list_id, template_id, slug, excerpt, is_published, is_deleted
+        contact_list_id, template_id, slug, excerpt, is_published, is_deleted,
+        ab_test_enabled, ab_subject_b, ab_from_name_b, ab_wait_hours
       )
-      VALUES (?, ?, ?, 'draft', NULL, NULL, ?, ?, ?, ?, 0, 0)
+      VALUES (?, ?, ?, 'draft', NULL, NULL, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
     `).bind(
       newId,
       newSubject,
@@ -472,13 +473,22 @@ export async function copyCampaign(
       original.contact_list_id || null,
       original.template_id || null,
       newSlug,
-      original.excerpt || null
+      original.excerpt || null,
+      original.ab_test_enabled || 0,
+      original.ab_subject_b || null,
+      original.ab_from_name_b || null,
+      original.ab_wait_hours || null
     ).run();
 
     // Fetch the newly created campaign
     const newCampaign = await env.DB.prepare(
       'SELECT * FROM campaigns WHERE id = ?'
     ).bind(newId).first<Campaign>();
+
+    if (!newCampaign) {
+      console.error('Campaign created but failed to retrieve:', { newId });
+      return errorResponse('Campaign created but failed to retrieve', 500);
+    }
 
     return jsonResponse<ApiResponse>({
       success: true,

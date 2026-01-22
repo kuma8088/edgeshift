@@ -100,14 +100,37 @@ export async function sendCampaignViaBroadcast(
     };
   }
 
+  const warnings: string[] = [];
+
   // If campaign targets a specific list, use that list's Resend segment
   if (campaign.contact_list_id) {
     const list = await env.DB.prepare(
       'SELECT resend_segment_id FROM contact_lists WHERE id = ?'
     ).bind(campaign.contact_list_id).first<{ resend_segment_id: string | null }>();
 
-    if (list?.resend_segment_id) {
+    if (!list) {
+      console.error('Campaign references non-existent contact list:', {
+        campaignId: campaign.id,
+        contactListId: campaign.contact_list_id,
+      });
+      return {
+        success: false,
+        sent: 0,
+        failed: 0,
+        error: `Contact list not found: ${campaign.contact_list_id}`,
+        results: [],
+      };
+    }
+
+    if (list.resend_segment_id) {
       segmentId = list.resend_segment_id;
+    } else {
+      // Fallback to default but warn
+      console.warn('Contact list has no Resend segment configured, using default:', {
+        campaignId: campaign.id,
+        contactListId: campaign.contact_list_id,
+      });
+      warnings.push(`Contact list ${campaign.contact_list_id} has no Resend segment, using default`);
     }
   }
 
@@ -116,7 +139,6 @@ export async function sendCampaignViaBroadcast(
   };
 
   const results: Array<{ email: string; success: boolean; contactId?: string; error?: string }> = [];
-  const warnings: string[] = [];
 
   // 1. Get target subscribers
   const subscribers = await getTargetSubscribers(campaign, env);
@@ -153,7 +175,16 @@ export async function sendCampaignViaBroadcast(
       // If contact was just created (not existed), add to target segment
       if (!contactResult.existed) {
         await sleep(RESEND_RATE_LIMIT_DELAY_MS);
-        await addContactToDefaultSegment(config, segmentId, contactResult.contactId);
+        const addResult = await addContactToDefaultSegment(config, segmentId, contactResult.contactId);
+        if (!addResult.success) {
+          console.error('Failed to add new contact to segment:', {
+            email: subscriber.email,
+            contactId: contactResult.contactId,
+            segmentId,
+            error: addResult.error,
+          });
+          warnings.push(`Failed to add ${subscriber.email} to segment: ${addResult.error}`);
+        }
       }
     } else {
       results.push({
@@ -320,7 +351,31 @@ export async function sendSequenceStepViaBroadcast(
 
   // 3. If contact was just created (not existed), add to default segment
   if (!contactResult.existed) {
-    await addContactToDefaultSegment(config, segmentId, contactResult.contactId);
+    const addResult = await addContactToDefaultSegment(config, segmentId, contactResult.contactId);
+    if (!addResult.success) {
+      console.error('Failed to add contact to segment for sequence:', {
+        sequenceId: step.sequence_id,
+        stepNumber: step.step_number,
+        email: subscriber.email,
+        contactId: contactResult.contactId,
+        segmentId,
+        error: addResult.error,
+      });
+      // For sequences, this is critical - record failure
+      await recordSequenceDeliveryLog(env, {
+        sequenceId: step.sequence_id,
+        sequenceStepId: step.id,
+        subscriberId: subscriber.id,
+        email: subscriber.email,
+        emailSubject: step.subject,
+        status: 'failed',
+        errorMessage: `Failed to add contact to segment: ${addResult.error}`,
+      });
+      return {
+        success: false,
+        error: `Failed to add contact to segment: ${addResult.error}`,
+      };
+    }
   }
 
   // 4. Create & Send Broadcast to permanent segment
