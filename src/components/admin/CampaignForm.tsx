@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, forwardRef, useImperativeHandle, type Form
 import { RichTextEditor } from './RichTextEditor';
 import { ListSelector } from './ListSelector';
 import { TemplateSelector } from './TemplateSelector';
+import { ReplyToSelector } from './ReplyToSelector';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { sendTestEmail } from '../../utils/admin-api';
 
@@ -18,6 +19,7 @@ interface Campaign {
   content: string;
   contact_list_id?: string | null;
   template_id?: string | null;
+  reply_to?: string | null;
   scheduled_at?: number;
   status?: string;
   slug?: string;
@@ -36,6 +38,7 @@ interface CampaignFormProps {
     content: string;
     contact_list_id?: string;
     template_id?: string;
+    reply_to?: string;
     scheduled_at?: number;
     slug?: string;
     is_published?: boolean;
@@ -64,6 +67,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
   }), []);
   const [contactListId, setContactListId] = useState<string | null>(campaign?.contact_list_id || null);
   const [templateId, setTemplateId] = useState<string | undefined>(campaign?.template_id || undefined);
+  const [replyTo, setReplyTo] = useState<string | null>(campaign?.reply_to || null);
   const [showPreview, setShowPreview] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(
     campaign?.scheduled_at
@@ -223,6 +227,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
       content: string;
       contact_list_id?: string;
       template_id?: string;
+      reply_to?: string;
       scheduled_at?: number;
       slug?: string;
       is_published?: boolean;
@@ -236,6 +241,7 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
       content: content.trim(),
       contact_list_id: contactListId || undefined,
       template_id: templateId || undefined,
+      reply_to: replyTo || undefined,
     };
 
     if (scheduledAt) {
@@ -366,6 +372,21 @@ export const CampaignForm = forwardRef<CampaignFormRef, CampaignFormProps>(funct
                 label="メールテンプレート"
                 disabled={isReadOnly}
               />
+
+              {/* Reply-To Address */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  返信先アドレス
+                </label>
+                <ReplyToSelector
+                  value={replyTo}
+                  onChange={setReplyTo}
+                  disabled={isReadOnly}
+                />
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  返信先を指定しない場合、デフォルトのアドレスが使用されます
+                </p>
+              </div>
 
               {/* Contact List Selector */}
               <ListSelector
