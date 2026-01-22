@@ -3,6 +3,14 @@ import { replaceVariables } from './variables';
 import { renderPreset, isValidTemplateId, TEMPLATE_LIST } from './presets';
 import { linkifyUrls } from '../content-processor';
 
+/**
+ * Transform empty paragraphs for email client compatibility.
+ * <p></p> renders with zero height in many email clients.
+ */
+function processEmptyParagraphs(html: string): string {
+  return html.replace(/<p><\/p>/g, '<p><br></p>');
+}
+
 export interface RenderEmailOptions {
   templateId: string;
   content: string;
@@ -23,7 +31,10 @@ export function renderEmail(options: RenderEmailOptions): string {
   });
 
   // Process URLs and YouTube links
-  const finalContent = linkifyUrls(processedContent);
+  const linkedContent = linkifyUrls(processedContent);
+
+  // Transform empty paragraphs for email client compatibility
+  const finalContent = processEmptyParagraphs(linkedContent);
 
   // Validate and get template ID
   const validTemplateId: TemplateId = isValidTemplateId(templateId) ? templateId : 'simple';
