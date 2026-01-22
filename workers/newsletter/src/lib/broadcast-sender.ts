@@ -12,7 +12,7 @@
 import type { Env, Campaign, Subscriber, BrandSettings, SequenceStep } from '../types';
 import {
   ensureResendContact,
-  addContactToDefaultSegment,
+  addContactsToSegment,
   createAndSendBroadcast,
   sleep,
   RESEND_RATE_LIMIT_DELAY_MS,
@@ -175,15 +175,15 @@ export async function sendCampaignViaBroadcast(
       // If contact was just created (not existed), add to target segment
       if (!contactResult.existed) {
         await sleep(RESEND_RATE_LIMIT_DELAY_MS);
-        const addResult = await addContactToDefaultSegment(config, segmentId, contactResult.contactId);
-        if (!addResult.success) {
+        const addResult = await addContactsToSegment(config, segmentId, [contactResult.contactId]);
+        if (!addResult.success || addResult.errors.length > 0) {
           console.error('Failed to add new contact to segment:', {
             email: subscriber.email,
             contactId: contactResult.contactId,
             segmentId,
-            error: addResult.error,
+            errors: addResult.errors,
           });
-          warnings.push(`Failed to add ${subscriber.email} to segment: ${addResult.error}`);
+          warnings.push(`Failed to add ${subscriber.email} to segment: ${addResult.errors.join(', ')}`);
         }
       }
     } else {
@@ -351,15 +351,16 @@ export async function sendSequenceStepViaBroadcast(
 
   // 3. If contact was just created (not existed), add to default segment
   if (!contactResult.existed) {
-    const addResult = await addContactToDefaultSegment(config, segmentId, contactResult.contactId);
-    if (!addResult.success) {
+    const addResult = await addContactsToSegment(config, segmentId, [contactResult.contactId]);
+    if (!addResult.success || addResult.errors.length > 0) {
+      const errorMsg = addResult.errors.join(', ');
       console.error('Failed to add contact to segment for sequence:', {
         sequenceId: step.sequence_id,
         stepNumber: step.step_number,
         email: subscriber.email,
         contactId: contactResult.contactId,
         segmentId,
-        error: addResult.error,
+        errors: addResult.errors,
       });
       // For sequences, this is critical - record failure
       await recordSequenceDeliveryLog(env, {
@@ -369,11 +370,11 @@ export async function sendSequenceStepViaBroadcast(
         email: subscriber.email,
         emailSubject: step.subject,
         status: 'failed',
-        errorMessage: `Failed to add contact to segment: ${addResult.error}`,
+        errorMessage: `Failed to add contact to segment: ${errorMsg}`,
       });
       return {
         success: false,
-        error: `Failed to add contact to segment: ${addResult.error}`,
+        error: `Failed to add contact to segment: ${errorMsg}`,
       };
     }
   }
