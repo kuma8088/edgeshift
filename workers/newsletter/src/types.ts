@@ -22,6 +22,13 @@ export interface Env {
 }
 
 // Mailserver types
+// Note: MailUser type is also defined in src/utils/admin-api.ts (frontend)
+// Keep in sync when modifying
+
+/**
+ * Represents a mail user from the mailserver system.
+ * @source External API: admin.kuma8088.com/api/mailserver/users
+ */
 export interface MailUser {
   id: number;
   email: string;

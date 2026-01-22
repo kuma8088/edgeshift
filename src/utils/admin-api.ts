@@ -928,7 +928,13 @@ export async function getImages(): Promise<{ success: boolean; data?: { images: 
 
 // Mailserver API (for reply-to address selection)
 // Proxied through newsletter worker to avoid CORS issues
+// Note: MailUser type is also defined in workers/newsletter/src/types.ts
+// Keep in sync when modifying
 
+/**
+ * Represents a mail user from the mailserver system.
+ * @source External API: admin.kuma8088.com/api/mailserver/users
+ */
 export interface MailUser {
   id: number;
   email: string;
