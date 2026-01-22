@@ -383,13 +383,24 @@ export async function sendSequenceStepViaBroadcast(
     }
   }
 
-  // 4. Get sequence's reply_to address
-  const sequence = await env.DB.prepare(
-    'SELECT reply_to FROM sequences WHERE id = ?'
-  ).bind(step.sequence_id).first<{ reply_to: string | null }>();
+  // 4. Get sequence's reply_to address with error handling
+  let replyTo = env.REPLY_TO_EMAIL;
+  try {
+    const sequence = await env.DB.prepare(
+      'SELECT reply_to FROM sequences WHERE id = ?'
+    ).bind(step.sequence_id).first<{ reply_to: string | null }>();
 
-  // Use sequence's reply_to if set, otherwise fall back to env default
-  const replyTo = sequence?.reply_to || env.REPLY_TO_EMAIL;
+    if (sequence?.reply_to) {
+      replyTo = sequence.reply_to;
+    }
+  } catch (dbError) {
+    console.error('Failed to fetch sequence reply_to address:', {
+      sequenceId: step.sequence_id,
+      stepNumber: step.step_number,
+      error: dbError instanceof Error ? dbError.message : String(dbError),
+    });
+    // Continue with default reply_to from env
+  }
 
   // 5. Create & Send Broadcast to permanent segment
   const broadcastResult = await createAndSendBroadcast(config, {
