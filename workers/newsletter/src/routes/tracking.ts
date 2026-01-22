@@ -290,7 +290,7 @@ export async function getSubscriberEngagement(
       c.subject
     FROM delivery_logs dl
     JOIN campaigns c ON dl.campaign_id = c.id
-    WHERE dl.subscriber_id = ? AND dl.campaign_id IS NOT NULL
+    WHERE dl.subscriber_id = ? AND dl.campaign_id IS NOT NULL AND c.is_deleted = 0
     ORDER BY dl.sent_at DESC
   `).bind(subscriberId).all<{
     delivery_log_id: string;

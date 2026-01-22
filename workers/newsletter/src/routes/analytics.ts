@@ -44,7 +44,7 @@ export async function getAnalyticsOverview(env: Env): Promise<AnalyticsOverviewR
       COUNT(CASE WHEN dl.status = 'clicked' THEN 1 END) as clicks
     FROM campaigns c
     LEFT JOIN delivery_logs dl ON c.id = dl.campaign_id
-    WHERE c.status = 'sent' AND c.sent_at IS NOT NULL
+    WHERE c.status = 'sent' AND c.sent_at IS NOT NULL AND c.is_deleted = 0
     GROUP BY c.id, c.subject, c.sent_at, c.recipient_count
     ORDER BY c.sent_at DESC
     LIMIT 10
@@ -108,6 +108,7 @@ export async function getAnalyticsOverview(env: Env): Promise<AnalyticsOverviewR
   });
 
   // Get top 10 engaged subscribers by clicks and opens
+  // Exclude delivery logs from deleted campaigns
   const topSubscribersResult = await env.DB.prepare(`
     SELECT
       s.id as subscriber_id,
@@ -117,8 +118,9 @@ export async function getAnalyticsOverview(env: Env): Promise<AnalyticsOverviewR
       COUNT(DISTINCT ce.id) as click_count
     FROM subscribers s
     LEFT JOIN delivery_logs dl ON s.id = dl.subscriber_id
-    LEFT JOIN click_events ce ON s.id = ce.subscriber_id
-    WHERE s.status = 'active'
+    LEFT JOIN campaigns c ON dl.campaign_id = c.id
+    LEFT JOIN click_events ce ON dl.id = ce.delivery_log_id
+    WHERE s.status = 'active' AND (c.is_deleted = 0 OR c.id IS NULL)
     GROUP BY s.id, s.email, s.name
     ORDER BY click_count DESC, open_count DESC
     LIMIT 10

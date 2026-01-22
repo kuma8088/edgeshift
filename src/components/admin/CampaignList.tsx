@@ -256,14 +256,12 @@ export function CampaignList() {
                     送信
                   </button>
                 )}
-                {campaign.status !== 'sent' && (
-                  <button
-                    onClick={() => handleDelete(campaign)}
-                    className="px-3 py-1 text-sm border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    削除
-                  </button>
-                )}
+                <button
+                  onClick={() => handleDelete(campaign)}
+                  className="px-3 py-1 text-sm border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  削除
+                </button>
               </div>
             </div>
           </div>
