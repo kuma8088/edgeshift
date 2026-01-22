@@ -116,13 +116,14 @@ export interface CreateCampaignData {
   slug?: string;
   is_published?: boolean;
   excerpt?: string;
+  reply_to?: string;
 }
 
 export async function createCampaign(data: CreateCampaignData) {
   return apiRequest('/campaigns', { method: 'POST', body: data });
 }
 
-export async function updateCampaign(id: string, data: { subject?: string; content?: string; status?: string; contact_list_id?: string; template_id?: string; slug?: string; is_published?: boolean; excerpt?: string }) {
+export async function updateCampaign(id: string, data: { subject?: string; content?: string; status?: string; contact_list_id?: string; template_id?: string; slug?: string; is_published?: boolean; excerpt?: string; reply_to?: string }) {
   return apiRequest(`/campaigns/${id}`, { method: 'PUT', body: data });
 }
 
@@ -922,5 +923,37 @@ export async function getImages(): Promise<{ success: boolean; data?: { images: 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return { success: false, error: `Network error: ${message}` };
+  }
+}
+
+// Mailserver API (for reply-to address selection)
+const MAILSERVER_API_BASE = 'https://admin.kuma8088.com';
+
+export interface MailUser {
+  id: number;
+  email: string;
+  domain_name: string;
+  enabled: boolean;
+}
+
+export interface MailUserListResponse {
+  users: MailUser[];
+  total: number;
+}
+
+export async function listMailUsers(): Promise<{ success: boolean; data?: MailUserListResponse; error?: string }> {
+  try {
+    const response = await fetch(`${MAILSERVER_API_BASE}/api/mailserver/users?enabled_only=true`, {
+      credentials: 'include', // CF Access cookie
+    });
+
+    if (!response.ok) {
+      return { success: false, error: `API returned ${response.status}` };
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
