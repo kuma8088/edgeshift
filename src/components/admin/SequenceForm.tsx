@@ -3,6 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { SequenceStepEditor } from './SequenceStepEditor';
 import { SequenceTimelinePreview } from './SequenceTimelinePreview';
+import { ReplyToSelector } from './ReplyToSelector';
 
 interface SequenceStep {
   delay_days: number;
@@ -18,6 +19,7 @@ interface Sequence {
   name: string;
   description?: string;
   default_send_time?: string;
+  reply_to?: string | null;
   steps: SequenceStep[];
 }
 
@@ -25,7 +27,7 @@ type TimingMode = 'days' | 'minutes';
 
 interface SequenceFormProps {
   sequence?: Sequence;
-  onSubmit: (data: { name: string; description?: string; default_send_time: string; steps: SequenceStep[] }) => Promise<void>;
+  onSubmit: (data: { name: string; description?: string; default_send_time: string; reply_to?: string; steps: SequenceStep[] }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -34,6 +36,7 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
   const [name, setName] = useState(sequence?.name || '');
   const [description, setDescription] = useState(sequence?.description || '');
   const [defaultSendTime, setDefaultSendTime] = useState(sequence?.default_send_time || '10:00');
+  const [replyTo, setReplyTo] = useState<string | null>(sequence?.reply_to || null);
   const [steps, setSteps] = useState<SequenceStep[]>(
     sequence?.steps || [{ delay_days: 0, subject: '', content: '' }]
   );
@@ -50,6 +53,7 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
       setName(sequence.name || '');
       setDescription(sequence.description || '');
       setDefaultSendTime(sequence.default_send_time || '10:00');
+      setReplyTo(sequence.reply_to || null);
       setSteps(sequence.steps || [{ delay_days: 0, subject: '', content: '' }]);
       // Use != null to exclude both null and undefined
       setStep1TimingMode(
@@ -93,6 +97,7 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
       name: name.trim(),
       description: description.trim() || undefined,
       default_send_time: defaultSendTime,
+      reply_to: replyTo || undefined,
       steps: steps.map((step, index) => {
         // Step 1: Apply timing mode
         if (index === 0 && step1TimingMode === 'minutes') {
@@ -170,6 +175,21 @@ export function SequenceForm({ sequence, onSubmit, onCancel, loading = false }: 
         />
         <p className="text-xs text-[var(--color-text-muted)] mt-1">
           各ステップで個別に指定しない場合、この時刻に送信されます（日本時間）
+        </p>
+      </div>
+
+      {/* Reply-To Address */}
+      <div>
+        <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+          返信先アドレス
+        </label>
+        <ReplyToSelector
+          value={replyTo}
+          onChange={setReplyTo}
+          disabled={loading}
+        />
+        <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+          返信先を指定しない場合、デフォルトのアドレスが使用されます
         </p>
       </div>
 
