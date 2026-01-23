@@ -615,3 +615,21 @@ export interface ExportOptions {
   contactListId?: string;
   status?: 'active' | 'unsubscribed' | 'all';
 }
+
+// Short URLs (Issue #132)
+export interface ShortUrl {
+  id: string;
+  short_code: string;
+  original_url: string;
+  position: number;
+  campaign_id: string | null;
+  sequence_step_id: string | null;
+  created_at: number;
+}
+
+export interface CreateShortUrlParams {
+  originalUrl: string;
+  position: number;
+  campaignId?: string;
+  sequenceStepId?: string;
+}
