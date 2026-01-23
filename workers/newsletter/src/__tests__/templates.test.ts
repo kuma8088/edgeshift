@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { renderEmail, getDefaultBrandSettings } from '../lib/templates';
-import type { BrandSettings } from '../types';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { renderEmail, renderEmailAsync, getDefaultBrandSettings } from '../lib/templates';
+import type { BrandSettings, Env } from '../types';
+import { setupTestDb, cleanupTestDb, getTestEnv } from './setup';
+import * as urlShortener from '../lib/url-shortener';
 
 describe('Template Engine', () => {
   const defaultBrandSettings: BrandSettings = {
@@ -117,6 +119,154 @@ describe('Template Engine', () => {
       expect(settings.secondary_color).toBe('#1e1e1e');
       expect(settings.footer_text).toBe('EdgeShift Newsletter');
       expect(settings.default_template_id).toBe('simple');
+    });
+  });
+
+  describe('renderEmailAsync', () => {
+    let testEnv: Env;
+
+    beforeEach(async () => {
+      testEnv = getTestEnv() as unknown as Env;
+      await setupTestDb();
+    });
+
+    afterEach(async () => {
+      await cleanupTestDb();
+      vi.restoreAllMocks();
+    });
+
+    it('should return same HTML as renderEmail when shortenUrls option is not provided', async () => {
+      const options = {
+        templateId: 'simple',
+        content: '<p>Hello World</p>',
+        subject: 'Test Subject',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: 'John', email: 'john@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+      };
+
+      const syncHtml = renderEmail(options);
+      const asyncHtml = await renderEmailAsync(options);
+
+      expect(asyncHtml).toBe(syncHtml);
+    });
+
+    it('should shorten URLs when shortenUrls option is provided', async () => {
+      // Create a campaign to satisfy foreign key constraint
+      const campaignId = 'test-campaign-123';
+      await testEnv.DB.prepare(`
+        INSERT INTO campaigns (id, subject, content, slug)
+        VALUES (?, 'Test', 'Content', 'test-slug')
+      `).bind(campaignId).run();
+
+      const options = {
+        templateId: 'simple',
+        content: '<p>Check out <a href="https://example.com/article">this article</a></p>',
+        subject: 'Test Subject',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: 'John', email: 'john@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+        shortenUrls: {
+          env: testEnv,
+          campaignId,
+        },
+      };
+
+      const html = await renderEmailAsync(options);
+
+      // Should contain short URL pattern instead of original URL
+      expect(html).toContain('https://edgeshift.tech/r/');
+      expect(html).not.toContain('href="https://example.com/article"');
+    });
+
+    it('should not shorten unsubscribe URLs', async () => {
+      // Create a campaign to satisfy foreign key constraint
+      const campaignId = 'test-campaign-456';
+      await testEnv.DB.prepare(`
+        INSERT INTO campaigns (id, subject, content, slug)
+        VALUES (?, 'Test', 'Content', 'test-slug-2')
+      `).bind(campaignId).run();
+
+      const options = {
+        templateId: 'simple',
+        content: '<p>Content here</p>',
+        subject: 'Test Subject',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: 'John', email: 'john@example.com' },
+        unsubscribeUrl: 'http://example.com/api/newsletter/unsubscribe/abc123',
+        siteUrl: 'http://example.com',
+        shortenUrls: {
+          env: testEnv,
+          campaignId,
+        },
+      };
+
+      const html = await renderEmailAsync(options);
+
+      // Unsubscribe URL should NOT be shortened
+      expect(html).toContain('http://example.com/api/newsletter/unsubscribe/abc123');
+    });
+
+    it('should pass campaignId to replaceUrlsWithShortened', async () => {
+      // Mock replaceUrlsWithShortened to avoid DB operations
+      const spy = vi.spyOn(urlShortener, 'replaceUrlsWithShortened').mockResolvedValue({
+        html: '<p>mocked</p>',
+        shortUrls: [],
+      });
+
+      const options = {
+        templateId: 'simple',
+        content: '<p>Check out <a href="https://example.com/page">this page</a></p>',
+        subject: 'Test Subject',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: 'John', email: 'john@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+        shortenUrls: {
+          env: testEnv,
+          campaignId: 'campaign-abc',
+        },
+      };
+
+      await renderEmailAsync(options);
+
+      expect(spy).toHaveBeenCalledWith(
+        testEnv,
+        expect.any(String),
+        { campaignId: 'campaign-abc', sequenceStepId: undefined }
+      );
+    });
+
+    it('should pass sequenceStepId to replaceUrlsWithShortened', async () => {
+      // Mock replaceUrlsWithShortened to avoid DB operations
+      const spy = vi.spyOn(urlShortener, 'replaceUrlsWithShortened').mockResolvedValue({
+        html: '<p>mocked</p>',
+        shortUrls: [],
+      });
+
+      const options = {
+        templateId: 'simple',
+        content: '<p>Check out <a href="https://example.com/page">this page</a></p>',
+        subject: 'Test Subject',
+        brandSettings: defaultBrandSettings,
+        subscriber: { name: 'John', email: 'john@example.com' },
+        unsubscribeUrl: 'http://example.com/unsub',
+        siteUrl: 'http://example.com',
+        shortenUrls: {
+          env: testEnv,
+          sequenceStepId: 'step-xyz',
+        },
+      };
+
+      await renderEmailAsync(options);
+
+      expect(spy).toHaveBeenCalledWith(
+        testEnv,
+        expect.any(String),
+        { campaignId: undefined, sequenceStepId: 'step-xyz' }
+      );
     });
   });
 });

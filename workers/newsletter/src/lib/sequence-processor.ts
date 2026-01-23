@@ -1,7 +1,7 @@
 import type { Env, BrandSettings, Subscriber, SequenceStep } from '../types';
 import { sendEmail } from './email';
 import { recordSequenceDeliveryLog } from './delivery';
-import { renderEmail, getDefaultBrandSettings } from './templates';
+import { renderEmailAsync, getDefaultBrandSettings } from './templates';
 import { sendSequenceStepViaBroadcast } from './broadcast-sender';
 
 interface PendingSequenceEmail {
@@ -180,7 +180,8 @@ export async function processSequenceEmails(env: Env): Promise<void> {
       const unsubscribeUrl = `${env.SITE_URL}/api/newsletter/unsubscribe/${email.unsubscribe_token}`;
 
       // Render HTML content once (used by both Email API and Broadcast API)
-      const html = renderEmail({
+      // Uses async version to enable URL shortening for click tracking
+      const html = await renderEmailAsync({
         templateId,
         content: email.content,
         subject: email.subject,
@@ -188,6 +189,10 @@ export async function processSequenceEmails(env: Env): Promise<void> {
         subscriber: { name: email.name, email: email.email },
         unsubscribeUrl,
         siteUrl: env.SITE_URL,
+        shortenUrls: {
+          env,
+          sequenceStepId: email.step_id,
+        },
       });
 
       // Check if Broadcast API should be used

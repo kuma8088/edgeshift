@@ -100,6 +100,11 @@ zone_name = "edgeshift.tech"
 pattern = "edgeshift.tech/api/mailserver/*"
 zone_name = "edgeshift.tech"
 
+# Short URL redirects (public)
+[[routes]]
+pattern = "edgeshift.tech/r/*"
+zone_name = "edgeshift.tech"
+
 [vars]
 ALLOWED_ORIGIN = "https://edgeshift.tech"
 SENDER_EMAIL = "newsletter@send.edgeshift.tech"

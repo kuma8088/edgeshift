@@ -128,6 +128,8 @@ interface ClickEvent {
   email: string;
   name: string | null;
   url: string;
+  original_url?: string;  // Resolved from short_urls if URL is shortened
+  position?: number;      // Link position in email (1-indexed)
   clicked_at: number;
 }
 
@@ -136,9 +138,15 @@ interface CampaignClicksResponse {
   summary: {
     total_clicks: number;
     unique_clicks: number;
-    top_urls: Array<{ url: string; clicks: number }>;
+    top_urls: Array<{ url: string; original_url?: string; clicks: number }>;
   };
   clicks: ClickEvent[];
+}
+
+// Extract short_code from URL like https://edgeshift.tech/r/xxxxxxxx
+function extractShortCode(url: string): string | null {
+  const match = url.match(/edgeshift\.tech\/r\/([A-Za-z0-9]{8})/);
+  return match ? match[1] : null;
 }
 
 export async function getCampaignClicks(
@@ -155,53 +163,114 @@ export async function getCampaignClicks(
   }
 
   // Get all clicks with subscriber info
-  const clicksResult = await env.DB.prepare(`
-    SELECT
-      s.email,
-      s.name,
-      ce.clicked_url as url,
-      ce.clicked_at
-    FROM click_events ce
-    JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
-    JOIN subscribers s ON ce.subscriber_id = s.id
-    WHERE dl.campaign_id = ?
-    ORDER BY ce.clicked_at DESC
-  `).bind(campaignId).all<{
+  let clicks: Array<{
     email: string;
     name: string | null;
     url: string;
     clicked_at: number;
-  }>();
+  }> = [];
 
-  const clicks = clicksResult.results || [];
+  try {
+    const clicksResult = await env.DB.prepare(`
+      SELECT
+        s.email,
+        s.name,
+        ce.clicked_url as url,
+        ce.clicked_at
+      FROM click_events ce
+      JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
+      JOIN subscribers s ON ce.subscriber_id = s.id
+      WHERE dl.campaign_id = ?
+      ORDER BY ce.clicked_at DESC
+    `).bind(campaignId).all<{
+      email: string;
+      name: string | null;
+      url: string;
+      clicked_at: number;
+    }>();
 
-  // Calculate summary
-  const uniqueClickers = new Set(clicks.map(c => c.email)).size;
-  const uniqueUrls = new Set(clicks.map(c => c.url)).size;
+    clicks = clicksResult.results || [];
+  } catch (error) {
+    console.error(`Failed to fetch click events for campaign ${campaignId}:`, error);
+    throw error;
+  }
 
-  // Calculate top URLs with click counts
-  const urlCounts = new Map<string, number>();
+  // Extract short_codes from URLs to resolve original URLs
+  const shortCodes = new Set<string>();
   for (const click of clicks) {
-    urlCounts.set(click.url, (urlCounts.get(click.url) || 0) + 1);
+    const shortCode = extractShortCode(click.url);
+    if (shortCode) {
+      shortCodes.add(shortCode);
+    }
+  }
+
+  // Fetch original URLs from short_urls table
+  const shortUrlMap = new Map<string, { original_url: string; position: number }>();
+  if (shortCodes.size > 0) {
+    try {
+      const placeholders = Array.from(shortCodes).map(() => '?').join(',');
+      const shortUrlsResult = await env.DB.prepare(
+        `SELECT short_code, original_url, position FROM short_urls WHERE short_code IN (${placeholders})`
+      ).bind(...Array.from(shortCodes)).all<{
+        short_code: string;
+        original_url: string;
+        position: number;
+      }>();
+
+      for (const su of shortUrlsResult.results || []) {
+        shortUrlMap.set(su.short_code, { original_url: su.original_url, position: su.position });
+      }
+    } catch (error) {
+      // Log error but continue - clicks will show short URLs instead of resolved URLs
+      console.error(`Failed to resolve short URLs for campaign ${campaignId}:`, error);
+    }
+  }
+
+  // Enrich clicks with original_url and position
+  const enrichedClicks: ClickEvent[] = clicks.map(c => {
+    const shortCode = extractShortCode(c.url);
+    const shortUrlInfo = shortCode ? shortUrlMap.get(shortCode) : null;
+    return {
+      email: c.email,
+      name: c.name,
+      url: c.url,
+      original_url: shortUrlInfo?.original_url,
+      position: shortUrlInfo?.position,
+      clicked_at: c.clicked_at,
+    };
+  });
+
+  // Calculate summary using original_url when available
+  const uniqueClickers = new Set(enrichedClicks.map(c => c.email)).size;
+
+  // Calculate top URLs with click counts (use original_url for grouping)
+  const urlCounts = new Map<string, { shortUrl: string; count: number }>();
+  for (const click of enrichedClicks) {
+    const displayUrl = click.original_url || click.url;
+    const existing = urlCounts.get(displayUrl);
+    if (existing) {
+      existing.count++;
+    } else {
+      urlCounts.set(displayUrl, { shortUrl: click.url, count: 1 });
+    }
   }
   const topUrls = Array.from(urlCounts.entries())
-    .map(([url, count]) => ({ url, clicks: count }))
+    .map(([url, data]) => ({
+      url: data.shortUrl,
+      original_url: url !== data.shortUrl ? url : undefined,
+      clicks: data.count,
+    }))
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 10);
 
   return {
     campaign_id: campaignId,
     summary: {
-      total_clicks: clicks.length,
+      total_clicks: enrichedClicks.length,
       unique_clicks: uniqueClickers,
       top_urls: topUrls,
     },
-    clicks: clicks.map(c => ({
-      email: c.email,
-      name: c.name,
-      url: c.url,
-      clicked_at: c.clicked_at,
-    })),
+    clicks: enrichedClicks,
   };
 }
 

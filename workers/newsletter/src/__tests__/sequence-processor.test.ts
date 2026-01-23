@@ -8,6 +8,14 @@ vi.mock('../lib/email', () => ({
   sendEmail: vi.fn(),
 }));
 
+// Mock the url-shortener module to avoid DB operations in tests
+vi.mock('../lib/url-shortener', () => ({
+  replaceUrlsWithShortened: vi.fn().mockImplementation(async (_env, html) => ({
+    html,
+    replacements: [],
+  })),
+}));
+
 // Mock resend-marketing module for Broadcast API tests
 vi.mock('../lib/resend-marketing', () => ({
   ensureResendContact: vi.fn(),

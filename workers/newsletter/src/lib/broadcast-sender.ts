@@ -19,7 +19,7 @@ import {
   type ResendMarketingConfig,
 } from './resend-marketing';
 import { recordDeliveryLogs, recordSequenceDeliveryLog } from './delivery';
-import { renderEmail, getDefaultBrandSettings } from './templates';
+import { renderEmailAsync, getDefaultBrandSettings } from './templates';
 
 export interface BroadcastSendResult {
   success: boolean;
@@ -209,7 +209,7 @@ export async function sendCampaignViaBroadcast(
   // Use first subscriber for template rendering (personalization would require individual sends)
   // Note: Using Resend's built-in unsubscribe URL for Broadcast API
   const firstSubscriber = subscribers[0];
-  const html = renderEmail({
+  const html = await renderEmailAsync({
     templateId,
     content: campaign.content,
     subject: campaign.subject,
@@ -217,6 +217,10 @@ export async function sendCampaignViaBroadcast(
     subscriber: { name: firstSubscriber.name, email: firstSubscriber.email },
     unsubscribeUrl: '{{{RESEND_UNSUBSCRIBE_URL}}}',
     siteUrl: env.SITE_URL,
+    shortenUrls: {
+      env,
+      campaignId: campaign.id,
+    },
   });
 
   // 4. Create & Send Broadcast to permanent segment

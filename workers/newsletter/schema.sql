@@ -286,3 +286,20 @@ CREATE TABLE IF NOT EXISTS ab_test_remaining (
 -- Reply-To feature (issue #124):
 -- ALTER TABLE campaigns ADD COLUMN reply_to TEXT;
 -- ALTER TABLE sequences ADD COLUMN reply_to TEXT;
+
+-- Short URLs for link tracking (Issue #132)
+CREATE TABLE IF NOT EXISTS short_urls (
+  id TEXT PRIMARY KEY,
+  short_code TEXT NOT NULL UNIQUE,
+  original_url TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  campaign_id TEXT,
+  sequence_step_id TEXT,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
+  FOREIGN KEY (sequence_step_id) REFERENCES sequence_steps(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_short_urls_code ON short_urls(short_code);
+CREATE INDEX IF NOT EXISTS idx_short_urls_campaign ON short_urls(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_short_urls_step ON short_urls(sequence_step_id);

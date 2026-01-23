@@ -4,7 +4,7 @@ import { sendBatchEmails } from '../lib/email';
 import { sendCampaignViaBroadcast } from '../lib/broadcast-sender';
 import { recordDeliveryLogs, getDeliveryStats } from '../lib/delivery';
 import { errorResponse, successResponse } from '../lib/response';
-import { renderEmail, getDefaultBrandSettings } from '../lib/templates';
+import { renderEmailAsync, getDefaultBrandSettings } from '../lib/templates';
 
 export async function sendCampaign(
   request: Request,
@@ -101,20 +101,26 @@ export async function sendCampaign(
 
     const templateId = campaign.template_id || brandSettings.default_template_id;
 
-    // Prepare emails using template engine
-    const emails = subscribers.map((sub) => ({
-      to: sub.email,
-      subject: campaign.subject,
-      html: renderEmail({
-        templateId,
-        content: campaign.content,
+    // Prepare emails using template engine with URL shortening
+    const emails = await Promise.all(
+      subscribers.map(async (sub) => ({
+        to: sub.email,
         subject: campaign.subject,
-        brandSettings,
-        subscriber: { name: sub.name, email: sub.email },
-        unsubscribeUrl: `${env.SITE_URL}/api/newsletter/unsubscribe/${sub.unsubscribe_token}`,
-        siteUrl: env.SITE_URL,
-      }),
-    }));
+        html: await renderEmailAsync({
+          templateId,
+          content: campaign.content,
+          subject: campaign.subject,
+          brandSettings,
+          subscriber: { name: sub.name, email: sub.email },
+          unsubscribeUrl: `${env.SITE_URL}/api/newsletter/unsubscribe/${sub.unsubscribe_token}`,
+          siteUrl: env.SITE_URL,
+          shortenUrls: {
+            env,
+            campaignId: campaign.id,
+          },
+        }),
+      }))
+    );
 
     // Send batch emails
     const sendResult = await sendBatchEmails(

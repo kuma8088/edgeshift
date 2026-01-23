@@ -1,7 +1,8 @@
-import type { BrandSettings, TemplateId, TemplateInfo } from '../../types';
+import type { BrandSettings, Env, TemplateId, TemplateInfo } from '../../types';
 import { replaceVariables } from './variables';
 import { renderPreset, isValidTemplateId, TEMPLATE_LIST } from './presets';
 import { linkifyUrls } from '../content-processor';
+import { replaceUrlsWithShortened } from '../url-shortener';
 
 /**
  * Transform empty paragraphs for email client compatibility.
@@ -73,3 +74,47 @@ export function getTemplateList(): TemplateInfo[] {
 }
 
 export { isValidTemplateId };
+
+/**
+ * Options for URL shortening in async email rendering
+ */
+export interface ShortenUrlsOptions {
+  env: Env;
+  campaignId?: string;
+  sequenceStepId?: string;
+}
+
+/**
+ * Extended options for async email rendering with optional URL shortening
+ */
+export interface RenderEmailAsyncOptions extends RenderEmailOptions {
+  shortenUrls?: ShortenUrlsOptions;
+}
+
+/**
+ * Async version of renderEmail that supports URL shortening.
+ *
+ * When shortenUrls option is provided, all trackable URLs in the email
+ * will be replaced with short URLs for click tracking.
+ *
+ * @param options - Render options including optional URL shortening config
+ * @returns Rendered HTML with optionally shortened URLs
+ */
+export async function renderEmailAsync(
+  options: RenderEmailAsyncOptions
+): Promise<string> {
+  // 1. Call existing renderEmail() to get HTML
+  const html = renderEmail(options);
+
+  // 2. If shortenUrls option provided, replace URLs
+  if (options.shortenUrls) {
+    const { env, campaignId, sequenceStepId } = options.shortenUrls;
+    const result = await replaceUrlsWithShortened(env, html, {
+      campaignId,
+      sequenceStepId,
+    });
+    return result.html;
+  }
+
+  return html;
+}
