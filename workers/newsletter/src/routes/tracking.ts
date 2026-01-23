@@ -163,25 +163,37 @@ export async function getCampaignClicks(
   }
 
   // Get all clicks with subscriber info
-  const clicksResult = await env.DB.prepare(`
-    SELECT
-      s.email,
-      s.name,
-      ce.clicked_url as url,
-      ce.clicked_at
-    FROM click_events ce
-    JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
-    JOIN subscribers s ON ce.subscriber_id = s.id
-    WHERE dl.campaign_id = ?
-    ORDER BY ce.clicked_at DESC
-  `).bind(campaignId).all<{
+  let clicks: Array<{
     email: string;
     name: string | null;
     url: string;
     clicked_at: number;
-  }>();
+  }> = [];
 
-  const clicks = clicksResult.results || [];
+  try {
+    const clicksResult = await env.DB.prepare(`
+      SELECT
+        s.email,
+        s.name,
+        ce.clicked_url as url,
+        ce.clicked_at
+      FROM click_events ce
+      JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
+      JOIN subscribers s ON ce.subscriber_id = s.id
+      WHERE dl.campaign_id = ?
+      ORDER BY ce.clicked_at DESC
+    `).bind(campaignId).all<{
+      email: string;
+      name: string | null;
+      url: string;
+      clicked_at: number;
+    }>();
+
+    clicks = clicksResult.results || [];
+  } catch (error) {
+    console.error(`Failed to fetch click events for campaign ${campaignId}:`, error);
+    throw error;
+  }
 
   // Extract short_codes from URLs to resolve original URLs
   const shortCodes = new Set<string>();
@@ -195,17 +207,22 @@ export async function getCampaignClicks(
   // Fetch original URLs from short_urls table
   const shortUrlMap = new Map<string, { original_url: string; position: number }>();
   if (shortCodes.size > 0) {
-    const placeholders = Array.from(shortCodes).map(() => '?').join(',');
-    const shortUrlsResult = await env.DB.prepare(
-      `SELECT short_code, original_url, position FROM short_urls WHERE short_code IN (${placeholders})`
-    ).bind(...Array.from(shortCodes)).all<{
-      short_code: string;
-      original_url: string;
-      position: number;
-    }>();
+    try {
+      const placeholders = Array.from(shortCodes).map(() => '?').join(',');
+      const shortUrlsResult = await env.DB.prepare(
+        `SELECT short_code, original_url, position FROM short_urls WHERE short_code IN (${placeholders})`
+      ).bind(...Array.from(shortCodes)).all<{
+        short_code: string;
+        original_url: string;
+        position: number;
+      }>();
 
-    for (const su of shortUrlsResult.results || []) {
-      shortUrlMap.set(su.short_code, { original_url: su.original_url, position: su.position });
+      for (const su of shortUrlsResult.results || []) {
+        shortUrlMap.set(su.short_code, { original_url: su.original_url, position: su.position });
+      }
+    } catch (error) {
+      // Log error but continue - clicks will show short URLs instead of resolved URLs
+      console.error(`Failed to resolve short URLs for campaign ${campaignId}:`, error);
     }
   }
 
