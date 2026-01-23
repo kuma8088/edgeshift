@@ -211,6 +211,17 @@ export async function setupTestDb() {
       subscriber_ids TEXT NOT NULL,
       created_at INTEGER DEFAULT (unixepoch()),
       FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS short_urls (
+      id TEXT PRIMARY KEY,
+      short_code TEXT UNIQUE NOT NULL,
+      original_url TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      campaign_id TEXT,
+      sequence_step_id TEXT,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+      FOREIGN KEY (sequence_step_id) REFERENCES sequence_steps(id) ON DELETE CASCADE
     )`)
   ]);
 }
@@ -222,6 +233,7 @@ export async function cleanupTestDb() {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM click_events WHERE 1=1'),
       env.DB.prepare('DELETE FROM delivery_logs WHERE 1=1'),
+      env.DB.prepare('DELETE FROM short_urls WHERE 1=1'),
       env.DB.prepare('DELETE FROM subscriber_sequences WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequence_steps WHERE 1=1'),
       env.DB.prepare('DELETE FROM sequences WHERE 1=1'),
