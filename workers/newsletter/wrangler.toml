@@ -107,8 +107,8 @@ zone_name = "edgeshift.tech"
 
 [vars]
 ALLOWED_ORIGIN = "https://edgeshift.tech"
-SENDER_EMAIL = "newsletter@send.edgeshift.tech"
-SENDER_NAME = "EdgeShift Newsletter"
+SENDER_EMAIL = "info@edgeshift.tech"
+SENDER_NAME = "井村尚弥@EdgeShift"
 SITE_URL = "https://edgeshift.tech"
 IMAGES_PUBLIC_URL = "https://images.edgeshift.tech"
 # ADMIN_EMAIL = "admin@edgeshift.tech"  # Optional: set for milestone achievement notifications
