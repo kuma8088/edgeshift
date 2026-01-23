@@ -55,6 +55,7 @@ import {
   handleRemoveSubscriberFromList,
 } from './routes/contact-lists';
 import { getArchiveList, getArchiveArticle } from './routes/archive';
+import { handleRedirect } from './routes/redirect';
 import {
   handleGetReferralDashboard,
   handleGetMilestones,
@@ -94,8 +95,13 @@ export default {
       );
 
       // Route matching
+      // Short URL redirect (public, no auth)
+      if (path.match(/^\/r\/([^\/]+)$/) && request.method === 'GET') {
+        const code = path.split('/')[2];
+        return handleRedirect(request, env, code);
+      }
       // Archive routes (public, no auth)
-      if (path === '/api/archive' && request.method === 'GET') {
+      else if (path === '/api/archive' && request.method === 'GET') {
         response = await getArchiveList(request, env);
       } else if (path.match(/^\/api\/archive\/[^\/]+$/) && request.method === 'GET') {
         const slug = path.replace('/api/archive/', '');
