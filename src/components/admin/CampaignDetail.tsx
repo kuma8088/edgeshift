@@ -50,13 +50,15 @@ interface TrackingStats {
 interface Click {
   email: string;
   url: string;
+  original_url?: string;  // Resolved from short_urls
+  position?: number;      // Link position in email
   clicked_at: number;
 }
 
 interface ClicksSummary {
   total_clicks: number;
   unique_clicks: number;
-  top_urls: Array<{ url: string; clicks: number }>;
+  top_urls: Array<{ url: string; original_url?: string; clicks: number }>;
 }
 
 interface CampaignDetailProps {
@@ -350,23 +352,27 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
                 人気のURL
               </h3>
               <div className="space-y-3">
-                {clicksSummary.top_urls.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-[var(--color-accent)] hover:underline truncate block"
-                      >
-                        {item.url}
-                      </a>
+                {clicksSummary.top_urls.map((item, index) => {
+                  const displayUrl = item.original_url || item.url;
+                  return (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <a
+                          href={displayUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-[var(--color-accent)] hover:underline truncate block"
+                          title={displayUrl}
+                        >
+                          {displayUrl}
+                        </a>
+                      </div>
+                      <span className="ml-4 text-sm font-medium text-[var(--color-text)]">
+                        {item.clicks} クリック
+                      </span>
                     </div>
-                    <span className="ml-4 text-sm font-medium text-[var(--color-text)]">
-                      {item.clicks} クリック
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -395,26 +401,30 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
-                    {clicks.map((click, index) => (
-                      <tr key={index} className="hover:bg-[var(--color-bg-tertiary)]">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text)]">
-                          {click.email}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-[var(--color-accent)] max-w-md truncate">
-                          <a
-                            href={click.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            {click.url}
-                          </a>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
-                          {new Date(click.clicked_at * 1000).toLocaleString('ja-JP')}
-                        </td>
-                      </tr>
-                    ))}
+                    {clicks.map((click, index) => {
+                      const displayUrl = click.original_url || click.url;
+                      return (
+                        <tr key={index} className="hover:bg-[var(--color-bg-tertiary)]">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text)]">
+                            {click.email}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-[var(--color-accent)] max-w-md truncate">
+                            <a
+                              href={displayUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                              title={displayUrl}
+                            >
+                              {displayUrl}
+                            </a>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
+                            {new Date(click.clicked_at * 1000).toLocaleString('ja-JP')}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
