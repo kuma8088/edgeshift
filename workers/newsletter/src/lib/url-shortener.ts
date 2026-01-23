@@ -106,8 +106,16 @@ export async function replaceUrlsWithShortened(
 
   let modifiedHtml = html;
 
+  // Track occurrence count per URL for correct replacement
+  // (position is global across all links, but replaceUrlAtPosition needs per-URL occurrence)
+  const urlOccurrenceCount: Map<string, number> = new Map();
+
   // Process each URL
   for (const { url, position } of urlsToShorten) {
+    // Calculate the per-URL occurrence number (1-indexed)
+    const occurrence = (urlOccurrenceCount.get(url) || 0) + 1;
+    urlOccurrenceCount.set(url, occurrence);
+
     const shortUrl = await createShortUrl(env, {
       originalUrl: url,
       position,
@@ -118,9 +126,9 @@ export async function replaceUrlsWithShortened(
     shortUrls.push(shortUrl);
 
     // Replace this specific occurrence of the URL
-    // Use a function replacement to handle only one occurrence at a time
+    // Use per-URL occurrence number, not global position
     const shortLink = `${SHORT_URL_BASE}/${shortUrl.short_code}`;
-    modifiedHtml = replaceUrlAtPosition(modifiedHtml, url, shortLink, position);
+    modifiedHtml = replaceUrlAtPosition(modifiedHtml, url, shortLink, occurrence);
   }
 
   return { html: modifiedHtml, shortUrls };
