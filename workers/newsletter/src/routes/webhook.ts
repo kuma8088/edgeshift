@@ -119,16 +119,24 @@ export async function handleResendWebhook(
       newStatus = 'clicked';
       // Record click event if link is present
       if (event.data.click?.link) {
-        try {
-          await recordClickEvent(env, {
-            deliveryLogId: deliveryLog.id,
-            subscriberId: deliveryLog.subscriber_id,
-            clickedUrl: event.data.click.link,
-          });
-          console.log(`Recorded click event for ${deliveryLog.id}: ${event.data.click.link}`);
-        } catch (error) {
-          // Log error but don't fail the webhook
-          console.error('Failed to record click event:', error);
+        // Filter out Resend-generated unsubscribe URLs from tracking
+        // These are handled by Resend's webhook (contact.updated event)
+        const isResendUnsubscribeUrl = event.data.click.link.includes('unsubscribe.resend.com');
+
+        if (!isResendUnsubscribeUrl) {
+          try {
+            await recordClickEvent(env, {
+              deliveryLogId: deliveryLog.id,
+              subscriberId: deliveryLog.subscriber_id,
+              clickedUrl: event.data.click.link,
+            });
+            console.log(`Recorded click event for ${deliveryLog.id}: ${event.data.click.link}`);
+          } catch (error) {
+            // Log error but don't fail the webhook
+            console.error('Failed to record click event:', error);
+          }
+        } else {
+          console.log(`Ignoring Resend unsubscribe URL click from webhook: ${event.data.click.link}`);
         }
       }
       break;

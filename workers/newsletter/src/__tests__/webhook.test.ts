@@ -225,4 +225,87 @@ describe('handleResendWebhook - click event recording', () => {
 
     expect(log?.status).toBe('clicked');
   });
+
+  it('should NOT record click event for Resend unsubscribe URLs', async () => {
+    const env = getTestEnv();
+
+    // Setup: create delivery log
+    await env.DB.prepare(`
+      INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, resend_id)
+      VALUES ('log-2', 'camp-1', 'sub-1', 'test@example.com', 'sent', 'resend-456')
+    `).run();
+
+    const event = {
+      type: 'email.clicked',
+      created_at: new Date().toISOString(),
+      data: {
+        email_id: 'resend-456',
+        from: 'test@example.com',
+        to: ['test@example.com'],
+        subject: 'Test',
+        created_at: new Date().toISOString(),
+        click: {
+          link: 'https://unsubscribe.resend.com/?token=eyJhbGc...',
+          timestamp: new Date().toISOString(),
+        },
+      },
+    };
+
+    const request = await createSignedWebhookRequest(event, env.RESEND_WEBHOOK_SECRET);
+    const response = await handleResendWebhook(request, env);
+
+    // Should return 200 OK (webhook processed)
+    expect(response.status).toBe(200);
+
+    // Should NOT create click event for unsubscribe URL
+    const clickEvents = await env.DB.prepare(
+      'SELECT * FROM click_events WHERE clicked_url LIKE ?'
+    ).bind('%unsubscribe.resend.com%').all();
+
+    expect(clickEvents.results).toHaveLength(0);
+
+    // Status should still be updated to 'clicked'
+    const log = await env.DB.prepare(
+      'SELECT * FROM delivery_logs WHERE id = ?'
+    ).bind('log-2').first();
+
+    expect(log?.status).toBe('clicked');
+  });
+
+  it('should record click event for normal URLs', async () => {
+    const env = getTestEnv();
+
+    // Setup: create delivery log
+    await env.DB.prepare(`
+      INSERT INTO delivery_logs (id, campaign_id, subscriber_id, email, status, resend_id)
+      VALUES ('log-3', 'camp-1', 'sub-1', 'test@example.com', 'sent', 'resend-789')
+    `).run();
+
+    const event = {
+      type: 'email.clicked',
+      created_at: new Date().toISOString(),
+      data: {
+        email_id: 'resend-789',
+        from: 'test@example.com',
+        to: ['test@example.com'],
+        subject: 'Test',
+        created_at: new Date().toISOString(),
+        click: {
+          link: 'https://example.com/article',
+          timestamp: new Date().toISOString(),
+        },
+      },
+    };
+
+    const request = await createSignedWebhookRequest(event, env.RESEND_WEBHOOK_SECRET);
+    const response = await handleResendWebhook(request, env);
+
+    expect(response.status).toBe(200);
+
+    const clickEvents = await env.DB.prepare(
+      'SELECT * FROM click_events WHERE clicked_url = ?'
+    ).bind('https://example.com/article').all();
+
+    expect(clickEvents.results).toHaveLength(1);
+  });
 });
