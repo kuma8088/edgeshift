@@ -40,6 +40,11 @@ export interface CreateBroadcastResult {
   error?: string;
 }
 
+export interface UpdateContactResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface BroadcastOptions {
   segmentId: string;
   from: string;
@@ -255,6 +260,72 @@ export async function ensureResendContact(
     return {
       success: false,
       error: `Contact creation error: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * Update a contact's unsubscribe status in Resend (best-effort sync).
+ *
+ * This is used to keep Resend in sync with D1 when a user unsubscribes.
+ * D1 is still the source of truth, so failures here are logged but don't block.
+ *
+ * Note: Resend API uses email as the contact identifier for PATCH operations.
+ */
+export async function updateContactUnsubscribe(
+  config: ResendMarketingConfig,
+  email: string
+): Promise<UpdateContactResult> {
+  try {
+    const response = await fetchWithRetry(`${RESEND_API_BASE}/contacts/${email}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        unsubscribed: true,
+      }),
+    });
+
+    const responseText = await response.text();
+    let result: ResendContactResponse;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      const preview = responseText.length > 100 ? responseText.slice(0, 100) + '...' : responseText;
+      console.error('Failed to parse Resend API response', {
+        status: response.status,
+        responsePreview: preview,
+        parseError: parseError instanceof Error ? parseError.message : String(parseError),
+      });
+      return {
+        success: false,
+        error: `Invalid JSON response from Resend API (HTTP ${response.status}): ${preview}`,
+      };
+    }
+
+    if (!response.ok || result.error) {
+      console.error('Resend update contact error:', {
+        status: response.status,
+        error: result.error,
+        email,
+      });
+      return {
+        success: false,
+        error: result.error?.message || `Failed to update contact (HTTP ${response.status})`,
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Update contact error:', { error: errorMessage, email });
+    return {
+      success: false,
+      error: `Update contact error: ${errorMessage}`,
     };
   }
 }
