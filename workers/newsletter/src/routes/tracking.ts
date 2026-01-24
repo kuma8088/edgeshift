@@ -9,10 +9,12 @@ interface TrackingStats {
   clicked: number;
   bounced: number;
   failed: number;
+  unsubscribed: number;
   reached: number;
   delivery_rate: number;
   open_rate: number;
   click_rate: number;
+  unsubscribe_rate: number;
 }
 
 interface CampaignTrackingResponse {
@@ -61,6 +63,17 @@ export async function getCampaignTracking(
     total_sent: 0, delivered: 0, opened: 0, clicked: 0, bounced: 0, failed: 0
   };
 
+  // Get unsubscribed count - subscribers who received this campaign and have since unsubscribed
+  const unsubscribedResult = await env.DB.prepare(`
+    SELECT COUNT(*) as unsubscribed
+    FROM delivery_logs dl
+    JOIN subscribers s ON dl.subscriber_id = s.id
+    WHERE dl.campaign_id = ?
+      AND s.status = 'unsubscribed'
+  `).bind(campaignId).first<{ unsubscribed: number }>();
+
+  const unsubscribed = unsubscribedResult?.unsubscribed || 0;
+
   // Calculate rates (avoid division by zero)
   // With timestamp-based counting:
   // - delivered = all emails that were successfully delivered
@@ -80,6 +93,10 @@ export async function getCampaignTracking(
   const clickRate = stats.opened > 0
     ? (stats.clicked / stats.opened) * 100
     : 0;
+  // unsubscribe_rate = unsubscribed / total_sent (what % of recipients unsubscribed)
+  const unsubscribeRate = stats.total_sent > 0
+    ? (unsubscribed / stats.total_sent) * 100
+    : 0;
 
   return {
     campaign_id: campaign.id,
@@ -92,10 +109,12 @@ export async function getCampaignTracking(
       clicked: stats.clicked,
       bounced: stats.bounced,
       failed: stats.failed,
+      unsubscribed,
       reached,
       delivery_rate: Math.round(deliveryRate * 10) / 10,
       open_rate: Math.round(openRate * 10) / 10,
       click_rate: Math.round(clickRate * 10) / 10,
+      unsubscribe_rate: Math.round(unsubscribeRate * 10) / 10,
     },
   };
 }
@@ -133,6 +152,12 @@ interface ClickEvent {
   clicked_at: number;
 }
 
+interface UnsubscribedUser {
+  email: string;
+  name: string | null;
+  unsubscribed_at: number;
+}
+
 interface CampaignClicksResponse {
   campaign_id: string;
   summary: {
@@ -141,6 +166,7 @@ interface CampaignClicksResponse {
     top_urls: Array<{ url: string; original_url?: string; clicks: number }>;
   };
   clicks: ClickEvent[];
+  unsubscribed_users: UnsubscribedUser[];
 }
 
 // Extract short_code from URL like https://edgeshift.tech/r/xxxxxxxx
@@ -181,6 +207,8 @@ export async function getCampaignClicks(
       JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
       JOIN subscribers s ON ce.subscriber_id = s.id
       WHERE dl.campaign_id = ?
+        AND ce.clicked_url NOT LIKE '%unsubscribe.resend.com%'
+        AND ce.clicked_url NOT LIKE '%{{{RESEND_UNSUBSCRIBE_URL}}}%'
       ORDER BY ce.clicked_at DESC
     `).bind(campaignId).all<{
       email: string;
@@ -263,6 +291,31 @@ export async function getCampaignClicks(
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 10);
 
+  // Get subscribers who received this campaign and have since unsubscribed
+  let unsubscribedUsers: UnsubscribedUser[] = [];
+  try {
+    const unsubscribedResult = await env.DB.prepare(`
+      SELECT DISTINCT
+        s.email,
+        s.name,
+        s.unsubscribed_at
+      FROM delivery_logs dl
+      JOIN subscribers s ON dl.subscriber_id = s.id
+      WHERE dl.campaign_id = ?
+        AND s.status = 'unsubscribed'
+      ORDER BY s.unsubscribed_at DESC
+    `).bind(campaignId).all<{
+      email: string;
+      name: string | null;
+      unsubscribed_at: number;
+    }>();
+
+    unsubscribedUsers = unsubscribedResult.results || [];
+  } catch (error) {
+    console.error(`Failed to fetch unsubscribed users for campaign ${campaignId}:`, error);
+    // Non-blocking error, continue with empty array
+  }
+
   return {
     campaign_id: campaignId,
     summary: {
@@ -271,6 +324,7 @@ export async function getCampaignClicks(
       top_urls: topUrls,
     },
     clicks: enrichedClicks,
+    unsubscribed_users: unsubscribedUsers,
   };
 }
 
@@ -294,6 +348,7 @@ export async function handleGetCampaignClicks(
     data: {
       clicks: result.clicks,
       summary: result.summary,
+      unsubscribed_users: result.unsubscribed_users,
     },
   }), {
     status: 200,

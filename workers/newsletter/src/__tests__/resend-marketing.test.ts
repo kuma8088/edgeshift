@@ -6,6 +6,7 @@ import {
   addContactsToSegment,
   deleteSegment,
   createAndSendBroadcast,
+  updateContactUnsubscribe,
   type ResendMarketingConfig,
   type BroadcastOptions,
 } from '../lib/resend-marketing';
@@ -674,6 +675,109 @@ describe('Resend Marketing API Service', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid JSON response');
+    });
+  });
+
+  // ==========================================================================
+  // updateContactUnsubscribe() Tests
+  // ==========================================================================
+
+  describe('updateContactUnsubscribe', () => {
+    it('should update contact to unsubscribed successfully', async () => {
+      const config = createMockConfig();
+      mockFetch.mockResolvedValueOnce(
+        createJsonResponse({ object: 'contact', id: 'contact-123' }, 200)
+      );
+
+      const result = await updateContactUnsubscribe(config, 'test@example.com');
+
+      expect(result.success).toBe(true);
+      expect(result.error).toBeUndefined();
+
+      // Verify fetch was called with correct parameters
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.resend.com/contacts/test@example.com',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: {
+            Authorization: 'Bearer test-api-key',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            unsubscribed: true,
+          }),
+        })
+      );
+    });
+
+    it('should handle contact not found (404)', async () => {
+      const config = createMockConfig();
+      mockFetch.mockResolvedValueOnce(
+        createJsonResponse({ error: { message: 'Contact not found' } }, 404)
+      );
+
+      const result = await updateContactUnsubscribe(config, 'nonexistent@example.com');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Contact not found');
+    });
+
+    it('should handle API error response', async () => {
+      const config = createMockConfig();
+      mockFetch.mockResolvedValueOnce(
+        createJsonResponse({ error: { message: 'Invalid API key' } }, 401)
+      );
+
+      const result = await updateContactUnsubscribe(config, 'test@example.com');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Invalid API key');
+    });
+
+    it('should handle network errors with retry', async () => {
+      const config = createMockConfig();
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await updateContactUnsubscribe(config, 'test@example.com');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Update contact error');
+    });
+
+    it('should handle invalid JSON response', async () => {
+      const config = createMockConfig();
+      mockFetch.mockResolvedValueOnce(
+        new Response('<!DOCTYPE html><html>Error</html>', { status: 200 })
+      );
+
+      const result = await updateContactUnsubscribe(config, 'test@example.com');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid JSON response');
+    });
+
+    it('should retry on 429 rate limit and succeed', async () => {
+      const config = createMockConfig();
+
+      // First call returns 429, second succeeds
+      mockFetch
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: { message: 'Rate limited' } }), {
+            status: 429,
+            headers: { 'Retry-After': '1' },
+          })
+        )
+        .mockResolvedValueOnce(
+          createJsonResponse({ object: 'contact', id: 'contact-123' }, 200)
+        );
+
+      const result = await updateContactUnsubscribe(config, 'test@example.com');
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 });

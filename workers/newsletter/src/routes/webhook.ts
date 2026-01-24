@@ -117,15 +117,16 @@ export async function handleResendWebhook(
       break;
     case 'email.clicked':
       newStatus = 'clicked';
-      // Record click event if link is present
-      if (event.data.click?.link) {
+      // Record click event if link is present (including unsubscribe URLs for troubleshooting)
+      const clickedUrl = event.data.click?.link?.trim();
+      if (clickedUrl) {
         try {
           await recordClickEvent(env, {
             deliveryLogId: deliveryLog.id,
             subscriberId: deliveryLog.subscriber_id,
-            clickedUrl: event.data.click.link,
+            clickedUrl: clickedUrl,
           });
-          console.log(`Recorded click event for ${deliveryLog.id}: ${event.data.click.link}`);
+          console.log(`Recorded click event for ${deliveryLog.id}: ${clickedUrl}`);
         } catch (error) {
           // Log error but don't fail the webhook
           console.error('Failed to record click event:', error);

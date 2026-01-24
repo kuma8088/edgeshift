@@ -1,4 +1,5 @@
 import type { Env, Subscriber } from '../types';
+import { updateContactUnsubscribe, type ResendMarketingConfig } from '../lib/resend-marketing';
 
 export async function handleUnsubscribe(
   request: Request,
@@ -23,7 +24,7 @@ export async function handleUnsubscribe(
       return redirectWithMessage(env.SITE_URL, 'info', 'Already unsubscribed');
     }
 
-    // Update subscriber status to unsubscribed
+    // Update subscriber status to unsubscribed in D1 (source of truth)
     const now = Math.floor(Date.now() / 1000);
     await env.DB.prepare(`
       UPDATE subscribers
@@ -31,6 +32,27 @@ export async function handleUnsubscribe(
           unsubscribed_at = ?
       WHERE id = ?
     `).bind(now, subscriber.id).run();
+
+    // Best-effort sync to Resend (non-blocking)
+    // D1 is already updated, so even if this fails, the user is unsubscribed
+    try {
+      const resendConfig: ResendMarketingConfig = {
+        apiKey: env.RESEND_API_KEY,
+      };
+      const syncResult = await updateContactUnsubscribe(resendConfig, subscriber.email);
+      if (!syncResult.success) {
+        console.warn('Failed to sync unsubscribe to Resend (non-blocking):', {
+          email: subscriber.email,
+          error: syncResult.error,
+        });
+      }
+    } catch (resendError) {
+      // Silently log Resend sync errors - D1 is already updated
+      console.warn('Resend sync error during unsubscribe (non-blocking):', {
+        email: subscriber.email,
+        error: resendError instanceof Error ? resendError.message : String(resendError),
+      });
+    }
 
     // Redirect to unsubscribe confirmation page
     return Response.redirect(`${env.SITE_URL}/newsletter/unsubscribed`, 302);

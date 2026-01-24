@@ -56,6 +56,8 @@ describe('tracking API', () => {
       // - delivery_rate: 75.0 (3/4 * 100)
       // - open_rate: 66.7 (2/3 * 100)
       // - click_rate: 50.0 (1/2 * 100)
+      // - unsubscribed: 0 (no subscribers have status='unsubscribed')
+      // - unsubscribe_rate: 0 (0/4 * 100)
       expect(result).toEqual({
         campaign_id: 'camp-1',
         subject: 'Test Campaign',
@@ -67,10 +69,12 @@ describe('tracking API', () => {
           clicked: 1,
           bounced: 1,
           failed: 0,
+          unsubscribed: 0,
           reached: 3,
           delivery_rate: 75.0,
           open_rate: 66.7,
           click_rate: 50.0,
+          unsubscribe_rate: 0,
         },
       });
     });
@@ -88,11 +92,12 @@ describe('tracking API', () => {
       const env = getTestEnv();
 
       // Setup: Create subscribers (required for foreign key)
+      // sub-1 is unsubscribed, sub-2 is active
       await env.DB.prepare(`
-        INSERT INTO subscribers (id, email, name, status)
+        INSERT INTO subscribers (id, email, name, status, unsubscribed_at)
         VALUES
-          ('sub-1', 'user1@example.com', 'User 1', 'active'),
-          ('sub-2', 'user2@example.com', 'User 2', 'active')
+          ('sub-1', 'user1@example.com', 'User 1', 'unsubscribed', 1703412000),
+          ('sub-2', 'user2@example.com', 'User 2', 'active', NULL)
       `).run();
 
       // Setup: Create campaign
@@ -109,13 +114,14 @@ describe('tracking API', () => {
           ('dl-2', 'camp-1', 'sub-2', 'user2@example.com', 'clicked')
       `).run();
 
-      // Setup: Create click events
+      // Setup: Create click events (unsubscribe URLs are still filtered from clicks list)
       await env.DB.prepare(`
         INSERT INTO click_events (id, delivery_log_id, subscriber_id, clicked_url, clicked_at)
         VALUES
           ('ce-1', 'dl-1', 'sub-1', 'https://example.com/article1', 1703404800),
           ('ce-2', 'dl-1', 'sub-1', 'https://example.com/article1', 1703408400),
-          ('ce-3', 'dl-2', 'sub-2', 'https://example.com/article2', 1703410000)
+          ('ce-3', 'dl-2', 'sub-2', 'https://example.com/article2', 1703410000),
+          ('ce-4', 'dl-1', 'sub-1', 'https://unsubscribe.resend.com/?token=xyz', 1703412000)
       `).run();
 
       // Import and call the function
@@ -124,6 +130,7 @@ describe('tracking API', () => {
 
       expect(result).not.toBeNull();
       expect(result!.campaign_id).toBe('camp-1');
+      // Only non-unsubscribe clicks are counted
       expect(result!.summary.total_clicks).toBe(3);
       expect(result!.summary.unique_clicks).toBe(2);
       expect(result!.summary.top_urls).toHaveLength(2);
@@ -133,6 +140,13 @@ describe('tracking API', () => {
         email: 'user2@example.com',
         name: 'User 2',
         url: 'https://example.com/article2',
+      });
+      // Unsubscribed users: subscribers who received this campaign and have status='unsubscribed'
+      expect(result!.unsubscribed_users).toHaveLength(1);
+      expect(result!.unsubscribed_users[0]).toMatchObject({
+        email: 'user1@example.com',
+        name: 'User 1',
+        unsubscribed_at: 1703412000,
       });
     });
 
@@ -151,6 +165,7 @@ describe('tracking API', () => {
       expect(result).not.toBeNull();
       expect(result!.summary.total_clicks).toBe(0);
       expect(result!.clicks).toHaveLength(0);
+      expect(result!.unsubscribed_users).toHaveLength(0);
     });
 
     it('should return null for non-existent campaign', async () => {

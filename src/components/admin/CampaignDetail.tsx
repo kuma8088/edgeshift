@@ -41,10 +41,12 @@ interface TrackingStats {
   clicked: number;
   bounced: number;
   failed: number;
+  unsubscribed: number;
   reached: number;
   delivery_rate: number;
   open_rate: number;
   click_rate: number;
+  unsubscribe_rate: number;
 }
 
 interface Click {
@@ -53,6 +55,12 @@ interface Click {
   original_url?: string;  // Resolved from short_urls
   position?: number;      // Link position in email
   clicked_at: number;
+}
+
+interface UnsubscribedUser {
+  email: string;
+  name: string | null;
+  unsubscribed_at: number;
 }
 
 interface ClicksSummary {
@@ -148,6 +156,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
   const [stats, setStats] = useState<TrackingStats | null>(null);
   const [clicks, setClicks] = useState<Click[]>([]);
   const [clicksSummary, setClicksSummary] = useState<ClicksSummary | null>(null);
+  const [unsubscribedUsers, setUnsubscribedUsers] = useState<UnsubscribedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -179,9 +188,11 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
           const clicksData = clicksResult.data as {
             clicks: Click[];
             summary: ClicksSummary;
+            unsubscribed_users: UnsubscribedUser[];
           };
           setClicks(clicksData.clicks || []);
           setClicksSummary(clicksData.summary);
+          setUnsubscribedUsers(clicksData.unsubscribed_users || []);
         }
 
         setError(null);
@@ -253,7 +264,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
           <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">
             配信統計
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
               <p className="text-sm text-[var(--color-text-secondary)] mb-1">総送信数</p>
               <p className="text-3xl font-bold text-[var(--color-text)]">
@@ -285,18 +296,34 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
             </div>
 
             <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
-              <p className="text-sm text-[var(--color-text-secondary)] mb-3">クリック</p>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-3">解除</p>
               <div className="mb-2">
                 <p className="text-2xl font-bold text-[var(--color-text)]">
-                  {stats.clicked.toLocaleString()}
+                  {stats.unsubscribed.toLocaleString()}
                 </p>
               </div>
               <ProgressBar
-                value={stats.clicked}
-                max={stats.reached}
+                value={stats.unsubscribed}
+                max={stats.total_sent}
                 showPercentage={true}
                 size="sm"
-                color="green"
+                color="red"
+              />
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
+              <p className="text-sm text-[var(--color-text-secondary)] mb-3">バウンス</p>
+              <div className="mb-2">
+                <p className="text-2xl font-bold text-[var(--color-text)]">
+                  {stats.bounced.toLocaleString()}
+                </p>
+              </div>
+              <ProgressBar
+                value={stats.bounced}
+                max={stats.total_sent}
+                showPercentage={true}
+                size="sm"
+                color="yellow"
               />
             </div>
           </div>
@@ -304,7 +331,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
       )}
 
       {/* A/B Test Results */}
-      {campaign.ab_test_enabled && campaign.ab_stats && (
+      {!!campaign.ab_test_enabled && campaign.ab_stats && (
         <AbTestResults stats={campaign.ab_stats} campaign={campaign} />
       )}
 
@@ -373,6 +400,34 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Unsubscribed Users */}
+          {unsubscribedUsers.length > 0 && (
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)] mb-6">
+              <h3 className="text-base font-medium text-[var(--color-text)] mb-4">
+                配信解除したユーザー ({unsubscribedUsers.length}人)
+              </h3>
+              <div className="space-y-3">
+                {unsubscribedUsers.map((user, index) => (
+                  <div key={index} className="flex items-center justify-between py-2 border-b border-[var(--color-border)] last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-[var(--color-text)]">
+                        {user.email}
+                      </div>
+                      {user.name && (
+                        <div className="text-xs text-[var(--color-text-secondary)] mt-1">
+                          {user.name}
+                        </div>
+                      )}
+                    </div>
+                    <span className="ml-4 text-xs text-[var(--color-text-secondary)]">
+                      {new Date(user.unsubscribed_at).toLocaleString('ja-JP')}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

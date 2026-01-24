@@ -203,9 +203,12 @@ interface CampaignWithStats extends Campaign {
     delivered: number;
     opened: number;
     clicked: number;
+    uniqueClicks: number;
     bounced: number;
+    unsubscribed: number;
     openRate: number;
     clickRate: number;
+    uniqueClickRate: number;
   };
 }
 
@@ -253,34 +256,50 @@ export async function listCampaigns(
         const statsResult = await env.DB.prepare(`
           SELECT
             COUNT(*) as sent,
-            SUM(CASE WHEN status = 'delivered' OR status = 'opened' OR status = 'clicked' THEN 1 ELSE 0 END) as delivered,
-            SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
-            SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked,
-            SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced
-          FROM delivery_logs
-          WHERE campaign_id = ?
+            SUM(CASE WHEN dl.status = 'delivered' OR dl.status = 'opened' OR dl.status = 'clicked' THEN 1 ELSE 0 END) as delivered,
+            SUM(CASE WHEN dl.opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+            SUM(CASE WHEN dl.clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked,
+            SUM(CASE WHEN dl.status = 'bounced' THEN 1 ELSE 0 END) as bounced,
+            SUM(CASE WHEN s.status = 'unsubscribed' THEN 1 ELSE 0 END) as unsubscribed,
+            (SELECT COUNT(DISTINCT ce.subscriber_id)
+             FROM click_events ce
+             JOIN delivery_logs dl2 ON ce.delivery_log_id = dl2.id
+             WHERE dl2.campaign_id = dl.campaign_id
+               AND ce.clicked_url NOT LIKE '%unsubscribe%'
+               AND ce.clicked_url NOT LIKE '%RESEND_UNSUBSCRIBE%'
+            ) as unique_clicks
+          FROM delivery_logs dl
+          LEFT JOIN subscribers s ON dl.subscriber_id = s.id
+          WHERE dl.campaign_id = ?
         `).bind(campaign.id).first<{
           sent: number;
           delivered: number;
           opened: number;
           clicked: number;
           bounced: number;
+          unsubscribed: number;
+          unique_clicks: number;
         }>();
 
         const sent = statsResult?.sent || 0;
+        const delivered = statsResult?.delivered || 0;
         const opened = statsResult?.opened || 0;
         const clicked = statsResult?.clicked || 0;
+        const uniqueClicks = statsResult?.unique_clicks || 0;
 
         return {
           ...campaign,
           stats: {
             sent,
-            delivered: statsResult?.delivered || 0,
+            delivered,
             opened,
             clicked,
+            uniqueClicks,
             bounced: statsResult?.bounced || 0,
-            openRate: sent > 0 ? Math.round((opened / sent) * 100) : 0,
-            clickRate: sent > 0 ? Math.round((clicked / sent) * 100) : 0,
+            unsubscribed: statsResult?.unsubscribed || 0,
+            openRate: delivered > 0 ? Math.round((opened / delivered) * 100) : 0,
+            clickRate: delivered > 0 ? Math.round((clicked / delivered) * 100) : 0,
+            uniqueClickRate: opened > 0 ? Math.round((uniqueClicks / opened) * 100) : 0,
           },
         };
       })

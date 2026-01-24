@@ -100,6 +100,10 @@ describe('URL Shortener', () => {
   });
 
   describe('isExcludedUrl', () => {
+    it('should exclude Resend unsubscribe placeholder (CRITICAL: CAN-SPAM)', () => {
+      expect(isExcludedUrl('{{{RESEND_UNSUBSCRIBE_URL}}}')).toBe(true);
+    });
+
     it('should exclude mailto: links', () => {
       expect(isExcludedUrl('mailto:test@example.com')).toBe(true);
     });
