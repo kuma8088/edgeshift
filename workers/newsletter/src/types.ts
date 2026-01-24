@@ -633,3 +633,13 @@ export interface CreateShortUrlParams {
   campaignId?: string;
   sequenceStepId?: string;
 }
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/**
+ * Hostname for Resend's unsubscribe URLs.
+ * Used to filter out Resend-managed unsubscribe links from click tracking.
+ */
+export const RESEND_UNSUBSCRIBE_HOSTNAME = 'unsubscribe.resend.com';
