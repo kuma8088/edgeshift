@@ -55,6 +55,12 @@ interface Click {
   clicked_at: number;
 }
 
+interface UnsubscribedUser {
+  email: string;
+  name: string | null;
+  unsubscribed_at: number;
+}
+
 interface ClicksSummary {
   total_clicks: number;
   unique_clicks: number;
@@ -148,6 +154,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
   const [stats, setStats] = useState<TrackingStats | null>(null);
   const [clicks, setClicks] = useState<Click[]>([]);
   const [clicksSummary, setClicksSummary] = useState<ClicksSummary | null>(null);
+  const [unsubscribedUsers, setUnsubscribedUsers] = useState<UnsubscribedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -179,9 +186,11 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
           const clicksData = clicksResult.data as {
             clicks: Click[];
             summary: ClicksSummary;
+            unsubscribed_users: UnsubscribedUser[];
           };
           setClicks(clicksData.clicks || []);
           setClicksSummary(clicksData.summary);
+          setUnsubscribedUsers(clicksData.unsubscribed_users || []);
         }
 
         setError(null);
@@ -373,6 +382,34 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Unsubscribed Users */}
+          {unsubscribedUsers.length > 0 && (
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)] mb-6">
+              <h3 className="text-base font-medium text-[var(--color-text)] mb-4">
+                配信解除したユーザー ({unsubscribedUsers.length}人)
+              </h3>
+              <div className="space-y-3">
+                {unsubscribedUsers.map((user, index) => (
+                  <div key={index} className="flex items-center justify-between py-2 border-b border-[var(--color-border)] last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-[var(--color-text)]">
+                        {user.email}
+                      </div>
+                      {user.name && (
+                        <div className="text-xs text-[var(--color-text-secondary)] mt-1">
+                          {user.name}
+                        </div>
+                      )}
+                    </div>
+                    <span className="ml-4 text-xs text-[var(--color-text-secondary)]">
+                      {new Date(user.unsubscribed_at * 1000).toLocaleString('ja-JP')}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
