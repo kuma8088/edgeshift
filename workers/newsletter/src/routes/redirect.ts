@@ -8,13 +8,13 @@ import { updateContactUnsubscribe, type ResendMarketingConfig } from '../lib/res
  * Patterns:
  * - unsubscribe.resend.com (Resend's unsubscribe domain)
  * - /api/newsletter/unsubscribe (our unsubscribe endpoint)
- * - {{RESEND_UNSUBSCRIBE_URL}} (placeholder - shouldn't happen with Task 1 fix, but safeguard)
+ * - RESEND_UNSUBSCRIBE_URL (placeholder - matches both {{...}} and {{{...}}} formats)
  */
 function isUnsubscribeUrl(url: string): boolean {
   return (
     url.includes('unsubscribe.resend.com') ||
     url.includes('/api/newsletter/unsubscribe') ||
-    url.includes('{{RESEND_UNSUBSCRIBE_URL}}')
+    url.includes('RESEND_UNSUBSCRIBE_URL')
   );
 }
 
