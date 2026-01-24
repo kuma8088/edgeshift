@@ -1,21 +1,6 @@
 import type { Env, ResendWebhookEvent, DeliveryStatus } from '../types';
-import { RESEND_UNSUBSCRIBE_HOSTNAME } from '../types';
 import { verifyWebhookSignature } from '../lib/webhook';
 import { findDeliveryLogByResendId, findDeliveryLogByBroadcastAndEmail, updateDeliveryStatus, recordClickEvent } from '../lib/delivery';
-
-/**
- * Check if a URL is a Resend-managed unsubscribe link.
- * Uses hostname-based validation to avoid false positives from substring matching.
- */
-function isResendUnsubscribeUrl(url: string): boolean {
-  try {
-    const parsedUrl = new URL(url);
-    return parsedUrl.hostname === RESEND_UNSUBSCRIBE_HOSTNAME;
-  } catch {
-    // Invalid URLs are treated as normal URLs (to be recorded)
-    return false;
-  }
-}
 
 /**
  * Handle contact.updated event from Resend.
@@ -132,25 +117,19 @@ export async function handleResendWebhook(
       break;
     case 'email.clicked':
       newStatus = 'clicked';
-      // Record click event if link is present
+      // Record click event if link is present (including unsubscribe URLs for troubleshooting)
       const clickedUrl = event.data.click?.link?.trim();
       if (clickedUrl) {
-        // Filter out Resend-generated unsubscribe URLs from tracking
-        // These are handled by Resend's webhook (contact.updated event)
-        if (!isResendUnsubscribeUrl(clickedUrl)) {
-          try {
-            await recordClickEvent(env, {
-              deliveryLogId: deliveryLog.id,
-              subscriberId: deliveryLog.subscriber_id,
-              clickedUrl: clickedUrl,
-            });
-            console.log(`Recorded click event for ${deliveryLog.id}: ${clickedUrl}`);
-          } catch (error) {
-            // Log error but don't fail the webhook
-            console.error('Failed to record click event:', error);
-          }
-        } else {
-          console.log(`Ignoring Resend unsubscribe URL click from webhook: ${clickedUrl}`);
+        try {
+          await recordClickEvent(env, {
+            deliveryLogId: deliveryLog.id,
+            subscriberId: deliveryLog.subscriber_id,
+            clickedUrl: clickedUrl,
+          });
+          console.log(`Recorded click event for ${deliveryLog.id}: ${clickedUrl}`);
+        } catch (error) {
+          // Log error but don't fail the webhook
+          console.error('Failed to record click event:', error);
         }
       }
       break;

@@ -226,7 +226,7 @@ describe('handleResendWebhook - click event recording', () => {
     expect(log?.status).toBe('clicked');
   });
 
-  it('should NOT record click event for Resend unsubscribe URLs', async () => {
+  it('should record click event even for unsubscribe URLs (for troubleshooting)', async () => {
     const env = getTestEnv();
 
     // Setup: create delivery log
@@ -257,12 +257,12 @@ describe('handleResendWebhook - click event recording', () => {
     // Should return 200 OK (webhook processed)
     expect(response.status).toBe(200);
 
-    // Should NOT create click event for unsubscribe URL
+    // Should record click event even for unsubscribe URL (for troubleshooting)
     const clickEvents = await env.DB.prepare(
       'SELECT * FROM click_events WHERE clicked_url LIKE ?'
     ).bind('%unsubscribe.resend.com%').all();
 
-    expect(clickEvents.results).toHaveLength(0);
+    expect(clickEvents.results).toHaveLength(1);
 
     // Status should still be updated to 'clicked'
     const log = await env.DB.prepare(

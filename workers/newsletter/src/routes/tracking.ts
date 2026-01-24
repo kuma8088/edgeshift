@@ -181,6 +181,8 @@ export async function getCampaignClicks(
       JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
       JOIN subscribers s ON ce.subscriber_id = s.id
       WHERE dl.campaign_id = ?
+        AND ce.clicked_url NOT LIKE '%unsubscribe.resend.com%'
+        AND ce.clicked_url NOT LIKE '%{{{RESEND_UNSUBSCRIBE_URL}}}%'
       ORDER BY ce.clicked_at DESC
     `).bind(campaignId).all<{
       email: string;
