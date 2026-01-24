@@ -1,6 +1,7 @@
-import type { Env, Subscriber, ReferralMilestone } from '../types';
+import type { Env, Subscriber, ReferralMilestone, ResendMarketingConfig } from '../types';
 import { enrollSubscriberInSequences } from '../lib/sequence-processor';
 import { sendMilestoneNotifications } from '../lib/milestone-notifications';
+import { ensureResendContact, addContactsToSegment } from '../lib/resend-marketing';
 
 /**
  * Generate a unique referral code
@@ -88,6 +89,40 @@ export async function handleConfirm(
           referral_code = ?
       WHERE id = ?
     `).bind(now, referralCode, subscriber.id).run();
+
+    // Sync subscriber to Resend Segment
+    // This ensures new subscribers are added to the permanent segment for campaign broadcasts
+    const segmentId = env.RESEND_SEGMENT_ID || env.RESEND_AUDIENCE_ID;
+    if (segmentId) {
+      try {
+        const config: ResendMarketingConfig = {
+          apiKey: env.RESEND_API_KEY,
+        };
+
+        // Ensure contact exists in Resend
+        const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
+
+        if (contactResult.success && contactResult.contactId && !contactResult.existed) {
+          // Add to segment if this is a new contact
+          await addContactsToSegment(config, segmentId, [contactResult.contactId]);
+          console.log(`Added new subscriber ${subscriber.email} to Resend segment ${segmentId}`);
+        } else if (contactResult.success && contactResult.existed) {
+          console.log(`Subscriber ${subscriber.email} already exists in Resend, skipping segment add`);
+        } else {
+          console.error(`Failed to sync subscriber ${subscriber.email} to Resend:`, contactResult.error);
+        }
+      } catch (error) {
+        // Log but don't fail the confirmation process
+        // Subscriber is already active in D1, sync can be retried later
+        console.error('Failed to sync subscriber to Resend Segment:', {
+          email: subscriber.email,
+          segmentId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else {
+      console.warn('RESEND_SEGMENT_ID not configured, skipping Resend sync for subscriber:', subscriber.email);
+    }
 
     // If this subscriber was referred by someone, update the referrer's count
     if (subscriber.referred_by) {

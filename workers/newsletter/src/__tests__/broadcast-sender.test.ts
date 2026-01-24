@@ -218,7 +218,7 @@ describe('Broadcast Sender', () => {
       const result = await sendCampaignViaBroadcast(campaign, env);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('RESEND_SEGMENT_ID is not configured');
+      expect(result.error).toBe('RESEND_SEGMENT_ID (or deprecated RESEND_AUDIENCE_ID) is not configured');
       expect(result.sent).toBe(0);
       expect(result.failed).toBe(0);
     });

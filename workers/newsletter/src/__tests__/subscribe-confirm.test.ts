@@ -13,6 +13,20 @@ vi.mock('../lib/turnstile', () => ({
   verifyTurnstileToken: vi.fn().mockResolvedValue({ success: true }),
 }));
 
+// Mock Resend Marketing API
+vi.mock('../lib/resend-marketing', () => ({
+  ensureResendContact: vi.fn().mockResolvedValue({
+    success: true,
+    contactId: 'test-contact-id',
+    existed: false,
+  }),
+  addContactsToSegment: vi.fn().mockResolvedValue({
+    success: true,
+    added: 1,
+    errors: [],
+  }),
+}));
+
 describe('Contact List Auto-Assignment', () => {
   beforeEach(async () => {
     await setupTestDb();
@@ -149,6 +163,65 @@ describe('Contact List Auto-Assignment', () => {
     expect(response.status).toBe(302); // Redirect
 
     // Verify subscriber is active
+    const updated = await env.DB.prepare(
+      'SELECT * FROM subscribers WHERE id = ?'
+    ).bind(subscriber.id).first();
+
+    expect(updated.status).toBe('active');
+  });
+
+  it('should sync new subscriber to Resend Segment on confirmation', async () => {
+    const env = getTestEnv();
+    const { ensureResendContact, addContactsToSegment } = await import('../lib/resend-marketing');
+    const mockedEnsureResendContact = vi.mocked(ensureResendContact);
+    const mockedAddContactsToSegment = vi.mocked(addContactsToSegment);
+
+    // Subscribe
+    await handleSubscribe(
+      new Request('http://localhost/api/newsletter/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: 'newsub@example.com',
+          name: 'New Subscriber',
+          turnstileToken: 'test-token',
+        }),
+      }),
+      env
+    );
+
+    const subscriber = await env.DB.prepare(
+      "SELECT * FROM subscribers WHERE email = 'newsub@example.com'"
+    ).first();
+
+    expect(subscriber).toBeTruthy();
+    expect(subscriber.status).toBe('pending');
+
+    // Clear mocks before confirm
+    mockedEnsureResendContact.mockClear();
+    mockedAddContactsToSegment.mockClear();
+
+    // Confirm subscription
+    await handleConfirm(
+      new Request(`http://localhost/api/newsletter/confirm/${subscriber.confirm_token}`),
+      env,
+      subscriber.confirm_token
+    );
+
+    // Verify Resend Contact was created
+    expect(mockedEnsureResendContact).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+      'newsub@example.com',
+      'New Subscriber'
+    );
+
+    // Verify contact was added to Segment
+    expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
+      env.RESEND_SEGMENT_ID,
+      ['test-contact-id']
+    );
+
+    // Verify subscriber is now active
     const updated = await env.DB.prepare(
       'SELECT * FROM subscribers WHERE id = ?'
     ).bind(subscriber.id).first();

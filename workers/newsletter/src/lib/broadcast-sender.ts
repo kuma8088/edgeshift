@@ -3,10 +3,12 @@
  *
  * This module orchestrates sending campaigns using Resend's Marketing API:
  * 1. Gets target subscribers (filtered by contact_list_id or all active)
- * 2. Ensures each subscriber has a Resend Contact (lazy sync)
- * 3. Adds new contacts to the permanent segment
- * 4. Sends Broadcast to the permanent segment
- * 5. Records delivery logs
+ * 2. Renders email content with brand settings
+ * 3. Sends Broadcast to pre-populated Segment
+ * 4. Records delivery logs
+ *
+ * Note: Segments are populated in subscribe/confirm flow (routes/confirm.ts).
+ *       Each confirmed subscriber is automatically synced to Resend Segment.
  */
 
 import type { Env, Campaign, Subscriber, BrandSettings, SequenceStep } from '../types';
@@ -78,11 +80,14 @@ export async function getTargetSubscribers(
  * Send a campaign via Resend Broadcast API.
  *
  * Flow:
- * 1. Get target subscribers
- * 2. Ensure Resend Contact for each (lazy sync)
- * 3. Add new contacts to permanent segment
- * 4. Create & Send Broadcast to permanent segment
+ * 1. Get target Segment ID (from contact_list or default)
+ * 2. Get target subscribers and brand settings
+ * 3. Render email content with brand settings
+ * 4. Create & Send Broadcast to pre-populated Segment
  * 5. Record delivery logs
+ *
+ * Note: This assumes Segments are pre-populated by subscribe/confirm flow.
+ *       Contact/Segment management happens in routes/confirm.ts.
  */
 export async function sendCampaignViaBroadcast(
   campaign: Campaign,
@@ -95,7 +100,7 @@ export async function sendCampaignViaBroadcast(
       success: false,
       sent: 0,
       failed: 0,
-      error: 'RESEND_SEGMENT_ID is not configured',
+      error: 'RESEND_SEGMENT_ID (or deprecated RESEND_AUDIENCE_ID) is not configured',
       results: [],
     };
   }
