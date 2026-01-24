@@ -49,7 +49,7 @@ export function extractUrls(html: string): Array<{ url: string; position: number
 
 /**
  * Check if URL should be excluded from shortening
- * Excludes: mailto:, tel:, and unsubscribe URLs
+ * Excludes: mailto:, tel:, unsubscribe URLs, and Resend placeholders
  */
 export function isExcludedUrl(url: string): boolean {
   // mailto: links
@@ -62,8 +62,15 @@ export function isExcludedUrl(url: string): boolean {
     return true;
   }
 
-  // Unsubscribe URLs
+  // Unsubscribe URLs (custom)
   if (url.includes('/api/newsletter/unsubscribe')) {
+    return true;
+  }
+
+  // Resend's unsubscribe placeholder (CRITICAL: CAN-SPAM compliance)
+  // This placeholder is replaced by Resend with actual unsubscribe link
+  // If shortened, the one-click unsubscribe breaks (List-Unsubscribe-Post requirement)
+  if (url.includes('RESEND_UNSUBSCRIBE_URL')) {
     return true;
   }
 
