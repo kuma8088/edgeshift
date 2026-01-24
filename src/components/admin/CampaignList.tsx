@@ -9,9 +9,12 @@ interface CampaignStats {
   delivered: number;
   opened: number;
   clicked: number;
+  uniqueClicks: number;
   bounced: number;
+  unsubscribed: number;
   openRate: number;
   clickRate: number;
+  uniqueClickRate: number;
 }
 
 interface Campaign {
@@ -206,15 +209,28 @@ export function CampaignList() {
                   )}
                 </div>
                 {campaign.status === 'sent' && campaign.stats && (
-                  <div className="flex gap-4 text-sm mb-2">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-2">
+                    <span className="text-[var(--color-text-secondary)]">
+                      送信: <span className="font-medium text-[var(--color-text)]">{campaign.stats.sent}</span>
+                    </span>
+                    <span className="text-[var(--color-text-secondary)]">
+                      配信: <span className="font-medium text-[var(--color-text)]">{campaign.stats.delivered}</span>
+                    </span>
                     <span className="text-[var(--color-text-secondary)]">
                       開封: <span className="font-medium text-[var(--color-text)]">{campaign.stats.opened}</span>
                       <span className="text-[var(--color-text-muted)]"> ({campaign.stats.openRate}%)</span>
                     </span>
-                    <span className="text-[var(--color-text-secondary)]">
-                      クリック: <span className="font-medium text-[var(--color-text)]">{campaign.stats.clicked}</span>
-                      <span className="text-[var(--color-text-muted)]"> ({campaign.stats.clickRate}%)</span>
-                    </span>
+                    {campaign.stats.uniqueClicks > 0 && (
+                      <span className="text-green-600">
+                        クリック: <span className="font-medium">{campaign.stats.uniqueClicks}</span>
+                        <span className="text-green-500"> ({campaign.stats.uniqueClickRate}%)</span>
+                      </span>
+                    )}
+                    {campaign.stats.unsubscribed > 0 && (
+                      <span className="text-orange-500">
+                        解除: {campaign.stats.unsubscribed}
+                      </span>
+                    )}
                     {campaign.stats.bounced > 0 && (
                       <span className="text-red-500">
                         バウンス: {campaign.stats.bounced}

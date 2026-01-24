@@ -41,10 +41,12 @@ interface TrackingStats {
   clicked: number;
   bounced: number;
   failed: number;
+  unsubscribed: number;
   reached: number;
   delivery_rate: number;
   open_rate: number;
   click_rate: number;
+  unsubscribe_rate: number;
 }
 
 interface Click {
@@ -262,7 +264,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
           <h2 className="text-lg font-medium text-[var(--color-text-secondary)] mb-4">
             配信統計
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
               <p className="text-sm text-[var(--color-text-secondary)] mb-1">総送信数</p>
               <p className="text-3xl font-bold text-[var(--color-text)]">
@@ -294,18 +296,34 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
             </div>
 
             <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
-              <p className="text-sm text-[var(--color-text-secondary)] mb-3">クリック</p>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-3">解除</p>
               <div className="mb-2">
                 <p className="text-2xl font-bold text-[var(--color-text)]">
-                  {stats.clicked.toLocaleString()}
+                  {stats.unsubscribed.toLocaleString()}
                 </p>
               </div>
               <ProgressBar
-                value={stats.clicked}
-                max={stats.reached}
+                value={stats.unsubscribed}
+                max={stats.total_sent}
                 showPercentage={true}
                 size="sm"
-                color="green"
+                color="red"
+              />
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
+              <p className="text-sm text-[var(--color-text-secondary)] mb-3">バウンス</p>
+              <div className="mb-2">
+                <p className="text-2xl font-bold text-[var(--color-text)]">
+                  {stats.bounced.toLocaleString()}
+                </p>
+              </div>
+              <ProgressBar
+                value={stats.bounced}
+                max={stats.total_sent}
+                showPercentage={true}
+                size="sm"
+                color="yellow"
               />
             </div>
           </div>
@@ -313,7 +331,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
       )}
 
       {/* A/B Test Results */}
-      {campaign.ab_test_enabled && campaign.ab_stats && (
+      {!!campaign.ab_test_enabled && campaign.ab_stats && (
         <AbTestResults stats={campaign.ab_stats} campaign={campaign} />
       )}
 
@@ -406,7 +424,7 @@ export function CampaignDetail({ campaignId }: CampaignDetailProps) {
                       )}
                     </div>
                     <span className="ml-4 text-xs text-[var(--color-text-secondary)]">
-                      {new Date(user.unsubscribed_at * 1000).toLocaleString('ja-JP')}
+                      {new Date(user.unsubscribed_at).toLocaleString('ja-JP')}
                     </span>
                   </div>
                 ))}
