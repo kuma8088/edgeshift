@@ -138,8 +138,6 @@ export async function sendCampaignViaBroadcast(
     apiKey: env.RESEND_API_KEY,
   };
 
-  const results: Array<{ email: string; success: boolean; contactId?: string; error?: string }> = [];
-
   // 1. Get target subscribers
   const subscribers = await getTargetSubscribers(campaign, env);
 
@@ -153,49 +151,7 @@ export async function sendCampaignViaBroadcast(
     };
   }
 
-  // 2. Ensure Resend Contact for each subscriber
-  // Add new contacts to permanent segment (existing contacts should already be in segment)
-  for (let i = 0; i < subscribers.length; i++) {
-    const subscriber = subscribers[i];
-
-    // Add delay between requests (skip for first request)
-    if (i > 0) {
-      await sleep(RESEND_RATE_LIMIT_DELAY_MS);
-    }
-
-    const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
-
-    if (contactResult.success && contactResult.contactId) {
-      results.push({
-        email: subscriber.email,
-        success: true,
-        contactId: contactResult.contactId,
-      });
-
-      // If contact was just created (not existed), add to target segment
-      if (!contactResult.existed) {
-        await sleep(RESEND_RATE_LIMIT_DELAY_MS);
-        const addResult = await addContactsToSegment(config, segmentId, [contactResult.contactId]);
-        if (!addResult.success || addResult.errors.length > 0) {
-          console.error('Failed to add new contact to segment:', {
-            email: subscriber.email,
-            contactId: contactResult.contactId,
-            segmentId,
-            errors: addResult.errors,
-          });
-          warnings.push(`Failed to add ${subscriber.email} to segment: ${addResult.errors.join(', ')}`);
-        }
-      }
-    } else {
-      results.push({
-        email: subscriber.email,
-        success: false,
-        error: contactResult.error || 'Failed to ensure contact',
-      });
-    }
-  }
-
-  // 3. Get brand settings and prepare email content
+  // 2. Get brand settings and prepare email content
   let brandSettings = await env.DB.prepare(
     'SELECT * FROM brand_settings WHERE id = ?'
   ).bind('default').first<BrandSettings>();
@@ -240,45 +196,48 @@ export async function sendCampaignViaBroadcast(
     return {
       success: false,
       sent: 0,
-      failed: results.length,
+      failed: subscribers.length,
       error: `Failed to send broadcast: ${broadcastResult.error}`,
-      results,
+      results: subscribers.map((sub) => ({
+        email: sub.email,
+        success: false,
+        error: broadcastResult.error,
+      })),
     };
   }
 
   // 5. Record delivery logs (best effort - don't fail if logging fails)
-  const successfulSubscribers = subscribers.filter((sub) =>
-    results.find((r) => r.email === sub.email && r.success)
-  );
-
-  const deliveryResults = successfulSubscribers.map((sub) => ({
+  const deliveryResults = subscribers.map((sub) => ({
     email: sub.email,
     success: true,
     resendId: broadcastResult.broadcastId,
   }));
 
   try {
-    await recordDeliveryLogs(env, campaign.id, successfulSubscribers, deliveryResults);
+    await recordDeliveryLogs(env, campaign.id, subscribers, deliveryResults);
   } catch (logError) {
     // Broadcast was already sent successfully - don't fail the operation
     // Just log the error for debugging
     console.error('Failed to record delivery logs after successful broadcast:', {
       campaignId: campaign.id,
       broadcastId: broadcastResult.broadcastId,
-      subscriberCount: successfulSubscribers.length,
+      subscriberCount: subscribers.length,
       error: logError instanceof Error ? logError.message : String(logError),
     });
     warnings.push(`Delivery log recording failed: ${logError instanceof Error ? logError.message : 'Unknown error'}`);
   }
 
-  const successCount = results.filter((r) => r.success).length;
-  const failedCount = results.filter((r) => !r.success).length;
+  // Build results array: all subscribers are considered successful if broadcast was sent
+  const results = subscribers.map((sub) => ({
+    email: sub.email,
+    success: true,
+  }));
 
   return {
     success: true,
     broadcastId: broadcastResult.broadcastId,
-    sent: successCount,
-    failed: failedCount,
+    sent: subscribers.length,
+    failed: 0,
     results,
     ...(warnings.length > 0 && { warnings }),
   };
