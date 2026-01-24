@@ -109,13 +109,14 @@ describe('tracking API', () => {
           ('dl-2', 'camp-1', 'sub-2', 'user2@example.com', 'clicked')
       `).run();
 
-      // Setup: Create click events
+      // Setup: Create click events (including unsubscribe URLs)
       await env.DB.prepare(`
         INSERT INTO click_events (id, delivery_log_id, subscriber_id, clicked_url, clicked_at)
         VALUES
           ('ce-1', 'dl-1', 'sub-1', 'https://example.com/article1', 1703404800),
           ('ce-2', 'dl-1', 'sub-1', 'https://example.com/article1', 1703408400),
-          ('ce-3', 'dl-2', 'sub-2', 'https://example.com/article2', 1703410000)
+          ('ce-3', 'dl-2', 'sub-2', 'https://example.com/article2', 1703410000),
+          ('ce-4', 'dl-1', 'sub-1', 'https://unsubscribe.resend.com/?token=xyz', 1703412000)
       `).run();
 
       // Import and call the function
@@ -124,6 +125,7 @@ describe('tracking API', () => {
 
       expect(result).not.toBeNull();
       expect(result!.campaign_id).toBe('camp-1');
+      // Only non-unsubscribe clicks are counted
       expect(result!.summary.total_clicks).toBe(3);
       expect(result!.summary.unique_clicks).toBe(2);
       expect(result!.summary.top_urls).toHaveLength(2);
@@ -133,6 +135,13 @@ describe('tracking API', () => {
         email: 'user2@example.com',
         name: 'User 2',
         url: 'https://example.com/article2',
+      });
+      // Unsubscribed users should be returned separately
+      expect(result!.unsubscribed_users).toHaveLength(1);
+      expect(result!.unsubscribed_users[0]).toMatchObject({
+        email: 'user1@example.com',
+        name: 'User 1',
+        unsubscribed_at: 1703412000,
       });
     });
 
@@ -151,6 +160,7 @@ describe('tracking API', () => {
       expect(result).not.toBeNull();
       expect(result!.summary.total_clicks).toBe(0);
       expect(result!.clicks).toHaveLength(0);
+      expect(result!.unsubscribed_users).toHaveLength(0);
     });
 
     it('should return null for non-existent campaign', async () => {

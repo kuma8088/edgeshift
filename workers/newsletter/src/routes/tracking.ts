@@ -133,6 +133,12 @@ interface ClickEvent {
   clicked_at: number;
 }
 
+interface UnsubscribedUser {
+  email: string;
+  name: string | null;
+  unsubscribed_at: number;
+}
+
 interface CampaignClicksResponse {
   campaign_id: string;
   summary: {
@@ -141,6 +147,7 @@ interface CampaignClicksResponse {
     top_urls: Array<{ url: string; original_url?: string; clicks: number }>;
   };
   clicks: ClickEvent[];
+  unsubscribed_users: UnsubscribedUser[];
 }
 
 // Extract short_code from URL like https://edgeshift.tech/r/xxxxxxxx
@@ -265,6 +272,35 @@ export async function getCampaignClicks(
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 10);
 
+  // Get unsubscribe URL clicks (for troubleshooting)
+  let unsubscribedUsers: UnsubscribedUser[] = [];
+  try {
+    const unsubscribeClicksResult = await env.DB.prepare(`
+      SELECT DISTINCT
+        s.email,
+        s.name,
+        ce.clicked_at as unsubscribed_at
+      FROM click_events ce
+      JOIN delivery_logs dl ON ce.delivery_log_id = dl.id
+      JOIN subscribers s ON ce.subscriber_id = s.id
+      WHERE dl.campaign_id = ?
+        AND (
+          ce.clicked_url LIKE '%unsubscribe.resend.com%'
+          OR ce.clicked_url LIKE '%{{{RESEND_UNSUBSCRIBE_URL}}}%'
+        )
+      ORDER BY ce.clicked_at DESC
+    `).bind(campaignId).all<{
+      email: string;
+      name: string | null;
+      unsubscribed_at: number;
+    }>();
+
+    unsubscribedUsers = unsubscribeClicksResult.results || [];
+  } catch (error) {
+    console.error(`Failed to fetch unsubscribe clicks for campaign ${campaignId}:`, error);
+    // Non-blocking error, continue with empty array
+  }
+
   return {
     campaign_id: campaignId,
     summary: {
@@ -273,6 +309,7 @@ export async function getCampaignClicks(
       top_urls: topUrls,
     },
     clicks: enrichedClicks,
+    unsubscribed_users: unsubscribedUsers,
   };
 }
 
