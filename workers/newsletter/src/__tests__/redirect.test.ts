@@ -202,5 +202,62 @@ describe('Redirect Handler', () => {
       ).bind('sub-4').first<{ status: string }>();
       expect(subscriber?.status).toBe('active');
     });
+
+    it('should auto-unsubscribe via Referer header + campaign_id (NEW)', async () => {
+      const env = getTestEnv();
+
+      // Setup: Create campaign
+      await env.DB.prepare(`
+        INSERT INTO campaigns (id, subject, content, status, created_at)
+        VALUES ('campaign-test', 'Test Campaign', '<p>Test</p>', 'sent', 1703404800)
+      `).run();
+
+      // Setup: Create subscriber
+      await env.DB.prepare(`
+        INSERT INTO subscribers (id, email, status, unsubscribe_token, created_at)
+        VALUES ('sub-5', 'user5@example.com', 'active', 'unsub-token-555', 1703404800)
+      `).run();
+
+      // Setup: Create delivery log
+      await env.DB.prepare(`
+        INSERT INTO delivery_logs (id, subscriber_id, campaign_id, resend_id, email, status, sent_at)
+        VALUES (
+          'log-test-referer',
+          'sub-5',
+          'campaign-test',
+          '0106019b-ee8c-d588-9cba-3948d664c15f-000000',
+          'user5@example.com',
+          'sent',
+          1703404800
+        )
+      `).run();
+
+      // Setup: Create shortened unsubscribe URL with campaign_id
+      await env.DB.prepare(`
+        INSERT INTO short_urls (id, short_code, original_url, position, campaign_id, created_at)
+        VALUES ('url-5', 'RefTest1', '{{{RESEND_UNSUBSCRIBE_URL}}}', 1, 'campaign-test', 1703404800)
+      `).run();
+
+      const { handleRedirect } = await import('../routes/redirect');
+
+      // Simulate Resend click tracking Referer header
+      const request = new Request('https://edgeshift.tech/r/RefTest1', {
+        headers: {
+          'Referer': 'https://562dec88f516adfa06a1977058f18b0b.ap-northeast-1.resend-clicks-a.com/CL0/https:%2F%2Fedgeshift.tech%2Fr%2FRefTest1/1/0106019b-ee8c-d588-9cba-3948d664c15f-000000/signature=123'
+        }
+      });
+      const response = await handleRedirect(request, env, 'RefTest1');
+
+      // Should redirect to unsubscribed page
+      expect(response.status).toBe(302);
+      expect(response.headers.get('Location')).toContain('/newsletter/unsubscribed');
+
+      // Verify subscriber was unsubscribed via Referer lookup
+      const subscriber = await env.DB.prepare(
+        'SELECT status, email FROM subscribers WHERE id = ?'
+      ).bind('sub-5').first<{ status: string; email: string }>();
+      expect(subscriber?.status).toBe('unsubscribed');
+      expect(subscriber?.email).toBe('user5@example.com');
+    });
   });
 });
