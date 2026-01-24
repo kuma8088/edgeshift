@@ -25,7 +25,7 @@ function isUnsubscribeUrl(url: string): boolean {
  * Example: https://...resend-clicks.../CL0/.../1/{resend_id}/...
  *
  * @param referer - Referer header value
- * @returns resend_id or null if not found
+ * @returns resend_id (UUID part only, without -000000 suffix) or null if not found
  */
 function extractResendIdFromReferer(referer: string | null): string | null {
   if (!referer) {
@@ -33,8 +33,10 @@ function extractResendIdFromReferer(referer: string | null): string | null {
   }
 
   // Pattern: /1/{resend_id}/ or /1/{resend_id} at end
-  // resend_id format: UUID-000000 (e.g., 0106019bee8cd588-9cba3948-2fc8-4449-bdcd-d664c15fe35f-000000)
-  const match = referer.match(/\/1\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-\d{6})/i);
+  // resend_id format in Referer: UUID-000000 (e.g., 0106019bee8cd588-9cba3948-2fc8-4449-bdcd-d664c15fe35f-000000)
+  // But delivery_logs stores UUID only (e.g., 0106019bee8cd588-9cba3948-2fc8-4449-bdcd-d664c15fe35f)
+  // So we extract the UUID part and strip the -000000 suffix
+  const match = referer.match(/\/1\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-\d{6}/i);
   return match ? match[1] : null;
 }
 

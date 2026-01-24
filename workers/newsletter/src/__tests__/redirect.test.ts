@@ -225,7 +225,7 @@ describe('Redirect Handler', () => {
           'log-test-referer',
           'sub-5',
           'campaign-test',
-          '0106019b-ee8c-d588-9cba-3948d664c15f-000000',
+          '0106019b-ee8c-d588-9cba-3948d664c15f',
           'user5@example.com',
           'sent',
           1703404800
