@@ -170,19 +170,36 @@ describe('Contact List Auto-Assignment', () => {
     expect(updated.status).toBe('active');
   });
 
-  it('should sync new subscriber to Resend Segment on confirmation', async () => {
+  it('should sync new subscriber to contact list\'s Resend Segment on confirmation', async () => {
     const env = getTestEnv();
     const { ensureResendContact, addContactsToSegment } = await import('../lib/resend-marketing');
+    const { createContactList } = await import('../routes/contact-lists');
+    const { createSignupPage } = await import('../routes/signup-pages');
     const mockedEnsureResendContact = vi.mocked(ensureResendContact);
     const mockedAddContactsToSegment = vi.mocked(addContactsToSegment);
 
-    // Subscribe
+    // 1. Create contact list with Resend segment
+    const contactList = await createContactList(env, {
+      name: 'Premium Newsletter',
+      resend_segment_id: 'seg_premium_123',
+    });
+
+    // 2. Create signup page linked to contact list
+    const signupPage = await createSignupPage(env, {
+      slug: 'premium',
+      title: 'Premium Newsletter',
+      content: 'Subscribe to premium content',
+      contact_list_id: contactList.id,
+    });
+
+    // 3. Subscribe via signup page
     await handleSubscribe(
       new Request('http://localhost/api/newsletter/subscribe', {
         method: 'POST',
         body: JSON.stringify({
-          email: 'newsub@example.com',
-          name: 'New Subscriber',
+          email: 'premium@example.com',
+          name: 'Premium User',
+          signupPageSlug: 'premium',
           turnstileToken: 'test-token',
         }),
       }),
@@ -190,17 +207,18 @@ describe('Contact List Auto-Assignment', () => {
     );
 
     const subscriber = await env.DB.prepare(
-      "SELECT * FROM subscribers WHERE email = 'newsub@example.com'"
+      "SELECT * FROM subscribers WHERE email = 'premium@example.com'"
     ).first();
 
     expect(subscriber).toBeTruthy();
     expect(subscriber.status).toBe('pending');
+    expect(subscriber.signup_page_slug).toBe('premium');
 
     // Clear mocks before confirm
     mockedEnsureResendContact.mockClear();
     mockedAddContactsToSegment.mockClear();
 
-    // Confirm subscription
+    // 4. Confirm subscription
     await handleConfirm(
       new Request(`http://localhost/api/newsletter/confirm/${subscriber.confirm_token}`),
       env,
@@ -210,14 +228,14 @@ describe('Contact List Auto-Assignment', () => {
     // Verify Resend Contact was created
     expect(mockedEnsureResendContact).toHaveBeenCalledWith(
       expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-      'newsub@example.com',
-      'New Subscriber'
+      'premium@example.com',
+      'Premium User'
     );
 
-    // Verify contact was added to Segment
+    // Verify contact was added to SPECIFIC segment (not default)
     expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
       expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-      env.RESEND_SEGMENT_ID,
+      'seg_premium_123',  // Contact list's segment, NOT env.RESEND_SEGMENT_ID
       ['test-contact-id']
     );
 
@@ -227,5 +245,12 @@ describe('Contact List Auto-Assignment', () => {
     ).bind(subscriber.id).first();
 
     expect(updated.status).toBe('active');
+
+    // Verify D1 contact_list_members was updated
+    const membership = await env.DB.prepare(
+      'SELECT * FROM contact_list_members WHERE subscriber_id = ? AND contact_list_id = ?'
+    ).bind(subscriber.id, contactList.id).first();
+
+    expect(membership).toBeTruthy();
   });
 });

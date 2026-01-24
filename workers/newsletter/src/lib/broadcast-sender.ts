@@ -3,12 +3,14 @@
  *
  * This module orchestrates sending campaigns using Resend's Marketing API:
  * 1. Gets target subscribers (filtered by contact_list_id or all active)
- * 2. Renders email content with brand settings
- * 3. Sends Broadcast to pre-populated Segment
- * 4. Records delivery logs
+ * 2. Gets Resend Segment ID from the campaign's contact_list
+ * 3. Renders email content with brand settings
+ * 4. Sends Broadcast to the contact list's Resend Segment
+ * 5. Records delivery logs
  *
  * Note: Segments are populated in subscribe/confirm flow (routes/confirm.ts).
- *       Each confirmed subscriber is automatically synced to Resend Segment.
+ *       Each signup page has a contact list, and subscribers are added to
+ *       that contact list's Resend Segment on confirmation.
  */
 
 import type { Env, Campaign, Subscriber, BrandSettings, SequenceStep } from '../types';

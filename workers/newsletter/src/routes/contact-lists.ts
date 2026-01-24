@@ -17,12 +17,13 @@ export async function createContactList(
   const now = Math.floor(Date.now() / 1000);
 
   await env.DB.prepare(
-    `INSERT INTO contact_lists (id, name, description, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO contact_lists (id, name, description, resend_segment_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
   ).bind(
     id,
     input.name.trim(),
     input.description || null,
+    input.resend_segment_id || null,
     now,
     now
   ).run();

@@ -90,38 +90,59 @@ export async function handleConfirm(
       WHERE id = ?
     `).bind(now, referralCode, subscriber.id).run();
 
-    // Sync subscriber to Resend Segment
-    // This ensures new subscribers are added to the permanent segment for campaign broadcasts
-    const segmentId = env.RESEND_SEGMENT_ID || env.RESEND_AUDIENCE_ID;
-    if (segmentId) {
+    // Sync subscriber to Resend Segment based on their signup page's contact list
+    // This ensures subscribers are added to the correct segment for targeted campaigns
+    if (subscriber.signup_page_slug) {
       try {
-        const config: ResendMarketingConfig = {
-          apiKey: env.RESEND_API_KEY,
-        };
+        // 1. Get signup page to find associated contact list
+        const signupPage = await env.DB.prepare(
+          'SELECT contact_list_id FROM signup_pages WHERE slug = ?'
+        ).bind(subscriber.signup_page_slug).first<{ contact_list_id: string | null }>();
 
-        // Ensure contact exists in Resend
-        const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
+        if (signupPage?.contact_list_id) {
+          // 2. Add to contact_list_members in D1 (always do this if contact_list exists)
+          const memberId = crypto.randomUUID();
+          await env.DB.prepare(
+            'INSERT OR IGNORE INTO contact_list_members (id, contact_list_id, subscriber_id, added_at) VALUES (?, ?, ?, ?)'
+          ).bind(memberId, signupPage.contact_list_id, subscriber.id, now).run();
 
-        if (contactResult.success && contactResult.contactId && !contactResult.existed) {
-          // Add to segment if this is a new contact
-          await addContactsToSegment(config, segmentId, [contactResult.contactId]);
-          console.log(`Added new subscriber ${subscriber.email} to Resend segment ${segmentId}`);
-        } else if (contactResult.success && contactResult.existed) {
-          console.log(`Subscriber ${subscriber.email} already exists in Resend, skipping segment add`);
+          // 3. Get contact list to find Resend segment ID
+          const contactList = await env.DB.prepare(
+            'SELECT resend_segment_id FROM contact_lists WHERE id = ?'
+          ).bind(signupPage.contact_list_id).first<{ resend_segment_id: string | null }>();
+
+          if (contactList?.resend_segment_id) {
+            // 4. Sync to the specific Resend Segment
+            const config: ResendMarketingConfig = {
+              apiKey: env.RESEND_API_KEY,
+            };
+
+            const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
+
+            if (contactResult.success && contactResult.contactId && !contactResult.existed) {
+              await addContactsToSegment(config, contactList.resend_segment_id, [contactResult.contactId]);
+              console.log(`Added subscriber ${subscriber.email} to Resend segment ${contactList.resend_segment_id} (contact list: ${signupPage.contact_list_id})`);
+            } else if (contactResult.success && contactResult.existed) {
+              console.log(`Subscriber ${subscriber.email} already exists in Resend, skipping segment add`);
+            } else {
+              console.error(`Failed to sync subscriber ${subscriber.email} to Resend:`, contactResult.error);
+            }
+          } else {
+            console.warn(`Contact list ${signupPage.contact_list_id} has no Resend segment, skipping Resend sync for ${subscriber.email}`);
+          }
         } else {
-          console.error(`Failed to sync subscriber ${subscriber.email} to Resend:`, contactResult.error);
+          console.warn(`Signup page ${subscriber.signup_page_slug} has no contact list, skipping Resend sync for ${subscriber.email}`);
         }
       } catch (error) {
         // Log but don't fail the confirmation process
-        // Subscriber is already active in D1, sync can be retried later
         console.error('Failed to sync subscriber to Resend Segment:', {
           email: subscriber.email,
-          segmentId,
+          signupPageSlug: subscriber.signup_page_slug,
           error: error instanceof Error ? error.message : String(error),
         });
       }
     } else {
-      console.warn('RESEND_SEGMENT_ID not configured, skipping Resend sync for subscriber:', subscriber.email);
+      console.warn(`Subscriber ${subscriber.email} has no signup_page_slug, cannot determine which segment to add to`);
     }
 
     // If this subscriber was referred by someone, update the referrer's count
@@ -173,21 +194,6 @@ export async function handleConfirm(
 
     // Enroll in all active sequences
     await enrollSubscriberInSequences(env, subscriber.id);
-
-    // Contact List auto-assignment (Batch 4C)
-    if (subscriber.signup_page_slug) {
-      const signupPage = await env.DB.prepare(
-        'SELECT * FROM signup_pages WHERE slug = ?'
-      ).bind(subscriber.signup_page_slug).first();
-
-      if (signupPage?.contact_list_id) {
-        const memberId = crypto.randomUUID();
-        await env.DB.prepare(
-          `INSERT OR IGNORE INTO contact_list_members (id, contact_list_id, subscriber_id, added_at)
-           VALUES (?, ?, ?, ?)`
-        ).bind(memberId, signupPage.contact_list_id, subscriber.id, Math.floor(Date.now() / 1000)).run();
-      }
-    }
 
     // Redirect to confirmation page with referral code
     const confirmedUrl = new URL('/newsletter/confirmed', env.SITE_URL);
