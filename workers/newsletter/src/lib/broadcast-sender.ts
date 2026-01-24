@@ -3,10 +3,14 @@
  *
  * This module orchestrates sending campaigns using Resend's Marketing API:
  * 1. Gets target subscribers (filtered by contact_list_id or all active)
- * 2. Ensures each subscriber has a Resend Contact (lazy sync)
- * 3. Adds new contacts to the permanent segment
- * 4. Sends Broadcast to the permanent segment
+ * 2. Gets Resend Segment ID from the campaign's contact_list
+ * 3. Renders email content with brand settings
+ * 4. Sends Broadcast to the contact list's Resend Segment
  * 5. Records delivery logs
+ *
+ * Note: Segments are populated in subscribe/confirm flow (routes/confirm.ts).
+ *       Each signup page has a contact list, and subscribers are added to
+ *       that contact list's Resend Segment on confirmation.
  */
 
 import type { Env, Campaign, Subscriber, BrandSettings, SequenceStep } from '../types';
@@ -78,11 +82,14 @@ export async function getTargetSubscribers(
  * Send a campaign via Resend Broadcast API.
  *
  * Flow:
- * 1. Get target subscribers
- * 2. Ensure Resend Contact for each (lazy sync)
- * 3. Add new contacts to permanent segment
- * 4. Create & Send Broadcast to permanent segment
+ * 1. Get target Segment ID (from contact_list or default)
+ * 2. Get target subscribers and brand settings
+ * 3. Render email content with brand settings
+ * 4. Create & Send Broadcast to pre-populated Segment
  * 5. Record delivery logs
+ *
+ * Note: This assumes Segments are pre-populated by subscribe/confirm flow.
+ *       Contact/Segment management happens in routes/confirm.ts.
  */
 export async function sendCampaignViaBroadcast(
   campaign: Campaign,
@@ -95,7 +102,7 @@ export async function sendCampaignViaBroadcast(
       success: false,
       sent: 0,
       failed: 0,
-      error: 'RESEND_SEGMENT_ID is not configured',
+      error: 'RESEND_SEGMENT_ID (or deprecated RESEND_AUDIENCE_ID) is not configured',
       results: [],
     };
   }
@@ -138,8 +145,6 @@ export async function sendCampaignViaBroadcast(
     apiKey: env.RESEND_API_KEY,
   };
 
-  const results: Array<{ email: string; success: boolean; contactId?: string; error?: string }> = [];
-
   // 1. Get target subscribers
   const subscribers = await getTargetSubscribers(campaign, env);
 
@@ -153,49 +158,7 @@ export async function sendCampaignViaBroadcast(
     };
   }
 
-  // 2. Ensure Resend Contact for each subscriber
-  // Add new contacts to permanent segment (existing contacts should already be in segment)
-  for (let i = 0; i < subscribers.length; i++) {
-    const subscriber = subscribers[i];
-
-    // Add delay between requests (skip for first request)
-    if (i > 0) {
-      await sleep(RESEND_RATE_LIMIT_DELAY_MS);
-    }
-
-    const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
-
-    if (contactResult.success && contactResult.contactId) {
-      results.push({
-        email: subscriber.email,
-        success: true,
-        contactId: contactResult.contactId,
-      });
-
-      // If contact was just created (not existed), add to target segment
-      if (!contactResult.existed) {
-        await sleep(RESEND_RATE_LIMIT_DELAY_MS);
-        const addResult = await addContactsToSegment(config, segmentId, [contactResult.contactId]);
-        if (!addResult.success || addResult.errors.length > 0) {
-          console.error('Failed to add new contact to segment:', {
-            email: subscriber.email,
-            contactId: contactResult.contactId,
-            segmentId,
-            errors: addResult.errors,
-          });
-          warnings.push(`Failed to add ${subscriber.email} to segment: ${addResult.errors.join(', ')}`);
-        }
-      }
-    } else {
-      results.push({
-        email: subscriber.email,
-        success: false,
-        error: contactResult.error || 'Failed to ensure contact',
-      });
-    }
-  }
-
-  // 3. Get brand settings and prepare email content
+  // 2. Get brand settings and prepare email content
   let brandSettings = await env.DB.prepare(
     'SELECT * FROM brand_settings WHERE id = ?'
   ).bind('default').first<BrandSettings>();
@@ -240,45 +203,48 @@ export async function sendCampaignViaBroadcast(
     return {
       success: false,
       sent: 0,
-      failed: results.length,
+      failed: subscribers.length,
       error: `Failed to send broadcast: ${broadcastResult.error}`,
-      results,
+      results: subscribers.map((sub) => ({
+        email: sub.email,
+        success: false,
+        error: broadcastResult.error,
+      })),
     };
   }
 
   // 5. Record delivery logs (best effort - don't fail if logging fails)
-  const successfulSubscribers = subscribers.filter((sub) =>
-    results.find((r) => r.email === sub.email && r.success)
-  );
-
-  const deliveryResults = successfulSubscribers.map((sub) => ({
+  const deliveryResults = subscribers.map((sub) => ({
     email: sub.email,
     success: true,
     resendId: broadcastResult.broadcastId,
   }));
 
   try {
-    await recordDeliveryLogs(env, campaign.id, successfulSubscribers, deliveryResults);
+    await recordDeliveryLogs(env, campaign.id, subscribers, deliveryResults);
   } catch (logError) {
     // Broadcast was already sent successfully - don't fail the operation
     // Just log the error for debugging
     console.error('Failed to record delivery logs after successful broadcast:', {
       campaignId: campaign.id,
       broadcastId: broadcastResult.broadcastId,
-      subscriberCount: successfulSubscribers.length,
+      subscriberCount: subscribers.length,
       error: logError instanceof Error ? logError.message : String(logError),
     });
     warnings.push(`Delivery log recording failed: ${logError instanceof Error ? logError.message : 'Unknown error'}`);
   }
 
-  const successCount = results.filter((r) => r.success).length;
-  const failedCount = results.filter((r) => !r.success).length;
+  // Build results array: all subscribers are considered successful if broadcast was sent
+  const results = subscribers.map((sub) => ({
+    email: sub.email,
+    success: true,
+  }));
 
   return {
     success: true,
     broadcastId: broadcastResult.broadcastId,
-    sent: successCount,
-    failed: failedCount,
+    sent: subscribers.length,
+    failed: 0,
     results,
     ...(warnings.length > 0 && { warnings }),
   };
@@ -287,13 +253,22 @@ export async function sendCampaignViaBroadcast(
 /**
  * Send a sequence step email to a single subscriber via Resend Broadcast API.
  *
+ * WARNING: This function uses Broadcast API which sends to an entire Segment.
+ * For true 1-to-1 sequence emails, use Transactional API instead.
+ * Current implementation sends broadcast to default segment - all subscribers
+ * in that segment will receive the email, not just the target subscriber.
+ *
+ * TODO: Migrate sequences to Transactional API for proper 1-to-1 delivery.
+ *
+ * Assumptions:
+ * - Subscribers are already in RESEND_SEGMENT_ID or RESEND_AUDIENCE_ID
+ * - No contact creation or segment addition is performed
+ *
  * Flow:
  * 1. Check for RESEND_SEGMENT_ID config
- * 2. Ensure Resend Contact (lazy sync)
- * 3. Add new contact to permanent segment (if just created)
- * 4. Get sequence's reply_to address
- * 5. Create & Send Broadcast to permanent segment
- * 6. Record delivery log (success or failure)
+ * 2. Get sequence's reply_to address
+ * 3. Create & Send Broadcast to segment
+ * 4. Record delivery log (success or failure)
  */
 export async function sendSequenceStepViaBroadcast(
   env: Env,
@@ -314,80 +289,7 @@ export async function sendSequenceStepViaBroadcast(
     apiKey: env.RESEND_API_KEY,
   };
 
-  // 2. Ensure Resend Contact (lazy sync)
-  const contactResult = await ensureResendContact(config, subscriber.email, subscriber.name);
-
-  if (!contactResult.success) {
-    // Record failure and return
-    await recordSequenceDeliveryLog(env, {
-      sequenceId: step.sequence_id,
-      sequenceStepId: step.id,
-      subscriberId: subscriber.id,
-      email: subscriber.email,
-      emailSubject: step.subject,
-      status: 'failed',
-      errorMessage: contactResult.error || 'Failed to ensure Resend contact',
-    });
-
-    return {
-      success: false,
-      error: `Failed to ensure Resend contact: ${contactResult.error}`,
-    };
-  }
-
-  // Check if we have contactId (required for segment addition)
-  if (!contactResult.contactId) {
-    const errorMessage = contactResult.existed
-      ? 'Contact exists in Resend but contactId not available for segment addition'
-      : 'Contact created but no contactId returned';
-
-    await recordSequenceDeliveryLog(env, {
-      sequenceId: step.sequence_id,
-      sequenceStepId: step.id,
-      subscriberId: subscriber.id,
-      email: subscriber.email,
-      emailSubject: step.subject,
-      status: 'failed',
-      errorMessage,
-    });
-
-    return {
-      success: false,
-      error: errorMessage,
-    };
-  }
-
-  // 3. If contact was just created (not existed), add to default segment
-  if (!contactResult.existed) {
-    const addResult = await addContactsToSegment(config, segmentId, [contactResult.contactId]);
-    if (!addResult.success || addResult.errors.length > 0) {
-      const errorMsg = addResult.errors.join(', ');
-      console.error('Failed to add contact to segment for sequence:', {
-        sequenceId: step.sequence_id,
-        stepNumber: step.step_number,
-        email: subscriber.email,
-        contactId: contactResult.contactId,
-        segmentId,
-        errors: addResult.errors,
-      });
-      // For sequences, this is critical - record failure
-      await recordSequenceDeliveryLog(env, {
-        sequenceId: step.sequence_id,
-        sequenceStepId: step.id,
-        subscriberId: subscriber.id,
-        email: subscriber.email,
-        emailSubject: step.subject,
-        status: 'failed',
-        errorMessage: `Failed to add contact to segment: ${errorMsg}`,
-      });
-      return {
-        success: false,
-        error: `Failed to add contact to segment: ${errorMsg}`,
-      };
-    }
-  }
-
-  // 4. Get sequence's reply_to address with error handling
+  // 2. Get sequence's reply_to address with error handling
   let replyTo = env.REPLY_TO_EMAIL;
   try {
     const sequence = await env.DB.prepare(
@@ -406,7 +308,7 @@ export async function sendSequenceStepViaBroadcast(
     // Continue with default reply_to from env
   }
 
-  // 5. Create & Send Broadcast to permanent segment
+  // 3. Create & Send Broadcast to segment
   const broadcastResult = await createAndSendBroadcast(config, {
     segmentId,
     from: `${env.SENDER_NAME} <${env.SENDER_EMAIL}>`,
@@ -434,7 +336,7 @@ export async function sendSequenceStepViaBroadcast(
     };
   }
 
-  // 6. Record success delivery log (best effort - don't fail if logging fails)
+  // 4. Record success delivery log (best effort - don't fail if logging fails)
   try {
     await recordSequenceDeliveryLog(env, {
       sequenceId: step.sequence_id,

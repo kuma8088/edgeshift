@@ -842,28 +842,15 @@ describe('Sequence Processor', () => {
       const mockSendEmail = vi.mocked(email.sendEmail);
       expect(mockSendEmail).not.toHaveBeenCalled();
 
-      // Verify Broadcast API flow
-      expect(mockedEnsureResendContact).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'broadcast-test@example.com',
-        'Broadcast User'
-      );
+      // Verify Broadcast API flow - Contact/Segment sync no longer called
+      expect(mockedEnsureResendContact).not.toHaveBeenCalled();
+      expect(mockedAddContactsToSegment).not.toHaveBeenCalled();
 
-      expect(mockedCreateTempSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        expect.stringContaining(`sequence-${sequenceId}`)
-      );
-
-      expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'segment-123',
-        ['contact-123']
-      );
-
+      // Verify broadcast was sent to default segment
       expect(mockedCreateAndSendBroadcast).toHaveBeenCalledWith(
         expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
         expect.objectContaining({
-          segmentId: 'segment-123',
+          segmentId: 'test-segment-id', // Uses RESEND_SEGMENT_ID (preferred over RESEND_AUDIENCE_ID)
           subject: 'Broadcast Welcome!',
         })
       );
@@ -880,12 +867,6 @@ describe('Sequence Processor', () => {
           resendId: 'broadcast-123',
           status: 'sent',
         })
-      );
-
-      // Verify segment cleanup
-      expect(mockedDeleteSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'segment-123'
       );
 
       // Verify progress was updated
@@ -1005,30 +986,11 @@ describe('Sequence Processor', () => {
         RESEND_AUDIENCE_ID: 'test-audience-id',
       };
 
-      // Setup mocks - broadcast send fails
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        contactId: 'contact-123',
-        existed: false,
-      });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: true,
-        segmentId: 'segment-123',
-      });
-
-      mockedAddContactsToSegment.mockResolvedValue({
-        success: true,
-        added: 1,
-        errors: [],
-      });
-
+      // Setup mocks - broadcast send fails (no Contact/Segment sync needed)
       mockedCreateAndSendBroadcast.mockResolvedValue({
         success: false,
         error: 'Broadcast send failed',
       });
-
-      mockedDeleteSegment.mockResolvedValue({ success: true });
 
       // Create subscriber
       const subscriberId = crypto.randomUUID();
@@ -1089,30 +1051,11 @@ describe('Sequence Processor', () => {
         RESEND_AUDIENCE_ID: 'test-audience-id',
       };
 
-      // Setup mocks for successful flow
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        contactId: 'contact-123',
-        existed: false,
-      });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: true,
-        segmentId: 'segment-123',
-      });
-
-      mockedAddContactsToSegment.mockResolvedValue({
-        success: true,
-        added: 1,
-        errors: [],
-      });
-
+      // Setup mocks for successful flow (no Contact/Segment sync needed)
       mockedCreateAndSendBroadcast.mockResolvedValue({
         success: true,
         broadcastId: 'broadcast-delay-123',
       });
-
-      mockedDeleteSegment.mockResolvedValue({ success: true });
 
       // Create subscriber
       const subscriberId = crypto.randomUUID();

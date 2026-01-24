@@ -28,6 +28,7 @@ vi.mock('../lib/delivery', () => ({
 // Mock templates module - renderEmail only, getDefaultBrandSettings will use real implementation
 vi.mock('../lib/templates/index', () => ({
   renderEmail: vi.fn().mockReturnValue('<html><body>Test Email</body></html>'),
+  renderEmailAsync: vi.fn().mockResolvedValue('<html><body>Test Email</body></html>'),
   getDefaultBrandSettings: vi.fn().mockReturnValue({
     id: 'default',
     logo_url: null,
@@ -185,8 +186,8 @@ describe('Broadcast Sender', () => {
   // ==========================================================================
 
   describe('sendCampaignViaBroadcast', () => {
-    it('should return error if RESEND_AUDIENCE_ID is not configured', async () => {
-      const env = { ...getTestEnv(), RESEND_AUDIENCE_ID: undefined };
+    it('should return error if RESEND_SEGMENT_ID is not configured', async () => {
+      const env = { ...getTestEnv(), RESEND_SEGMENT_ID: undefined, RESEND_AUDIENCE_ID: undefined };
 
       const campaign: Campaign = {
         id: 'camp-1',
@@ -217,7 +218,7 @@ describe('Broadcast Sender', () => {
       const result = await sendCampaignViaBroadcast(campaign, env);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('RESEND_AUDIENCE_ID is not configured');
+      expect(result.error).toBe('RESEND_SEGMENT_ID (or deprecated RESEND_AUDIENCE_ID) is not configured');
       expect(result.sent).toBe(0);
       expect(result.failed).toBe(0);
     });
@@ -276,30 +277,11 @@ describe('Broadcast Sender', () => {
         VALUES ('default', '#7c3aed', '#1e1e1e', 'EdgeShift Newsletter', 'simple')
       `).run();
 
-      // Setup mocks for successful flow
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        contactId: 'contact-123',
-        existed: false,
-      });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: true,
-        segmentId: 'segment-123',
-      });
-
-      mockedAddContactsToSegment.mockResolvedValue({
-        success: true,
-        added: 2,
-        errors: [],
-      });
-
+      // Setup mocks for successful flow (no Contact/Segment sync needed)
       mockedCreateAndSendBroadcast.mockResolvedValue({
         success: true,
         broadcastId: 'broadcast-123',
       });
-
-      mockedDeleteSegment.mockResolvedValue({ success: true });
 
       const campaign: Campaign = {
         id: 'camp-1',
@@ -334,163 +316,33 @@ describe('Broadcast Sender', () => {
       expect(result.sent).toBe(2);
       expect(result.failed).toBe(0);
 
-      // Verify the flow
-      expect(mockedEnsureResendContact).toHaveBeenCalledTimes(2);
-      expect(mockedCreateTempSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'campaign-camp-1'
+      // Verify results array contains all subscribers as successful
+      expect(result.results).toHaveLength(2);
+      expect(result.results).toEqual(
+        expect.arrayContaining([
+          { email: 'user1@example.com', success: true },
+          { email: 'user2@example.com', success: true },
+        ])
       );
-      expect(mockedAddContactsToSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'segment-123',
-        ['contact-123', 'contact-123']
-      );
+
+      // Verify the flow - NO Contact/Segment sync
+      expect(mockedEnsureResendContact).not.toHaveBeenCalled();
+      expect(mockedAddContactsToSegment).not.toHaveBeenCalled();
+      expect(mockedCreateTempSegment).not.toHaveBeenCalled();
+      expect(mockedDeleteSegment).not.toHaveBeenCalled();
+
+      // Verify Broadcast API called directly with default segment
       expect(mockedCreateAndSendBroadcast).toHaveBeenCalledWith(
         expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
         expect.objectContaining({
-          segmentId: 'segment-123',
+          segmentId: env.RESEND_SEGMENT_ID,
           subject: 'Test Subject',
         })
       );
       expect(mockedRecordDeliveryLogs).toHaveBeenCalled();
-      expect(mockedDeleteSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'segment-123'
-      );
     });
 
-    it('should handle partial contact creation failure', async () => {
-      const env = getTestEnv();
-
-      // Create subscribers
-      await env.DB.prepare(`
-        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
-        VALUES
-          ('sub-1', 'success@example.com', 'Success User', 'active', 'token-1'),
-          ('sub-2', 'fail@example.com', 'Fail User', 'active', 'token-2')
-      `).run();
-
-      // Create brand settings
-      await env.DB.prepare(`
-        INSERT INTO brand_settings (id, primary_color, secondary_color, footer_text, default_template_id)
-        VALUES ('default', '#7c3aed', '#1e1e1e', 'EdgeShift Newsletter', 'simple')
-      `).run();
-
-      // First contact succeeds, second fails
-      mockedEnsureResendContact
-        .mockResolvedValueOnce({
-          success: true,
-          contactId: 'contact-1',
-          existed: false,
-        })
-        .mockResolvedValueOnce({
-          success: false,
-          error: 'Invalid email',
-        });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: true,
-        segmentId: 'segment-123',
-      });
-
-      mockedAddContactsToSegment.mockResolvedValue({
-        success: true,
-        added: 1,
-        errors: [],
-      });
-
-      mockedCreateAndSendBroadcast.mockResolvedValue({
-        success: true,
-        broadcastId: 'broadcast-123',
-      });
-
-      mockedDeleteSegment.mockResolvedValue({ success: true });
-
-      const campaign: Campaign = {
-        id: 'camp-1',
-        subject: 'Test Subject',
-        content: 'Test Content',
-        status: 'draft',
-        created_at: Math.floor(Date.now() / 1000),
-        contact_list_id: null,
-        template_id: null,
-        scheduled_at: null,
-        schedule_type: null,
-        schedule_config: null,
-        last_sent_at: null,
-        sent_at: null,
-        recipient_count: null,
-        slug: null,
-        is_published: 0,
-        published_at: null,
-        excerpt: null,
-        ab_test_enabled: 0,
-        ab_subject_b: null,
-        ab_from_name_b: null,
-        ab_wait_hours: 4,
-        ab_test_sent_at: null,
-        ab_winner: null,
-      };
-
-      const result = await sendCampaignViaBroadcast(campaign, env);
-
-      expect(result.success).toBe(true);
-      expect(result.sent).toBe(1);
-      expect(result.failed).toBe(1);
-      expect(result.results).toHaveLength(2);
-      expect(result.results.find((r) => r.email === 'success@example.com')?.success).toBe(true);
-      expect(result.results.find((r) => r.email === 'fail@example.com')?.success).toBe(false);
-      expect(result.results.find((r) => r.email === 'fail@example.com')?.error).toBe('Invalid email');
-    });
-
-    it('should return error if all contact creations fail', async () => {
-      const env = getTestEnv();
-
-      // Create subscriber
-      await env.DB.prepare(`
-        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
-        VALUES ('sub-1', 'fail@example.com', 'Fail User', 'active', 'token-1')
-      `).run();
-
-      mockedEnsureResendContact.mockResolvedValue({
-        success: false,
-        error: 'API Error',
-      });
-
-      const campaign: Campaign = {
-        id: 'camp-1',
-        subject: 'Test Subject',
-        content: 'Test Content',
-        status: 'draft',
-        created_at: Math.floor(Date.now() / 1000),
-        contact_list_id: null,
-        template_id: null,
-        scheduled_at: null,
-        schedule_type: null,
-        schedule_config: null,
-        last_sent_at: null,
-        sent_at: null,
-        recipient_count: null,
-        slug: null,
-        is_published: 0,
-        published_at: null,
-        excerpt: null,
-        ab_test_enabled: 0,
-        ab_subject_b: null,
-        ab_from_name_b: null,
-        ab_wait_hours: 4,
-        ab_test_sent_at: null,
-        ab_winner: null,
-      };
-
-      const result = await sendCampaignViaBroadcast(campaign, env);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Failed to get contactIds for any subscribers (existing contacts cannot be added to segments)');
-      expect(result.failed).toBe(1);
-    });
-
-    it('should cleanup segment on broadcast failure', async () => {
+    it('should handle broadcast failure', async () => {
       const env = getTestEnv();
 
       // Create subscriber
@@ -505,29 +357,11 @@ describe('Broadcast Sender', () => {
         VALUES ('default', '#7c3aed', '#1e1e1e', 'EdgeShift Newsletter', 'simple')
       `).run();
 
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        contactId: 'contact-1',
-      });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: true,
-        segmentId: 'segment-123',
-      });
-
-      mockedAddContactsToSegment.mockResolvedValue({
-        success: true,
-        added: 1,
-        errors: [],
-      });
-
       // Broadcast fails
       mockedCreateAndSendBroadcast.mockResolvedValue({
         success: false,
         error: 'Broadcast send failed',
       });
-
-      mockedDeleteSegment.mockResolvedValue({ success: true });
 
       const campaign: Campaign = {
         id: 'camp-1',
@@ -559,251 +393,9 @@ describe('Broadcast Sender', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Failed to send broadcast');
-
-      // Segment should still be cleaned up (finally block)
-      expect(mockedDeleteSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'segment-123'
-      );
-    });
-
-    it('should handle existing contact without contactId from 409 response', async () => {
-      const env = getTestEnv();
-
-      // Create subscriber
-      await env.DB.prepare(`
-        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
-        VALUES ('sub-1', 'existing@example.com', 'Existing User', 'active', 'token-1')
-      `).run();
-
-      // Mock: contact exists but no contactId returned (409 without ID)
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        existed: true,
-        contactId: undefined,
-      });
-
-      const campaign: Campaign = {
-        id: 'camp-1',
-        subject: 'Test Subject',
-        content: 'Test Content',
-        status: 'draft',
-        created_at: Math.floor(Date.now() / 1000),
-        contact_list_id: null,
-        template_id: null,
-        scheduled_at: null,
-        schedule_type: null,
-        schedule_config: null,
-        last_sent_at: null,
-        sent_at: null,
-        recipient_count: null,
-        slug: null,
-        is_published: 0,
-        published_at: null,
-        excerpt: null,
-        ab_test_enabled: 0,
-        ab_subject_b: null,
-        ab_from_name_b: null,
-        ab_wait_hours: 4,
-        ab_test_sent_at: null,
-        ab_winner: null,
-      };
-
-      const result = await sendCampaignViaBroadcast(campaign, env);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('existing contacts cannot be added to segments');
+      expect(result.failed).toBe(1);
       expect(result.results[0].success).toBe(false);
-      expect(result.results[0].error).toContain('contactId not available');
-    });
-
-    it('should handle segment creation failure', async () => {
-      const env = getTestEnv();
-
-      // Create subscriber
-      await env.DB.prepare(`
-        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
-        VALUES ('sub-1', 'user@example.com', 'User', 'active', 'token-1')
-      `).run();
-
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        contactId: 'contact-1',
-      });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: false,
-        error: 'Segment limit reached',
-      });
-
-      const campaign: Campaign = {
-        id: 'camp-1',
-        subject: 'Test Subject',
-        content: 'Test Content',
-        status: 'draft',
-        created_at: Math.floor(Date.now() / 1000),
-        contact_list_id: null,
-        template_id: null,
-        scheduled_at: null,
-        schedule_type: null,
-        schedule_config: null,
-        last_sent_at: null,
-        sent_at: null,
-        recipient_count: null,
-        slug: null,
-        is_published: 0,
-        published_at: null,
-        excerpt: null,
-        ab_test_enabled: 0,
-        ab_subject_b: null,
-        ab_from_name_b: null,
-        ab_wait_hours: 4,
-        ab_test_sent_at: null,
-        ab_winner: null,
-      };
-
-      const result = await sendCampaignViaBroadcast(campaign, env);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to create segment');
-      expect(mockedDeleteSegment).not.toHaveBeenCalled(); // No segment to cleanup
-    });
-
-    it('should handle addContactsToSegment failure', async () => {
-      const env = getTestEnv();
-
-      // Create subscriber
-      await env.DB.prepare(`
-        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
-        VALUES ('sub-1', 'user@example.com', 'User', 'active', 'token-1')
-      `).run();
-
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        contactId: 'contact-1',
-      });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: true,
-        segmentId: 'segment-123',
-      });
-
-      mockedAddContactsToSegment.mockResolvedValue({
-        success: false,
-        added: 0,
-        errors: ['user@example.com: Contact not found'],
-      });
-
-      mockedDeleteSegment.mockResolvedValue({ success: true });
-
-      const campaign: Campaign = {
-        id: 'camp-1',
-        subject: 'Test Subject',
-        content: 'Test Content',
-        status: 'draft',
-        created_at: Math.floor(Date.now() / 1000),
-        contact_list_id: null,
-        template_id: null,
-        scheduled_at: null,
-        schedule_type: null,
-        schedule_config: null,
-        last_sent_at: null,
-        sent_at: null,
-        recipient_count: null,
-        slug: null,
-        is_published: 0,
-        published_at: null,
-        excerpt: null,
-        ab_test_enabled: 0,
-        ab_subject_b: null,
-        ab_from_name_b: null,
-        ab_wait_hours: 4,
-        ab_test_sent_at: null,
-        ab_winner: null,
-      };
-
-      const result = await sendCampaignViaBroadcast(campaign, env);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Failed to add contacts to segment');
-
-      // Segment should still be cleaned up (finally block)
-      expect(mockedDeleteSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: env.RESEND_API_KEY }),
-        'segment-123'
-      );
-    });
-
-    it('should include warning when segment cleanup fails', async () => {
-      const env = getTestEnv();
-
-      // Create subscriber
-      await env.DB.prepare(`
-        INSERT INTO subscribers (id, email, name, status, unsubscribe_token)
-        VALUES ('sub-1', 'user@example.com', 'User', 'active', 'token-1')
-      `).run();
-
-      // Create brand settings
-      await env.DB.prepare(`
-        INSERT INTO brand_settings (id, primary_color, secondary_color, footer_text, default_template_id)
-        VALUES ('default', '#7c3aed', '#1e1e1e', 'EdgeShift Newsletter', 'simple')
-      `).run();
-
-      mockedEnsureResendContact.mockResolvedValue({
-        success: true,
-        contactId: 'contact-123',
-      });
-
-      mockedCreateTempSegment.mockResolvedValue({
-        success: true,
-        segmentId: 'segment-123',
-      });
-
-      mockedAddContactsToSegment.mockResolvedValue({
-        success: true,
-        added: 1,
-        errors: [],
-      });
-
-      mockedCreateAndSendBroadcast.mockResolvedValue({
-        success: true,
-        broadcastId: 'broadcast-123',
-      });
-
-      // Segment deletion fails
-      mockedDeleteSegment.mockResolvedValue({ success: false });
-
-      const campaign: Campaign = {
-        id: 'camp-1',
-        subject: 'Test Subject',
-        content: 'Test Content',
-        status: 'draft',
-        created_at: Math.floor(Date.now() / 1000),
-        contact_list_id: null,
-        template_id: null,
-        scheduled_at: null,
-        schedule_type: null,
-        schedule_config: null,
-        last_sent_at: null,
-        sent_at: null,
-        recipient_count: null,
-        slug: null,
-        is_published: 0,
-        published_at: null,
-        excerpt: null,
-        ab_test_enabled: 0,
-        ab_subject_b: null,
-        ab_from_name_b: null,
-        ab_wait_hours: 4,
-        ab_test_sent_at: null,
-        ab_winner: null,
-      };
-
-      const result = await sendCampaignViaBroadcast(campaign, env);
-
-      expect(result.success).toBe(true);
-      expect(result.warnings).toBeDefined();
-      expect(result.warnings).toContain('Segment cleanup failed: segment-123 - manual cleanup may be required');
+      expect(result.results[0].error).toBe('Broadcast send failed');
     });
   });
 
