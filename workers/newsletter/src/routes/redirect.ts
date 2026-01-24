@@ -53,8 +53,11 @@ async function autoUnsubscribe(
   }
 
   if (!subscriber) {
-    // Could not identify subscriber
-    return Response.redirect(`${env.SITE_URL}/newsletter/unsubscribed?status=error&message=Invalid+unsubscribe+link`, 302);
+    // Gracefully handle unknown subscriber (CAN-SPAM compliance)
+    console.warn('Auto-unsubscribe: subscriber not found (graceful fallback)', {
+      original_url: originalUrl,
+    });
+    return Response.redirect(`${env.SITE_URL}/newsletter/unsubscribed`, 302);
   }
 
   if (subscriber.status === 'unsubscribed') {
