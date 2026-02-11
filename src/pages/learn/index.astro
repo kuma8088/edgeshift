@@ -1,0 +1,11 @@
+---
+import LearnLayout from '../../layouts/LearnLayout.astro';
+import { LearnCoursesPage } from '../../components/learn/LearnCoursesPage';
+---
+
+<LearnLayout title="コース一覧">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">マイコース</h1>
+    <LearnCoursesPage client:load />
+  </div>
+</LearnLayout>

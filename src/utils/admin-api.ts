@@ -608,6 +608,15 @@ export interface Product {
   is_active: number;
   created_at: number;
   updated_at: number;
+  // Extended fields (Udemy MVP)
+  slug: string | null;
+  thumbnail_url: string | null;
+  demo_url: string | null;
+  features: string | null;
+  download_key: string | null;
+  long_description: string | null;
+  purchase_tag_id: string | null;
+  purchase_sequence_id: string | null;
 }
 
 export interface CreateProductData {
@@ -618,6 +627,14 @@ export interface CreateProductData {
   stripe_price_id?: string;
   download_url?: string;
   external_url?: string;
+  slug?: string;
+  thumbnail_url?: string;
+  demo_url?: string;
+  features?: string;
+  download_key?: string;
+  long_description?: string;
+  purchase_tag_id?: string;
+  purchase_sequence_id?: string;
 }
 
 // Plans
@@ -950,4 +967,233 @@ export interface MailUserListResponse {
 export async function listMailUsers(): Promise<{ success: boolean; data?: MailUserListResponse; error?: string }> {
   // Use the newsletter worker proxy endpoint to avoid CORS issues
   return apiRequest<MailUserListResponse>('/mailserver/users?enabled_only=true');
+}
+
+// ============================================
+// Udemy MVP: Course Management API
+// ============================================
+
+export interface CourseWithCounts {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  product_id: string | null;
+  is_published: number;
+  sort_order: number;
+  section_count: number;
+  lecture_count: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CourseSection {
+  id: string;
+  course_id: string;
+  title: string;
+  description: string | null;
+  sort_order: number;
+  lecture_count: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CourseLecture {
+  id: string;
+  section_id: string;
+  title: string;
+  content: string | null;
+  type: string;
+  duration_minutes: number | null;
+  is_published: number;
+  sort_order: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateCourseData {
+  title: string;
+  slug: string;
+  description?: string;
+  thumbnail_url?: string;
+  product_id?: string;
+}
+
+export interface CreateSectionData {
+  title: string;
+  description?: string;
+}
+
+export interface CreateLectureData {
+  title: string;
+  content?: string;
+  type?: string;
+  duration_minutes?: number;
+}
+
+// Course CRUD
+export async function listCourses() {
+  return apiRequest<CourseWithCounts[]>('/premium/courses');
+}
+
+export async function getCourse(id: string) {
+  return apiRequest<CourseWithCounts>(`/premium/courses/${id}`);
+}
+
+export async function createCourse(data: CreateCourseData) {
+  return apiRequest<CourseWithCounts>('/premium/courses', { method: 'POST', body: data });
+}
+
+export async function updateCourse(id: string, data: Partial<CreateCourseData> & { is_published?: number; sort_order?: number; product_id?: string | null }) {
+  return apiRequest(`/premium/courses/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteCourse(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/courses/${id}`, { method: 'DELETE' });
+}
+
+// Section CRUD
+export async function listSections(courseId: string) {
+  return apiRequest<CourseSection[]>(`/premium/courses/${courseId}/sections`);
+}
+
+export async function createSection(courseId: string, data: CreateSectionData) {
+  return apiRequest<CourseSection>(`/premium/courses/${courseId}/sections`, { method: 'POST', body: data });
+}
+
+export async function updateSection(id: string, data: Partial<CreateSectionData>) {
+  return apiRequest<CourseSection>(`/premium/sections/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteSection(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/sections/${id}`, { method: 'DELETE' });
+}
+
+export async function reorderSections(courseId: string, order: string[]) {
+  return apiRequest<{ success: boolean }>(`/premium/courses/${courseId}/sections/reorder`, { method: 'PUT', body: { order } });
+}
+
+// Lecture CRUD
+export async function listLectures(sectionId: string) {
+  return apiRequest<CourseLecture[]>(`/premium/sections/${sectionId}/lectures`);
+}
+
+export async function getLecture(id: string) {
+  return apiRequest<CourseLecture>(`/premium/lectures/${id}`);
+}
+
+export async function createLecture(sectionId: string, data: CreateLectureData) {
+  return apiRequest<CourseLecture>(`/premium/sections/${sectionId}/lectures`, { method: 'POST', body: data });
+}
+
+export async function updateLecture(id: string, data: Partial<CreateLectureData> & { is_published?: number }) {
+  return apiRequest<CourseLecture>(`/premium/lectures/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteLecture(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/lectures/${id}`, { method: 'DELETE' });
+}
+
+export async function reorderLectures(sectionId: string, order: string[]) {
+  return apiRequest<{ success: boolean }>(`/premium/sections/${sectionId}/lectures/reorder`, { method: 'PUT', body: { order } });
+}
+
+// Upload template
+export async function uploadTemplate(productId: string, file: File): Promise<{ success: boolean; data?: { download_key: string }; error?: string }> {
+  const apiKey = getApiKey();
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const response = await fetch(`${API_BASE}/premium/products/${productId}/upload`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Upload failed' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: 'Network error' };
+  }
+}
+
+// ============================================
+// Udemy MVP: Coupon Management API
+// ============================================
+
+export interface Coupon {
+  id: string;
+  stripe_coupon_id: string;
+  name: string;
+  discount_type: 'percent_off' | 'amount_off';
+  discount_value: number;
+  currency: string;
+  max_redemptions: number | null;
+  expires_at: number | null;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface PromotionCode {
+  id: string;
+  coupon_id: string;
+  stripe_promotion_code_id: string;
+  code: string;
+  max_redemptions: number | null;
+  expires_at: number | null;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface CreateCouponData {
+  name: string;
+  discount_type: 'percent_off' | 'amount_off';
+  discount_value: number;
+  currency?: string;
+  max_redemptions?: number;
+  expires_at?: number;
+}
+
+export interface CreatePromotionCodeData {
+  code: string;
+  max_redemptions?: number;
+  expires_at?: number;
+}
+
+export async function listCoupons() {
+  return apiRequest<Coupon[]>('/premium/coupons');
+}
+
+export async function createCoupon(data: CreateCouponData) {
+  return apiRequest<Coupon>('/premium/coupons', { method: 'POST', body: data });
+}
+
+export async function updateCoupon(id: string, data: { name?: string }) {
+  return apiRequest<Coupon>(`/premium/coupons/${id}`, { method: 'PUT', body: data });
+}
+
+export async function deleteCoupon(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/coupons/${id}`, { method: 'DELETE' });
+}
+
+export async function listPromotionCodes(couponId: string) {
+  return apiRequest<PromotionCode[]>(`/premium/coupons/${couponId}/promotion-codes`);
+}
+
+export async function createPromotionCode(couponId: string, data: CreatePromotionCodeData) {
+  return apiRequest<PromotionCode>(`/premium/coupons/${couponId}/promotion-codes`, { method: 'POST', body: data });
+}
+
+export async function deletePromotionCode(id: string) {
+  return apiRequest<{ success: boolean }>(`/premium/promotion-codes/${id}`, { method: 'DELETE' });
 }

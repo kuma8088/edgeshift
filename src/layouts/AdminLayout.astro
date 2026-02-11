@@ -74,9 +74,31 @@ const fullTitle = `${title} | EdgeShift Admin`;
               </a>
             </li>
             <li>
+              <a href="/admin/courses" class="block px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
+                コース管理
+              </a>
+            </li>
+            <li>
               <a href="/admin/payments" class="block px-4 py-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
                 決済管理
               </a>
+              <ul class="ml-4 mt-1 space-y-1">
+                <li>
+                  <a href="/admin/payments" class="block px-4 py-1.5 text-sm rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
+                    プラン
+                  </a>
+                </li>
+                <li>
+                  <a href="/admin/payments/products" class="block px-4 py-1.5 text-sm rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
+                    商品
+                  </a>
+                </li>
+                <li>
+                  <a href="/admin/payments/coupons" class="block px-4 py-1.5 text-sm rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text)] transition-colors">
+                    クーポン
+                  </a>
+                </li>
+              </ul>
             </li>
           </ul>
         </nav>

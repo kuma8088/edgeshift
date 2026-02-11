@@ -1,0 +1,21 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import CouponNewForm from '../../../../components/admin/CouponNewForm';
+---
+
+<AdminLayout title="新規クーポン">
+  <div class="space-y-6">
+    <div class="flex items-center gap-4">
+      <a
+        href="/admin/payments/coupons"
+        class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+      >
+        ← クーポン一覧
+      </a>
+    </div>
+    <h1 class="text-2xl font-bold text-[var(--color-text)]">新規クーポン作成</h1>
+    <div class="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
+      <CouponNewForm client:load />
+    </div>
+  </div>
+</AdminLayout>

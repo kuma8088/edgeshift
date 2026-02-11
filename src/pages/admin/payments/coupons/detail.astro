@@ -1,0 +1,18 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import CouponDetail from '../../../../components/admin/CouponDetail';
+---
+
+<AdminLayout title="クーポン詳細">
+  <div class="space-y-6">
+    <div class="flex items-center gap-4">
+      <a
+        href="/admin/payments/coupons"
+        class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+      >
+        ← クーポン一覧
+      </a>
+    </div>
+    <CouponDetail client:load />
+  </div>
+</AdminLayout>
