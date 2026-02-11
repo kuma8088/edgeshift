@@ -150,6 +150,24 @@ export async function getLearnLecture(id: string): Promise<ApiResponse<LectureWi
   return apiRequest<LectureWithContext>(`/premium/lectures/published/${encodeURIComponent(id)}`);
 }
 
+// === Checkout API (no auth) ===
+
+/**
+ * Create a Stripe Checkout Session for a product purchase.
+ * Returns a Stripe Checkout URL that the user should be redirected to.
+ */
+export async function checkoutProduct(params: {
+  product_id: string;
+  email: string;
+  success_url: string;
+  cancel_url: string;
+}): Promise<ApiResponse<{ url: string; session_id: string }>> {
+  return apiRequest<{ url: string; session_id: string }>('/premium/checkout/product', {
+    method: 'POST',
+    body: params,
+  });
+}
+
 // === Download API (session cookie required) ===
 
 /**
