@@ -12,6 +12,7 @@ type StripeMode = 'test' | 'live';
 interface KeyFieldState {
   value: string;
   editing: boolean;
+  originalValue: string;
 }
 
 const EXPECTED_PREFIXES: Record<string, string[]> = {
@@ -36,10 +37,10 @@ export function StripeSettingsForm() {
   const [usingEnvFallback, setUsingEnvFallback] = useState(false);
 
   const [keys, setKeys] = useState<Record<string, KeyFieldState>>({
-    test_secret_key: { value: '', editing: false },
-    test_publishable_key: { value: '', editing: false },
-    live_secret_key: { value: '', editing: false },
-    live_publishable_key: { value: '', editing: false },
+    test_secret_key: { value: '', editing: false, originalValue: '' },
+    test_publishable_key: { value: '', editing: false, originalValue: '' },
+    live_secret_key: { value: '', editing: false, originalValue: '' },
+    live_publishable_key: { value: '', editing: false, originalValue: '' },
   });
 
   useEffect(() => {
@@ -57,10 +58,10 @@ export function StripeSettingsForm() {
         setMode(d.mode);
         setUsingEnvFallback(d.using_env_fallback);
         setKeys({
-          test_secret_key: { value: d.test_secret_key, editing: false },
-          test_publishable_key: { value: d.test_publishable_key, editing: false },
-          live_secret_key: { value: d.live_secret_key, editing: false },
-          live_publishable_key: { value: d.live_publishable_key, editing: false },
+          test_secret_key: { value: d.test_secret_key, editing: false, originalValue: d.test_secret_key },
+          test_publishable_key: { value: d.test_publishable_key, editing: false, originalValue: d.test_publishable_key },
+          live_secret_key: { value: d.live_secret_key, editing: false, originalValue: d.live_secret_key },
+          live_publishable_key: { value: d.live_publishable_key, editing: false, originalValue: d.live_publishable_key },
         });
       } else {
         setError(res.error || 'Failed to load Stripe settings');
@@ -75,14 +76,14 @@ export function StripeSettingsForm() {
   function handleEditField(field: string) {
     setKeys((prev) => ({
       ...prev,
-      [field]: { value: '', editing: true },
+      [field]: { ...prev[field], value: '', editing: true },
     }));
   }
 
-  function handleCancelEdit(field: string, originalValue: string) {
+  function handleCancelEdit(field: string) {
     setKeys((prev) => ({
       ...prev,
-      [field]: { value: originalValue, editing: false },
+      [field]: { ...prev[field], value: prev[field].originalValue, editing: false },
     }));
   }
 
@@ -102,12 +103,9 @@ export function StripeSettingsForm() {
     try {
       const data: Record<string, string> = { mode };
 
-      // Only send keys that are in editing mode (not masked)
+      // Only send keys that were edited (skip masked/unchanged fields)
       for (const [field, state] of Object.entries(keys)) {
         if (state.editing && state.value) {
-          data[field] = state.value;
-        } else if (!state.editing && state.value) {
-          // Send masked value - backend will skip it
           data[field] = state.value;
         }
       }
@@ -119,10 +117,10 @@ export function StripeSettingsForm() {
         setMode(d.mode);
         setUsingEnvFallback(d.using_env_fallback);
         setKeys({
-          test_secret_key: { value: d.test_secret_key, editing: false },
-          test_publishable_key: { value: d.test_publishable_key, editing: false },
-          live_secret_key: { value: d.live_secret_key, editing: false },
-          live_publishable_key: { value: d.live_publishable_key, editing: false },
+          test_secret_key: { value: d.test_secret_key, editing: false, originalValue: d.test_secret_key },
+          test_publishable_key: { value: d.test_publishable_key, editing: false, originalValue: d.test_publishable_key },
+          live_secret_key: { value: d.live_secret_key, editing: false, originalValue: d.live_secret_key },
+          live_publishable_key: { value: d.live_publishable_key, editing: false, originalValue: d.live_publishable_key },
         });
         setSuccess('Stripe設定を保存しました');
       } else {
@@ -138,6 +136,7 @@ export function StripeSettingsForm() {
   function renderKeyField(field: string, label: string, placeholder: string) {
     const state = keys[field];
     const isValid = validatePrefix(field, state.value);
+    const isSecret = field.includes('secret_key');
 
     return (
       <div>
@@ -146,7 +145,7 @@ export function StripeSettingsForm() {
         </label>
         <div className="flex gap-2">
           <input
-            type="text"
+            type={state.editing && isSecret ? 'password' : 'text'}
             value={state.value}
             onChange={(e) => handleKeyChange(field, e.target.value)}
             disabled={!state.editing}
@@ -162,7 +161,7 @@ export function StripeSettingsForm() {
           {state.editing ? (
             <button
               type="button"
-              onClick={() => handleCancelEdit(field, state.value)}
+              onClick={() => handleCancelEdit(field)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
               取消
