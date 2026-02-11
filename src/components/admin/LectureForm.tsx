@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import {
   getLecture,
   createLecture,
@@ -25,6 +26,8 @@ export default function LectureForm() {
   const [durationMinutes, setDurationMinutes] = useState('');
   const [content, setContent] = useState('');
   const [isPublished, setIsPublished] = useState(false);
+
+  const [showPreview, setShowPreview] = useState(false);
 
   // Back URL (determined by context)
   const [backUrl, setBackUrl] = useState('/admin/courses');
@@ -186,14 +189,43 @@ export default function LectureForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
-            コンテンツ
-          </label>
-          <RichTextEditor
-            value={content}
-            onChange={setContent}
-            placeholder="レクチャーの内容を入力..."
-          />
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-[var(--color-text)]">
+              コンテンツ
+            </label>
+            {content && (
+              <button
+                type="button"
+                onClick={() => setShowPreview(!showPreview)}
+                className="px-3 py-1 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
+              >
+                {showPreview ? '編集に戻る' : 'プレビュー'}
+              </button>
+            )}
+          </div>
+          {showPreview ? (
+            <div className="border border-[var(--color-border)] rounded-lg p-6 min-h-[16rem] bg-white">
+              {/* Content is admin-created via RichTextEditor; DOMPurify sanitizes as defense-in-depth */}
+              <div
+                className="prose prose-gray max-w-none
+                  prose-headings:text-gray-900 prose-headings:font-semibold
+                  prose-p:text-gray-700 prose-p:leading-relaxed
+                  prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                  prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+                  prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:rounded-lg
+                  prose-img:rounded-lg prose-img:shadow-sm
+                  prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:rounded-r-lg prose-blockquote:py-1
+                  prose-li:text-gray-700"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+              />
+            </div>
+          ) : (
+            <RichTextEditor
+              value={content}
+              onChange={setContent}
+              placeholder="レクチャーの内容を入力..."
+            />
+          )}
         </div>
 
         {mode === 'edit' && (
