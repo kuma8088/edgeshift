@@ -132,9 +132,28 @@ export default function ShopProductDetail() {
 
   if (!product) return null;
 
+  // Reset checkout loading on bfcache restore (browser back from Stripe)
+  useEffect(() => {
+    const handler = (e: PageTransitionEvent) => {
+      if (e.persisted) setCheckoutLoading(false);
+    };
+    window.addEventListener('pageshow', handler);
+    return () => window.removeEventListener('pageshow', handler);
+  }, []);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!showCheckoutModal) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !checkoutLoading) setShowCheckoutModal(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [showCheckoutModal, checkoutLoading]);
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product) return;
+    if (!product || checkoutLoading) return;
 
     setCheckoutLoading(true);
     setCheckoutError(null);
@@ -371,7 +390,14 @@ export default function ShopProductDetail() {
 
       {/* Checkout email modal */}
       {showCheckoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !checkoutLoading) setShowCheckoutModal(false);
+          }}
+        >
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">購入手続き</h3>
             <p className="text-sm text-gray-600 mb-4">
