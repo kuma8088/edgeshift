@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="購入完了" description="ご購入ありがとうございます">
+  <div class="max-w-2xl mx-auto px-4 py-16 text-center">
+    <div class="mb-8">
+      <div class="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">購入ありがとうございます！</h1>
+      <p class="text-gray-600 mb-8">
+        ご購入の確認メールをお送りしました。<br />
+        ダウンロード可能な商品は、メール内のリンクからダウンロードできます。
+      </p>
+    </div>
+    <div class="flex gap-4 justify-center">
+      <a
+        href="/shop"
+        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        ショップに戻る
+      </a>
+      <a
+        href="/my"
+        class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+      >
+        マイページ
+      </a>
+    </div>
+  </div>
+</BaseLayout>
