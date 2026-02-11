@@ -133,21 +133,21 @@ export async function getShopProduct(slug: string): Promise<ApiResponse<ShopProd
  * Get all published courses
  */
 export async function getLearnCourses(): Promise<ApiResponse<PublishedCourse[]>> {
-  return apiRequest<PublishedCourse[]>('/premium/courses/published');
+  return apiRequest<PublishedCourse[]>('/premium/learn/courses');
 }
 
 /**
  * Get a published course with sections and lectures
  */
 export async function getLearnCourse(slug: string): Promise<ApiResponse<PublishedCourse>> {
-  return apiRequest<PublishedCourse>(`/premium/courses/published/${encodeURIComponent(slug)}`);
+  return apiRequest<PublishedCourse>(`/premium/learn/courses/${encodeURIComponent(slug)}`);
 }
 
 /**
  * Get a published lecture with navigation context
  */
 export async function getLearnLecture(id: string): Promise<ApiResponse<LectureWithContext>> {
-  return apiRequest<LectureWithContext>(`/premium/lectures/published/${encodeURIComponent(id)}`);
+  return apiRequest<LectureWithContext>(`/premium/learn/lectures/${encodeURIComponent(id)}`);
 }
 
 // === Checkout API (no auth) ===

@@ -1,0 +1,8 @@
+---
+import MyPageLayout from '../../layouts/MyPageLayout.astro';
+import { MyPurchasesPage } from '../../components/my/MyPurchasesPage';
+---
+
+<MyPageLayout title="購入済みコンテンツ">
+  <MyPurchasesPage client:load />
+</MyPageLayout>

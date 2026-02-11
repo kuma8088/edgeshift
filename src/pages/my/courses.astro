@@ -1,0 +1,8 @@
+---
+import MyPageLayout from '../../layouts/MyPageLayout.astro';
+import { MyCoursesPage } from '../../components/my/MyCoursesPage';
+---
+
+<MyPageLayout title="受講中のコース">
+  <MyCoursesPage client:load />
+</MyPageLayout>

@@ -84,3 +84,54 @@ export async function getCurrentUser(): Promise<ApiResponse<CurrentUser>> {
 export async function logout(): Promise<ApiResponse<void>> {
   return apiRequest<void>('/premium/auth/logout', { method: 'POST' });
 }
+
+// === My Page types ===
+
+export interface MyPurchase {
+  id: string;
+  status: string;
+  purchased_at: number;
+  product: {
+    id: string;
+    name: string;
+    description: string | null;
+    product_type: string;
+    price_cents: number;
+    currency: string;
+    slug: string | null;
+    thumbnail_url: string | null;
+    has_download: boolean;
+  };
+}
+
+export interface MyCourse {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  section_count: number;
+  lecture_count: number;
+}
+
+/**
+ * Get subscriber's completed purchases with product details
+ */
+export async function getMyPurchases(): Promise<ApiResponse<{ purchases: MyPurchase[] }>> {
+  return apiRequest<{ purchases: MyPurchase[] }>('/premium/my/purchases');
+}
+
+/**
+ * Get subscriber's accessible courses
+ */
+export async function getMyCourses(): Promise<ApiResponse<{ courses: MyCourse[] }>> {
+  return apiRequest<{ courses: MyCourse[] }>('/premium/my/courses');
+}
+
+/**
+ * Get download URL for a product (uses session cookie auth)
+ */
+export function getDownloadUrl(productId: string): string {
+  const base = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+  return `${base}/premium/products/${encodeURIComponent(productId)}/download`;
+}
