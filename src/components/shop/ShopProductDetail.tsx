@@ -70,6 +70,25 @@ export default function ShopProductDetail() {
     fetchProduct();
   }, []);
 
+  // Reset checkout loading on bfcache restore (browser back from Stripe)
+  useEffect(() => {
+    const handler = (e: PageTransitionEvent) => {
+      if (e.persisted) setCheckoutLoading(false);
+    };
+    window.addEventListener('pageshow', handler);
+    return () => window.removeEventListener('pageshow', handler);
+  }, []);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!showCheckoutModal) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !checkoutLoading) setShowCheckoutModal(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [showCheckoutModal, checkoutLoading]);
+
   // Sanitize long_description HTML with DOMPurify (defense-in-depth)
   const sanitizedDescription = useMemo(() => {
     if (!product?.long_description) return '';
@@ -131,25 +150,6 @@ export default function ShopProductDetail() {
   }
 
   if (!product) return null;
-
-  // Reset checkout loading on bfcache restore (browser back from Stripe)
-  useEffect(() => {
-    const handler = (e: PageTransitionEvent) => {
-      if (e.persisted) setCheckoutLoading(false);
-    };
-    window.addEventListener('pageshow', handler);
-    return () => window.removeEventListener('pageshow', handler);
-  }, []);
-
-  // Close modal on Escape key
-  useEffect(() => {
-    if (!showCheckoutModal) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !checkoutLoading) setShowCheckoutModal(false);
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [showCheckoutModal, checkoutLoading]);
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
