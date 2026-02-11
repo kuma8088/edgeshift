@@ -1,0 +1,19 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import SectionList from '../../../components/admin/SectionList';
+---
+
+<AdminLayout title="セクション管理">
+  <div class="space-y-6">
+    <div class="flex items-center gap-4">
+      <a
+        href="/admin/courses"
+        class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+      >
+        &larr; コース一覧
+      </a>
+    </div>
+    <h1 class="text-2xl font-bold text-[var(--color-text)]">セクション管理</h1>
+    <SectionList client:load />
+  </div>
+</AdminLayout>

@@ -1,0 +1,21 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import CourseEditFormWrapper from '../../../components/admin/CourseEditFormWrapper';
+---
+
+<AdminLayout title="コース編集">
+  <div class="space-y-6">
+    <div class="flex items-center gap-4">
+      <a
+        href="/admin/courses"
+        class="text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+      >
+        &larr; コース一覧
+      </a>
+    </div>
+    <h1 class="text-2xl font-bold text-[var(--color-text)]">コース編集</h1>
+    <div class="bg-white rounded-lg p-6 shadow-sm border border-[var(--color-border)]">
+      <CourseEditFormWrapper client:load />
+    </div>
+  </div>
+</AdminLayout>

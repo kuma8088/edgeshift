@@ -1,0 +1,21 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { CourseList } from '../../../components/admin/CourseList';
+---
+
+<AdminLayout title="コース管理">
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-[var(--color-text)]">コース一覧</h1>
+      <div class="flex gap-4">
+        <a
+          href="/admin/courses/new"
+          class="px-6 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors"
+        >
+          新規コース作成
+        </a>
+      </div>
+    </div>
+    <CourseList client:load />
+  </div>
+</AdminLayout>
