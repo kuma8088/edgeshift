@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import DOMPurify from 'dompurify';
-import { getShopProduct, type ShopProduct } from '../../utils/shop-api';
+import { getShopProduct, checkoutProduct, type ShopProduct } from '../../utils/shop-api';
 import DownloadSection from './DownloadSection';
 
 function formatPrice(priceCents: number, currency: string): string {
@@ -42,6 +42,10 @@ export default function ShopProductDetail() {
   const [product, setProduct] = useState<ShopProduct | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [checkoutEmail, setCheckoutEmail] = useState('');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProduct() {
@@ -127,6 +131,29 @@ export default function ShopProductDetail() {
   }
 
   if (!product) return null;
+
+  const handleCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
+
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+
+    const origin = window.location.origin;
+    const result = await checkoutProduct({
+      product_id: product.id,
+      email: checkoutEmail,
+      success_url: `${origin}/shop/success`,
+      cancel_url: window.location.href,
+    });
+
+    if (result.success && result.data?.url) {
+      window.location.href = result.data.url;
+    } else {
+      setCheckoutError(result.error || '決済セッションの作成に失敗しました。');
+      setCheckoutLoading(false);
+    }
+  };
 
   const badge = getProductTypeBadge(product.product_type);
   const featureList = parseFeatures(product.features);
@@ -252,8 +279,8 @@ export default function ShopProductDetail() {
             {product.stripe_price_id && (
               <button
                 onClick={() => {
-                  // TODO: Integrate with Stripe Checkout
-                  window.location.href = `/shop/${slug}/checkout`;
+                  setCheckoutError(null);
+                  setShowCheckoutModal(true);
                 }}
                 className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg mb-4"
               >
@@ -341,6 +368,50 @@ export default function ShopProductDetail() {
           </div>
         </div>
       </div>
+
+      {/* Checkout email modal */}
+      {showCheckoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">購入手続き</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              メールアドレスを入力してください。購入完了後、このアドレスにダウンロードリンクが届きます。
+            </p>
+            <form onSubmit={handleCheckout}>
+              <input
+                type="email"
+                value={checkoutEmail}
+                onChange={(e) => setCheckoutEmail(e.target.value)}
+                required
+                placeholder="your@email.com"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                disabled={checkoutLoading}
+                autoFocus
+              />
+              {checkoutError && (
+                <p className="text-sm text-red-600 mb-4">{checkoutError}</p>
+              )}
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={checkoutLoading}
+                  className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {checkoutLoading ? '処理中...' : '決済に進む'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCheckoutModal(false)}
+                  disabled={checkoutLoading}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
