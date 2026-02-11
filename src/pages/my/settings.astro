@@ -1,0 +1,8 @@
+---
+import MyPageLayout from '../../layouts/MyPageLayout.astro';
+import { MySettingsPage } from '../../components/my/MySettingsPage';
+---
+
+<MyPageLayout title="アカウント設定">
+  <MySettingsPage client:load />
+</MyPageLayout>
