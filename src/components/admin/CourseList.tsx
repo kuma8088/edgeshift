@@ -161,6 +161,18 @@ export function CourseList() {
               </div>
 
               <div className="flex gap-2 ml-4">
+                {course.is_published === 1 && course.slug && (
+                  <a
+                    href={`/learn/${course.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1 text-sm border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors inline-flex items-center gap-1"
+                    title="公開ページを開く"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    公開
+                  </a>
+                )}
                 <a
                   href={`/admin/courses/edit?id=${course.id}`}
                   className="px-3 py-1 text-sm border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
