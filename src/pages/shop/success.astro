@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
-const courseSlug = Astro.url.searchParams.get('course_slug');
+const rawSlug = Astro.url.searchParams.get('course_slug');
+const courseSlug = rawSlug && /^[a-z0-9-]+$/.test(rawSlug) ? rawSlug : null;
 ---
 
 <BaseLayout title="購入完了" description="ご購入ありがとうございます">

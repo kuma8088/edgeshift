@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import {
   getLecture,
   createLecture,
@@ -10,6 +11,10 @@ import {
   type CreateLectureData,
 } from '../../utils/admin-api';
 import { RichTextEditor } from './RichTextEditor';
+
+function isHtmlContent(text: string): boolean {
+  return /<(?:p|h[1-6]|div|ul|ol|table|blockquote)[\s>]/i.test(text);
+}
 
 export default function LectureForm() {
   const [mode, setMode] = useState<'create' | 'edit'>('create');
@@ -216,7 +221,9 @@ export default function LectureForm() {
                   prose-img:rounded-lg prose-img:shadow-sm
                   prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:rounded-r-lg prose-blockquote:py-1
                   prose-li:text-gray-700"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(
+                  isHtmlContent(content) ? content : marked.parse(content, { async: false }) as string
+                ) }}
               />
             </div>
           ) : (
