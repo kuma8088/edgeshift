@@ -1,5 +1,7 @@
 'use client';
 
+import DOMPurify from 'dompurify';
+
 interface Props {
   content: string;
 }
@@ -8,6 +10,7 @@ interface Props {
  * Renders lecture HTML content.
  * Content is sourced from admin-created course materials via the premium API,
  * so it is trusted content from our own system.
+ * DOMPurify is used as defense-in-depth against XSS.
  */
 export function LectureContent({ content }: Props) {
   return (
@@ -25,7 +28,7 @@ export function LectureContent({ content }: Props) {
           prose-table:text-sm
           prose-th:bg-gray-50 prose-th:font-semibold
           prose-td:border-gray-200"
-        dangerouslySetInnerHTML={{ __html: content }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
       />
     </div>
   );

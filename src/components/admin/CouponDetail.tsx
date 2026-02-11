@@ -54,7 +54,11 @@ export default function CouponDetail() {
   });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const couponId = new URLSearchParams(window.location.search).get('id');
+  // Read couponId from URL search params (guarded for SSR safety)
+  const [couponId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('id');
+  });
 
   const fetchCoupon = async () => {
     if (!couponId) {

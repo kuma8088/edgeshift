@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import { getShopProduct, type ShopProduct } from '../../utils/shop-api';
 import DownloadSection from './DownloadSection';
 
@@ -36,33 +37,6 @@ function parseFeatures(features: string | null): string[] {
   return [];
 }
 
-/**
- * Sanitize HTML content to prevent XSS.
- * Uses a simple allowlist approach - strips all tags except safe ones.
- * The long_description comes from admin-authored content in our database,
- * but we sanitize as defense-in-depth.
- */
-function sanitizeHtml(html: string): string {
-  const div = document.createElement('div');
-  div.innerHTML = html;
-
-  // Remove script, style, iframe, object, embed, form elements
-  const dangerous = div.querySelectorAll('script, style, iframe, object, embed, form, link');
-  dangerous.forEach((el) => el.remove());
-
-  // Remove event handlers from all elements
-  const allElements = div.querySelectorAll('*');
-  allElements.forEach((el) => {
-    const attrs = Array.from(el.attributes);
-    attrs.forEach((attr) => {
-      if (attr.name.startsWith('on') || attr.value.startsWith('javascript:')) {
-        el.removeAttribute(attr.name);
-      }
-    });
-  });
-
-  return div.innerHTML;
-}
 
 export default function ShopProductDetail() {
   const [product, setProduct] = useState<ShopProduct | null>(null);
@@ -92,10 +66,10 @@ export default function ShopProductDetail() {
     fetchProduct();
   }, []);
 
-  // Sanitize long_description HTML
+  // Sanitize long_description HTML with DOMPurify (defense-in-depth)
   const sanitizedDescription = useMemo(() => {
     if (!product?.long_description) return '';
-    return sanitizeHtml(product.long_description);
+    return DOMPurify.sanitize(product.long_description);
   }, [product?.long_description]);
 
   // Loading state
