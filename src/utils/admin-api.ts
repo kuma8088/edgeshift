@@ -1197,3 +1197,32 @@ export async function createPromotionCode(couponId: string, data: CreatePromotio
 export async function deletePromotionCode(id: string) {
   return apiRequest<{ success: boolean }>(`/premium/promotion-codes/${id}`, { method: 'DELETE' });
 }
+
+// ============================================
+// Stripe Settings API
+// ============================================
+
+export interface StripeSettings {
+  mode: 'test' | 'live';
+  test_secret_key: string;
+  test_publishable_key: string;
+  live_secret_key: string;
+  live_publishable_key: string;
+  using_env_fallback: boolean;
+}
+
+export interface UpdateStripeSettingsData {
+  mode?: 'test' | 'live';
+  test_secret_key?: string;
+  test_publishable_key?: string;
+  live_secret_key?: string;
+  live_publishable_key?: string;
+}
+
+export async function getStripeSettings() {
+  return apiRequest<StripeSettings>('/premium/settings/stripe');
+}
+
+export async function updateStripeSettings(data: UpdateStripeSettingsData) {
+  return apiRequest<StripeSettings>('/premium/settings/stripe', { method: 'PUT', body: data });
+}
