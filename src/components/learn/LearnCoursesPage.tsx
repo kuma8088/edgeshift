@@ -3,20 +3,22 @@
 import { useState, useEffect } from 'react';
 import { getLearnCourses, type PublishedCourse } from '../../utils/shop-api';
 import { CourseCard } from './CourseCard';
+import { CourseAuthGuard } from './CourseAuthGuard';
 
 export function LearnCoursesPage() {
   const [courses, setCourses] = useState<PublishedCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
 
   useEffect(() => {
     const fetchCourses = async () => {
       const result = await getLearnCourses();
 
       if (!result.success) {
-        // Check for 401 - redirect to login
         if (result.error?.includes('401') || result.error?.includes('Unauthorized')) {
-          window.location.href = `/auth/login?redirect=${encodeURIComponent('/learn')}`;
+          setAuthRequired(true);
+          setLoading(false);
           return;
         }
         setError(result.error ?? 'コースの取得に失敗しました');
@@ -30,6 +32,10 @@ export function LearnCoursesPage() {
 
     fetchCourses();
   }, []);
+
+  if (authRequired) {
+    return <CourseAuthGuard />;
+  }
 
   if (loading) {
     return (

@@ -88,11 +88,11 @@ async function authRequest<T>(
  */
 export async function registerForCourse(
   email: string,
-  signupPageSlug: string
+  signupPageSlug?: string
 ): Promise<AuthResponse<{ message: string }>> {
   return authRequest('/auth/register', {
     method: 'POST',
-    body: { email, signupPageSlug },
+    body: signupPageSlug ? { email, signupPageSlug } : { email },
   });
 }
 

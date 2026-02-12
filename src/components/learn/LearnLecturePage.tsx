@@ -9,12 +9,14 @@ import {
 } from '../../utils/shop-api';
 import { CourseSidebar } from './CourseSidebar';
 import { LectureContent } from './LectureContent';
+import { CourseAuthGuard } from './CourseAuthGuard';
 
 export function LearnLecturePage() {
   const [lectureCtx, setLectureCtx] = useState<LectureWithContext | null>(null);
   const [course, setCourse] = useState<PublishedCourse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -39,7 +41,8 @@ export function LearnLecturePage() {
       // Check for auth errors
       if (!lectureResult.success) {
         if (lectureResult.error?.includes('401') || lectureResult.error?.includes('Unauthorized')) {
-          window.location.href = `/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+          setAuthRequired(true);
+          setLoading(false);
           return;
         }
         setError(lectureResult.error ?? 'レクチャーの取得に失敗しました');
@@ -49,7 +52,8 @@ export function LearnLecturePage() {
 
       if (!courseResult.success) {
         if (courseResult.error?.includes('401') || courseResult.error?.includes('Unauthorized')) {
-          window.location.href = `/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+          setAuthRequired(true);
+          setLoading(false);
           return;
         }
         // Course fetch failed but lecture succeeded - continue without sidebar
@@ -64,6 +68,11 @@ export function LearnLecturePage() {
 
     fetchData();
   }, []);
+
+  if (authRequired) {
+    const slug = window.location.pathname.split('/')[2];
+    return <CourseAuthGuard registrationUrl={slug ? `/shop/${slug}` : undefined} />;
+  }
 
   if (loading) {
     return (
