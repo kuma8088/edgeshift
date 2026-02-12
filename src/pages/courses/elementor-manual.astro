@@ -120,7 +120,7 @@ const totalLectures = sections.reduce((sum, s) => sum + s.lectures, 0);
       <p class="text-gray-600 mb-8">
         メールアドレスを登録するだけで、全{totalLectures}レクチャーにアクセスできます。
       </p>
-      <CourseRegistrationForm client:load />
+      <CourseRegistrationForm client:load signupPageSlug="elementor-manual" />
     </div>
   </section>
 </BaseLayout>

@@ -195,8 +195,9 @@ export async function processSequenceEmails(env: Env): Promise<void> {
         },
       });
 
-      // Check if Broadcast API should be used
-      const useBroadcastApi = env.USE_BROADCAST_API === 'true' && !!env.RESEND_AUDIENCE_ID;
+      // Sequence emails are 1-to-1 transactional — always use Email API
+      // Broadcast API sends to entire segment, not individual subscribers
+      const useBroadcastApi = false;
 
       let sendSuccess = false;
 

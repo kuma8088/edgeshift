@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { registerForCourse } from '../../utils/auth-api';
 
-export default function CourseRegistrationForm() {
+interface Props {
+  signupPageSlug: string;
+}
+
+export default function CourseRegistrationForm({ signupPageSlug }: Props) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,7 +28,7 @@ export default function CourseRegistrationForm() {
     setLoading(true);
     setError('');
 
-    const result = await registerForCourse(email.trim());
+    const result = await registerForCourse(email.trim(), signupPageSlug);
 
     if (result.success) {
       setSent(true);
