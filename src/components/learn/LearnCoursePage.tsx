@@ -75,8 +75,7 @@ export function LearnCoursePage() {
   };
 
   if (authRequired) {
-    const slug = window.location.pathname.split('/')[2];
-    return <CourseAuthGuard registrationUrl={slug ? `/shop/${slug}` : undefined} />;
+    return <CourseAuthGuard />;
   }
 
   if (loading) {
