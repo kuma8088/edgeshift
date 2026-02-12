@@ -9,7 +9,7 @@ const PREMIUM_BASE = `${API_BASE}/premium`;
 export interface User {
   id: string;
   email: string;
-  role: 'owner' | 'admin' | 'subscriber';
+  role: 'owner' | 'admin' | 'subscriber' | 'learner';
 }
 
 export interface MagicLinkVerifyResponse {
@@ -81,6 +81,18 @@ async function authRequest<T>(
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: `Network error: ${message}` };
   }
+}
+
+/**
+ * Register for a free course (creates subscriber + learner user + sends magic link)
+ */
+export async function registerForCourse(
+  email: string
+): Promise<AuthResponse<{ message: string }>> {
+  return authRequest('/auth/register', {
+    method: 'POST',
+    body: { email },
+  });
 }
 
 /**
