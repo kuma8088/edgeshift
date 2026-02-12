@@ -40,7 +40,7 @@ export function LearnLecturePage() {
 
       // Check for auth errors
       if (!lectureResult.success) {
-        if (lectureResult.error?.includes('401') || lectureResult.error?.includes('Unauthorized')) {
+        if (lectureResult.status === 401) {
           setAuthRequired(true);
           setLoading(false);
           return;
@@ -51,7 +51,7 @@ export function LearnLecturePage() {
       }
 
       if (!courseResult.success) {
-        if (courseResult.error?.includes('401') || courseResult.error?.includes('Unauthorized')) {
+        if (courseResult.status === 401) {
           setAuthRequired(true);
           setLoading(false);
           return;

@@ -10,6 +10,7 @@ interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  status?: number;
 }
 
 // === Types ===
@@ -97,7 +98,7 @@ async function apiRequest<T>(
     const data = await response.json();
 
     if (!response.ok) {
-      return { success: false, error: data.error || `Request failed: ${response.status}` };
+      return { success: false, error: data.error || `Request failed: ${response.status}`, status: response.status };
     }
 
     // Normalize response format

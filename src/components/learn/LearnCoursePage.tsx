@@ -38,7 +38,7 @@ export function LearnCoursePage() {
       const result = await getLearnCourse(slug);
 
       if (!result.success) {
-        if (result.error?.includes('401') || result.error?.includes('Unauthorized')) {
+        if (result.status === 401) {
           setAuthRequired(true);
           setLoading(false);
           return;
