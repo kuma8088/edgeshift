@@ -87,11 +87,12 @@ async function authRequest<T>(
  * Register for a free course (creates subscriber + learner user + sends magic link)
  */
 export async function registerForCourse(
-  email: string
+  email: string,
+  signupPageSlug: string
 ): Promise<AuthResponse<{ message: string }>> {
   return authRequest('/auth/register', {
     method: 'POST',
-    body: { email },
+    body: { email, signupPageSlug },
   });
 }
 
