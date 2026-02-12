@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { registerForCourse } from '../../utils/auth-api';
 
-export function CourseAuthGuard() {
+interface CourseAuthGuardProps {
+  registrationUrl?: string;
+}
+
+export function CourseAuthGuard({ registrationUrl = '/shop' }: CourseAuthGuardProps) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -112,7 +116,7 @@ export function CourseAuthGuard() {
         <p className="text-sm text-gray-400 mt-6">
           まだ登録していない方は
           <a
-            href="/courses/elementor-manual"
+            href={registrationUrl}
             className="text-blue-600 hover:text-blue-800 underline ml-1"
           >
             こちら

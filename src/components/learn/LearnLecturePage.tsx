@@ -70,7 +70,8 @@ export function LearnLecturePage() {
   }, []);
 
   if (authRequired) {
-    return <CourseAuthGuard />;
+    const slug = window.location.pathname.split('/')[2];
+    return <CourseAuthGuard registrationUrl={slug ? `/shop/${slug}` : undefined} />;
   }
 
   if (loading) {
