@@ -145,9 +145,7 @@ const stats = [
               <p class="text-[var(--color-text-secondary)]">{feature.description}</p>
             </div>
             <div class={i % 2 === 1 ? 'md:order-1' : ''}>
-              <div class="aspect-video bg-gray-200 rounded-lg border border-[var(--color-border)] flex items-center justify-center">
-                <span class="text-[var(--color-text-muted)] text-sm">Screenshot coming soon</span>
-              </div>
+              <img src={feature.image} alt={feature.title} class="w-full rounded-lg border border-[var(--color-border)]" loading="lazy" />
             </div>
           </div>
         ))}
