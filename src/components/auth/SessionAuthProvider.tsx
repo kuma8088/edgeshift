@@ -22,7 +22,7 @@ export function useSessionAuth() {
 interface SessionAuthProviderProps {
   children: ReactNode;
   redirectTo?: string;
-  requiredRole?: ('owner' | 'admin' | 'subscriber')[];
+  requiredRole?: ('owner' | 'admin' | 'subscriber' | 'learner')[];
 }
 
 export function SessionAuthProvider({

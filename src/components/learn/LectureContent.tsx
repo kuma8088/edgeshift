@@ -52,13 +52,37 @@ export function LectureContent({ content }: Props) {
     return DOMPurify.sanitize(html);
   }, [content]);
 
-  // Apply syntax highlighting to code blocks after render
+  // Apply syntax highlighting and copy buttons to code blocks after render
   useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.querySelectorAll('pre code').forEach((block) => {
-        hljs.highlightElement(block as HTMLElement);
+    if (!containerRef.current) return;
+
+    containerRef.current.querySelectorAll('pre code').forEach((block) => {
+      hljs.highlightElement(block as HTMLElement);
+    });
+
+    containerRef.current.querySelectorAll('pre').forEach((pre) => {
+      if (pre.querySelector('.copy-btn')) return;
+      pre.style.position = 'relative';
+
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.textContent = 'Copy';
+      btn.style.cssText =
+        'position:absolute;top:8px;right:8px;padding:4px 10px;font-size:12px;' +
+        'background:rgba(255,255,255,0.15);color:#e5e7eb;border:1px solid rgba(255,255,255,0.2);' +
+        'border-radius:4px;cursor:pointer;transition:background 0.2s';
+      btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.25)'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = 'rgba(255,255,255,0.15)'; });
+      btn.addEventListener('click', () => {
+        const code = pre.querySelector('code');
+        if (code) {
+          navigator.clipboard.writeText(code.textContent || '');
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+        }
       });
-    }
+      pre.appendChild(btn);
+    });
   }, [sanitizedHtml]);
 
   return (
