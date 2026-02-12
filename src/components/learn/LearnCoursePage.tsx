@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getLearnCourse, type PublishedCourse } from '../../utils/shop-api';
+import { CourseAuthGuard } from './CourseAuthGuard';
 
 function getLectureIcon(type: string): string {
   switch (type) {
@@ -19,6 +20,7 @@ export function LearnCoursePage() {
   const [course, setCourse] = useState<PublishedCourse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -37,7 +39,8 @@ export function LearnCoursePage() {
 
       if (!result.success) {
         if (result.error?.includes('401') || result.error?.includes('Unauthorized')) {
-          window.location.href = `/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+          setAuthRequired(true);
+          setLoading(false);
           return;
         }
         setError(result.error ?? 'コースの取得に失敗しました');
@@ -70,6 +73,10 @@ export function LearnCoursePage() {
       return next;
     });
   };
+
+  if (authRequired) {
+    return <CourseAuthGuard />;
+  }
 
   if (loading) {
     return (
