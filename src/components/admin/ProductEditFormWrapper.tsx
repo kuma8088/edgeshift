@@ -1,38 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { updateProduct, type Product, type CreateProductData } from '../../utils/admin-api';
+import { getProduct, updateProduct, type Product, type CreateProductData } from '../../utils/admin-api';
 import { ProductForm } from './ProductForm';
-
-// Simple API request for fetching a single product
-async function getProduct(id: string): Promise<{ success: boolean; data?: Product; error?: string }> {
-  const apiKey = localStorage.getItem('edgeshift_admin_api_key');
-  if (!apiKey) {
-    return { success: false, error: 'Not authenticated' };
-  }
-
-  const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
-
-  try {
-    const response = await fetch(`${API_BASE}/premium/products/${id}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return { success: false, error: data.error || `Request failed: ${response.status}` };
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, error: `Network error: ${message}` };
-  }
-}
 
 export default function ProductEditFormWrapper() {
   const [product, setProduct] = useState<Product | null>(null);
