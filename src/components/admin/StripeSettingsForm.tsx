@@ -20,6 +20,8 @@ const EXPECTED_PREFIXES: Record<string, string[]> = {
   test_publishable_key: ['pk_test_'],
   live_secret_key: ['sk_live_', 'rk_live_'],
   live_publishable_key: ['pk_live_'],
+  test_webhook_secret: ['whsec_'],
+  live_webhook_secret: ['whsec_'],
 };
 
 function validatePrefix(field: string, value: string): boolean {
@@ -41,6 +43,8 @@ export function StripeSettingsForm() {
     test_publishable_key: { value: '', editing: false, originalValue: '' },
     live_secret_key: { value: '', editing: false, originalValue: '' },
     live_publishable_key: { value: '', editing: false, originalValue: '' },
+    test_webhook_secret: { value: '', editing: false, originalValue: '' },
+    live_webhook_secret: { value: '', editing: false, originalValue: '' },
   });
 
   useEffect(() => {
@@ -62,6 +66,8 @@ export function StripeSettingsForm() {
           test_publishable_key: { value: d.test_publishable_key, editing: false, originalValue: d.test_publishable_key },
           live_secret_key: { value: d.live_secret_key, editing: false, originalValue: d.live_secret_key },
           live_publishable_key: { value: d.live_publishable_key, editing: false, originalValue: d.live_publishable_key },
+          test_webhook_secret: { value: d.test_webhook_secret || '', editing: false, originalValue: d.test_webhook_secret || '' },
+          live_webhook_secret: { value: d.live_webhook_secret || '', editing: false, originalValue: d.live_webhook_secret || '' },
         });
       } else {
         setError(res.error || 'Failed to load Stripe settings');
@@ -121,6 +127,8 @@ export function StripeSettingsForm() {
           test_publishable_key: { value: d.test_publishable_key, editing: false, originalValue: d.test_publishable_key },
           live_secret_key: { value: d.live_secret_key, editing: false, originalValue: d.live_secret_key },
           live_publishable_key: { value: d.live_publishable_key, editing: false, originalValue: d.live_publishable_key },
+          test_webhook_secret: { value: d.test_webhook_secret || '', editing: false, originalValue: d.test_webhook_secret || '' },
+          live_webhook_secret: { value: d.live_webhook_secret || '', editing: false, originalValue: d.live_webhook_secret || '' },
         });
         setSuccess('Stripe設定を保存しました');
       } else {
@@ -136,7 +144,7 @@ export function StripeSettingsForm() {
   function renderKeyField(field: string, label: string, placeholder: string) {
     const state = keys[field];
     const isValid = validatePrefix(field, state.value);
-    const isSecret = field.includes('secret_key');
+    const isSecret = field.includes('secret');
 
     return (
       <div>
@@ -275,7 +283,15 @@ export function StripeSettingsForm() {
               'Publishable Key',
               'pk_test_...'
             )}
+            {renderKeyField(
+              'test_webhook_secret',
+              'Webhook Secret',
+              'whsec_...'
+            )}
           </div>
+          <p className="mt-3 text-xs text-gray-500">
+            Webhook SecretはStripe Dashboard → Developers → Webhooks → エンドポイント詳細から取得できます
+          </p>
         </div>
 
         {/* Live Keys */}
@@ -294,7 +310,15 @@ export function StripeSettingsForm() {
               'Publishable Key',
               'pk_live_...'
             )}
+            {renderKeyField(
+              'live_webhook_secret',
+              'Webhook Secret',
+              'whsec_...'
+            )}
           </div>
+          <p className="mt-3 text-xs text-gray-500">
+            Webhook SecretはStripe Dashboard → Developers → Webhooks → エンドポイント詳細から取得できます
+          </p>
         </div>
 
         {/* Save Button */}
