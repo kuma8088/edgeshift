@@ -537,6 +537,20 @@ export async function previewTemplate(data: PreviewTemplateData) {
   return apiRequest<{ html: string }>('/templates/preview', { method: 'POST', body: data });
 }
 
+// Email Brand Settings API (Premium Worker)
+export interface EmailBrandSettings {
+  email_primary_color?: string;
+  email_footer_html?: string;
+}
+
+export async function getEmailBrandSettings() {
+  return apiRequest<EmailBrandSettings>('/premium/email-settings');
+}
+
+export async function updateEmailBrandSettings(data: EmailBrandSettings) {
+  return apiRequest<{ success: boolean }>('/premium/email-settings', { method: 'PUT', body: data });
+}
+
 export interface TestSendTemplateData {
   template_id: string;
   content: string;

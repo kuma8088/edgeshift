@@ -157,7 +157,7 @@ export default function ShopProductDetail() {
     const result = await checkoutProduct({
       product_id: product.id,
       email: checkoutEmail,
-      success_url: `${origin}/shop/success`,
+      success_url: `${origin}/shop/success?email=${encodeURIComponent(checkoutEmail)}&product=${encodeURIComponent(product.name)}`,
       cancel_url: window.location.href,
     });
 
