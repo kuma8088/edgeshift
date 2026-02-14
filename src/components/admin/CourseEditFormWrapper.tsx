@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getCourse, updateCourse, type CourseWithCounts, type CreateCourseData } from '../../utils/admin-api';
 import { CourseForm } from './CourseForm';
+import SectionList from './SectionList';
 
 export default function CourseEditFormWrapper() {
   const [course, setCourse] = useState<CourseWithCounts | null>(null);
@@ -82,12 +83,20 @@ export default function CourseEditFormWrapper() {
         </div>
       )}
       {course && (
-        <CourseForm
-          course={course}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          loading={submitLoading}
-        />
+        <>
+          <CourseForm
+            course={course}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            loading={submitLoading}
+          />
+
+          {/* Section & Lecture management */}
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-[var(--color-text)] mb-4">セクション・レクチャー</h2>
+            <SectionList courseId={course.id} />
+          </div>
+        </>
       )}
     </>
   );

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Product, CreateProductData, Tag, Sequence } from '../../utils/admin-api';
-import { uploadTemplate, uploadProductImage, listTags, listSequences } from '../../utils/admin-api';
+import type { Product, CreateProductData, Tag, Sequence, CourseWithCounts } from '../../utils/admin-api';
+import { uploadTemplate, uploadProductImage, listTags, listSequences, listCourses } from '../../utils/admin-api';
 import { RichTextEditor } from './RichTextEditor';
 
 interface ProductFormProps {
@@ -39,6 +39,10 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
   const [tags, setTags] = useState<Tag[]>([]);
   const [sequences, setSequences] = useState<Sequence[]>([]);
 
+  // Course linkage (for course-type products)
+  const [linkedCourse, setLinkedCourse] = useState<CourseWithCounts | null>(null);
+  const [courseLoading, setCourseLoading] = useState(false);
+
   // Features JSON validation
   const [featuresError, setFeaturesError] = useState('');
   const [parsedFeatures, setParsedFeatures] = useState<string[]>([]);
@@ -51,6 +55,22 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
       if (res.success && res.data?.sequences) setSequences(res.data.sequences);
     });
   }, []);
+
+  // Fetch linked course for course-type products
+  useEffect(() => {
+    if (!product || productType !== 'course') {
+      setLinkedCourse(null);
+      return;
+    }
+    setCourseLoading(true);
+    listCourses().then((res) => {
+      if (res.success && res.data) {
+        const found = res.data.find((c) => c.product_id === product.id);
+        setLinkedCourse(found || null);
+      }
+      setCourseLoading(false);
+    });
+  }, [product, productType]);
 
   // Validate features JSON
   useEffect(() => {
@@ -215,6 +235,55 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
             </select>
           </div>
         </div>
+
+        {/* Course linkage section (only for course-type products in edit mode) */}
+        {product && productType === 'course' && (
+          <div className="p-4 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-secondary)]">
+            <h3 className="text-sm font-semibold text-[var(--color-text)] mb-3">コース連携</h3>
+            {courseLoading ? (
+              <div className="animate-pulse h-8 bg-gray-200 rounded" />
+            ) : linkedCourse ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-green-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  コース「{linkedCourse.title}」が紐付いています
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {linkedCourse.section_count}セクション / {linkedCourse.lecture_count}レクチャー
+                </p>
+                <a
+                  href={`/admin/courses/edit?id=${linkedCourse.id}`}
+                  className="inline-flex items-center gap-1 text-sm text-[var(--color-accent)] hover:underline font-medium"
+                >
+                  セクション・レクチャーを編集
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-amber-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  まだコースが作成されていません
+                </div>
+                <a
+                  href="/admin/courses/new"
+                  className="inline-flex items-center gap-1 text-sm text-[var(--color-accent)] hover:underline font-medium"
+                >
+                  コースを作成
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-2">

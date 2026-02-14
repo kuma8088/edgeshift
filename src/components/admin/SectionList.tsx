@@ -20,8 +20,12 @@ const lectureTypeLabels: Record<string, string> = {
   quiz: 'クイズ',
 };
 
-export default function SectionList() {
-  const [courseId, setCourseId] = useState<string | null>(null);
+interface SectionListProps {
+  courseId?: string;
+}
+
+export default function SectionList({ courseId: propCourseId }: SectionListProps) {
+  const [courseId, setCourseId] = useState<string | null>(propCourseId || null);
   const [sections, setSections] = useState<CourseSection[]>([]);
   const [lecturesBySection, setLecturesBySection] = useState<Record<string, CourseLecture[]>>({});
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -55,6 +59,10 @@ export default function SectionList() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
+    if (propCourseId) {
+      setCourseId(propCourseId);
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
     if (!id) {
@@ -63,7 +71,7 @@ export default function SectionList() {
       return;
     }
     setCourseId(id);
-  }, []);
+  }, [propCourseId]);
 
   useEffect(() => {
     if (courseId) {
