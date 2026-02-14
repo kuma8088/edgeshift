@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Product, CreateProductData, Tag, Sequence } from '../../utils/admin-api';
-import { uploadTemplate, listTags, listSequences } from '../../utils/admin-api';
+import { uploadTemplate, uploadProductImage, listTags, listSequences } from '../../utils/admin-api';
 import { RichTextEditor } from './RichTextEditor';
 
 interface ProductFormProps {
@@ -30,6 +30,8 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
   const [isActive, setIsActive] = useState(product?.is_active !== 0);
 
   // Tags & Sequences for select dropdowns
@@ -117,6 +119,27 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
       setUploadError('アップロード中にエラーが発生しました');
     } finally {
       setUploadingFile(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    setImageUploadError('');
+
+    try {
+      const result = await uploadProductImage(file);
+      if (result.success && result.data) {
+        setThumbnailUrl(result.data.url);
+      } else {
+        setImageUploadError(result.error || 'アップロードに失敗しました');
+      }
+    } catch {
+      setImageUploadError('アップロード中にエラーが発生しました');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -250,14 +273,29 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
 
         <div>
           <label htmlFor="thumbnail_url" className={labelClass}>サムネイルURL</label>
-          <input
-            type="text"
-            id="thumbnail_url"
-            value={thumbnailUrl}
-            onChange={(e) => setThumbnailUrl(e.target.value)}
-            className={inputClass}
-            placeholder="例: https://..."
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              id="thumbnail_url"
+              value={thumbnailUrl}
+              onChange={(e) => setThumbnailUrl(e.target.value)}
+              className={`${inputClass} flex-1`}
+              placeholder="例: https://..."
+            />
+            <label className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white ${uploadingImage ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] cursor-pointer'}`}>
+              {uploadingImage ? 'アップロード中...' : '画像アップロード'}
+              <input
+                type="file"
+                className="hidden"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+              />
+            </label>
+          </div>
+          {imageUploadError && (
+            <p className="mt-2 text-sm text-red-500">{imageUploadError}</p>
+          )}
           {thumbnailUrl && (
             <div className="mt-2">
               <img
