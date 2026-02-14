@@ -144,7 +144,7 @@ export function StripeSettingsForm() {
   function renderKeyField(field: string, label: string, placeholder: string) {
     const state = keys[field];
     const isValid = validatePrefix(field, state.value);
-    const isSecret = field.includes('secret_key');
+    const isSecret = field.includes('secret');
 
     return (
       <div>
