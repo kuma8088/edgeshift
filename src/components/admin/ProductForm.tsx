@@ -64,8 +64,8 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
     }
     setCourseLoading(true);
     listCourses().then((res) => {
-      if (res.success && res.data?.courses) {
-        const found = res.data.courses.find((c: CourseWithCounts) => c.product_id === product.id);
+      if (res.success && res.data) {
+        const found = res.data.find((c) => c.product_id === product.id);
         setLinkedCourse(found || null);
       }
       setCourseLoading(false);
