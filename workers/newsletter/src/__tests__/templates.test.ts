@@ -177,7 +177,7 @@ describe('Template Engine', () => {
       const html = await renderEmailAsync(options);
 
       // Should contain short URL pattern instead of original URL
-      expect(html).toContain('https://edgeshift.tech/r/');
+      expect(html).toContain(`${testEnv.SITE_URL}/r/`);
       expect(html).not.toContain('href="https://example.com/article"');
     });
 

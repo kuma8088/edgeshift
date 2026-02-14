@@ -2,10 +2,10 @@
 
 interface Env {
 	RATE_LIMIT_KV: KVNamespace;
-	ALLOWED_ORIGIN: "https://edgeshift.tech";
-	SENDER_EMAIL: "newsletter@mail.edgeshift.tech";
-	SENDER_NAME: "EdgeShift Newsletter";
-	SITE_URL: "https://edgeshift.tech";
+	ALLOWED_ORIGIN: string;
+	SENDER_EMAIL: string;
+	SENDER_NAME: string;
+	SITE_URL: string;
 	RESEND_API_KEY: string;
 	TURNSTILE_SECRET_KEY: string;
 	ADMIN_API_KEY: string;

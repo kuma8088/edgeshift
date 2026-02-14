@@ -14,7 +14,7 @@ export function EmbedCodeGenerator({
   slug,
   embedTheme,
   embedSize,
-  baseUrl = 'https://edgeshift.tech',
+  baseUrl = (import.meta.env.SITE || 'https://edgeshift.tech/').replace(/\/$/, ''),
 }: EmbedCodeGeneratorProps) {
   const [copied, setCopied] = useState(false);
   const [previewTheme, setPreviewTheme] = useState(embedTheme);

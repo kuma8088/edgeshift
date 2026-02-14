@@ -18,7 +18,7 @@ export const prerender = true;
         </p>
       </div>
 
-      <ContactForm endpoint="https://edgeshift.tech/api/contact" />
+      <ContactForm endpoint={`${(import.meta.env.SITE || 'https://edgeshift.tech').replace(/\/$/, '')}/api/contact`} />
 
       <div class="mt-12 pt-8 border-t border-[var(--color-border)]">
         <p class="text-center text-[var(--color-text-muted)] text-sm mb-4">または SNS でもお気軽にどうぞ</p>
