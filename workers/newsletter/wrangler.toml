@@ -164,3 +164,138 @@ bucket_name = "edgeshift-newsletter-images"
 
 # Resend Marketing API (set via wrangler secret put in production)
 # RESEND_AUDIENCE_ID = "your-audience-id"
+
+# ===== Staging Environment =====
+# Deploy with: wrangler deploy --env staging
+# Set secrets: wrangler secret put RESEND_API_KEY --env staging
+#              wrangler secret put ADMIN_API_KEY --env staging
+#              wrangler secret put TURNSTILE_SECRET_KEY --env staging
+#              wrangler secret put RESEND_WEBHOOK_SECRET --env staging
+
+[env.staging]
+name = "edgeshift-newsletter-staging"
+workers_dev = false
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/newsletter/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/campaigns"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/campaigns/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/sequences"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/sequences/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/subscribers"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/subscribers/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/dashboard/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/webhooks/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/analytics/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/admin/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/signup-pages"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/signup-pages/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/contact-lists"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/contact-lists/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/archive"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/archive/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/referral/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/templates"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/templates/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/brand-settings"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/images"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/images/*"
+zone_name = "edgeshift.tech"
+
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/api/mailserver/*"
+zone_name = "edgeshift.tech"
+
+# Short URL redirects (staging)
+[[env.staging.routes]]
+pattern = "staging.edgeshift.tech/r/*"
+zone_name = "edgeshift.tech"
+
+[env.staging.vars]
+ALLOWED_ORIGIN = "https://staging.edgeshift.tech"
+SENDER_EMAIL = "info@send.edgeshift.tech"
+SENDER_NAME = "井村尚弥"
+SITE_URL = "https://staging.edgeshift.tech"
+IMAGES_PUBLIC_URL = "https://images.edgeshift.tech"
+
+# Staging D1 Database
+# Create with: wrangler d1 create edgeshift-newsletter-staging
+# Then replace the database_id below with the actual ID
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "edgeshift-newsletter-staging"
+database_id = "01e4a8e1-0bcb-4603-9e77-81840bb64578"
+
+# Staging R2 bucket (shared with production)
+[[env.staging.r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "edgeshift-newsletter-images"
+
+[env.staging.triggers]
+crons = ["*/15 * * * *"]

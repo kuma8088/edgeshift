@@ -169,9 +169,9 @@ interface CampaignClicksResponse {
   unsubscribed_users: UnsubscribedUser[];
 }
 
-// Extract short_code from URL like https://edgeshift.tech/r/xxxxxxxx
+// Extract short_code from URL like https://<domain>/r/xxxxxxxx
 function extractShortCode(url: string): string | null {
-  const match = url.match(/edgeshift\.tech\/r\/([A-Za-z0-9]{8})/);
+  const match = url.match(/\/r\/([A-Za-z0-9]{8})/);
   return match ? match[1] : null;
 }
 

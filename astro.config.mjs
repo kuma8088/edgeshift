@@ -7,7 +7,7 @@ import cloudflare from '@astrojs/cloudflare';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://edgeshift.tech',
+  site: process.env.SITE_URL || 'https://edgeshift.tech',
   output: 'server',
   adapter: cloudflare(),
   integrations: [sitemap(), react()],
