@@ -16,7 +16,21 @@ function DownloadButton({ productId }: { productId: string }) {
       if (response.status === 401) { setError('ログインが必要です'); return; }
       if (response.status === 403) { setError('アクセス権がありません'); return; }
       if (!response.ok) { setError('ダウンロードに失敗しました'); return; }
-      window.open(url, '_blank');
+      // Fetch file as blob and trigger download with correct filename
+      const dlResponse = await fetch(url, { credentials: 'include' });
+      if (!dlResponse.ok) { setError('ダウンロードに失敗しました'); return; }
+      const disposition = dlResponse.headers.get('Content-Disposition');
+      const filenameMatch = disposition?.match(/filename="?([^";\n]+)"?/);
+      const filename = filenameMatch?.[1] || 'download';
+      const blob = await dlResponse.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
     } catch {
       setError('ネットワークエラー');
     } finally {
