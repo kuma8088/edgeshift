@@ -32,6 +32,7 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState('');
+  const [manualStripePrice, setManualStripePrice] = useState(false);
   const [isActive, setIsActive] = useState(product?.is_active !== 0);
 
   // Tags & Sequences for select dropdowns
@@ -81,7 +82,7 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
       description: description || undefined,
       price_cents: parseInt(priceCents, 10),
       product_type: productType,
-      stripe_price_id: stripePriceId || undefined,
+      stripe_price_id: manualStripePrice ? (stripePriceId || undefined) : undefined,
       download_url: downloadUrl || undefined,
       external_url: externalUrl || undefined,
       slug: slug || undefined,
@@ -216,15 +217,40 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
         </div>
 
         <div>
-          <label htmlFor="stripe_price_id" className={labelClass}>Stripe Price ID</label>
-          <input
-            type="text"
-            id="stripe_price_id"
-            value={stripePriceId}
-            onChange={(e) => setStripePriceId(e.target.value)}
-            className={inputClass}
-            placeholder="例: price_1234567890"
-          />
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="stripe_price_id" className="block text-sm font-medium text-[var(--color-text)]">Stripe Price ID</label>
+            <label className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={manualStripePrice}
+                onChange={(e) => setManualStripePrice(e.target.checked)}
+                className="w-3.5 h-3.5 text-[var(--color-accent)] border-[var(--color-border)] rounded"
+              />
+              手動で設定
+            </label>
+          </div>
+          {manualStripePrice ? (
+            <input
+              type="text"
+              id="stripe_price_id"
+              value={stripePriceId}
+              onChange={(e) => setStripePriceId(e.target.value)}
+              className={inputClass}
+              placeholder="例: price_1234567890"
+            />
+          ) : (
+            <>
+              {stripePriceId ? (
+                <p className="px-4 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-muted)]">
+                  {stripePriceId}
+                </p>
+              ) : (
+                <p className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                  保存時に Stripe で自動生成されます
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         <div>
