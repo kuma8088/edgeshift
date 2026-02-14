@@ -1129,6 +1129,43 @@ export async function uploadTemplate(productId: string, file: File): Promise<{ s
   }
 }
 
+// Upload product image (to premium worker R2)
+export async function uploadProductImage(file: File): Promise<{ success: boolean; data?: { url: string; filename: string }; error?: string }> {
+  const apiKey = getApiKey();
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const response = await fetch(`${API_BASE}/premium/images/upload`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+    });
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      return { success: false, error: `Server error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearApiKey();
+        return { success: false, error: 'Authentication failed' };
+      }
+      return { success: false, error: data.error || 'Upload failed' };
+    }
+    return { success: true, data };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: `Network error: ${message}` };
+  }
+}
+
 // ============================================
 // Udemy MVP: Coupon Management API
 // ============================================
