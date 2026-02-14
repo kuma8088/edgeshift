@@ -659,6 +659,10 @@ export async function listProducts() {
   return apiRequest<Product[]>('/premium/products');
 }
 
+export async function getProduct(id: string) {
+  return apiRequest<Product>(`/premium/products/${id}`);
+}
+
 export async function createProduct(data: CreateProductData) {
   return apiRequest<Product>('/premium/products', { method: 'POST', body: data });
 }

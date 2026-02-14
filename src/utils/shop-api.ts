@@ -32,6 +32,7 @@ export interface ShopProduct {
   features: string | null;
   download_key: string | null;
   long_description: string | null;
+  course_slug: string | null;
   created_at: number;
   updated_at: number;
 }

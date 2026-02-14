@@ -49,7 +49,6 @@ export default function ShopProductDetail() {
 
   useEffect(() => {
     async function fetchProduct() {
-      // Extract slug from pathname: /shop/xxx → xxx
       const pathParts = window.location.pathname.split('/').filter(Boolean);
       const slug = pathParts[pathParts.length - 1];
 
@@ -98,20 +97,16 @@ export default function ShopProductDetail() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12 animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-24 mb-8" />
-        <div className="grid md:grid-cols-5 gap-8">
-          <div className="md:col-span-3">
-            <div className="aspect-video bg-gray-200 rounded-xl mb-6" />
-            <div className="h-8 bg-gray-200 rounded w-3/4 mb-4" />
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-full" />
+      <div className="animate-pulse">
+        <div className="py-16 px-4">
+          <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12">
+            <div className="aspect-video bg-gray-200 rounded-xl" />
+            <div className="space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-3/4" />
               <div className="h-4 bg-gray-200 rounded w-full" />
               <div className="h-4 bg-gray-200 rounded w-2/3" />
+              <div className="h-12 bg-gray-200 rounded w-48 mt-6" />
             </div>
-          </div>
-          <div className="md:col-span-2">
-            <div className="h-48 bg-gray-200 rounded-xl" />
           </div>
         </div>
       </div>
@@ -174,221 +169,245 @@ export default function ShopProductDetail() {
     }
   };
 
+  const openCheckoutModal = () => {
+    setCheckoutError(null);
+    setShowCheckoutModal(true);
+  };
+
   const badge = getProductTypeBadge(product.product_type);
   const featureList = parseFeatures(product.features);
   const slug = product.slug || product.id;
+  const priceDisplay = product.price_cents === 0
+    ? '無料'
+    : formatPrice(product.price_cents, product.currency);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      {/* Breadcrumb */}
-      <nav className="mb-8">
-        <a
-          href="/shop"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          ショップに戻る
-        </a>
-      </nav>
-
-      <div className="grid md:grid-cols-5 gap-8">
-        {/* Left column: Content */}
-        <div className="md:col-span-3">
-          {/* Thumbnail */}
-          {product.thumbnail_url ? (
-            <img
-              src={product.thumbnail_url}
-              alt={product.name}
-              className="w-full aspect-video object-cover rounded-xl mb-6 shadow-sm"
-            />
-          ) : (
-            <div className="w-full aspect-video bg-gray-100 rounded-xl mb-6 flex items-center justify-center">
-              <svg
-                className="w-16 h-16 text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                />
-              </svg>
-            </div>
-          )}
-
-          {/* Title and badge */}
-          <div className="flex items-start gap-3 mb-4">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex-1">
-              {product.name}
-            </h1>
-            <span
-              className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${badge.color}`}
+    <>
+      {/* ============================== */}
+      {/* Section 1: Hero               */}
+      {/* ============================== */}
+      <section className="bg-gradient-to-br from-[var(--color-accent)]/5 via-white to-white">
+        <div className="max-w-5xl mx-auto px-4 py-12 md:py-16">
+          {/* Breadcrumb */}
+          <nav className="mb-8">
+            <a
+              href="/shop"
+              className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-[var(--color-accent)] transition-colors"
             >
-              {badge.label}
-            </span>
-          </div>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              ショップに戻る
+            </a>
+          </nav>
 
-          {/* Short description */}
-          {product.description && (
-            <p className="text-gray-600 mb-6 text-lg leading-relaxed">
-              {product.description}
-            </p>
-          )}
-
-          {/* Long description (sanitized HTML from admin-authored content) */}
-          {sanitizedDescription && (
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">商品説明</h2>
-              <div
-                className="prose prose-gray max-w-none"
-                dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
-              />
-            </div>
-          )}
-
-          {/* Features */}
-          {featureList.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">特徴</h2>
-              <ul className="space-y-2">
-                {featureList.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2 text-gray-700">
-                    <svg
-                      className="w-5 h-5 text-green-500 mt-0.5 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Right column: Purchase sidebar */}
-        <div className="md:col-span-2">
-          <div className="sticky top-24 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            {/* Price */}
-            <div className="mb-6">
-              <span className="text-3xl font-bold text-gray-900">
-                {product.price_cents === 0
-                  ? '無料'
-                  : formatPrice(product.price_cents, product.currency)}
-              </span>
-              {product.price_cents > 0 && (
-                <span className="text-sm text-gray-500 ml-1">(税込)</span>
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            {/* Left: Thumbnail */}
+            <div>
+              {product.thumbnail_url ? (
+                <img
+                  src={product.thumbnail_url}
+                  alt={product.name}
+                  className="w-full aspect-video object-cover rounded-xl shadow-lg"
+                />
+              ) : (
+                <div className="w-full aspect-video bg-gray-100 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg
+                    className="w-16 h-16 text-gray-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                    />
+                  </svg>
+                </div>
               )}
             </div>
 
-            {/* Purchase button */}
-            {product.stripe_price_id && (
+            {/* Right: Title + Description + Price + CTA */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${badge.color}`}>
+                  {badge.label}
+                </span>
+              </div>
+
+              <h1 className="text-2xl md:text-4xl font-bold text-[var(--color-text)] mb-4 leading-tight">
+                {product.name}
+              </h1>
+
+              {product.description && (
+                <p className="text-[var(--color-text-secondary)] mb-6 text-lg leading-relaxed">
+                  {product.description}
+                </p>
+              )}
+
+              <div className="mb-6">
+                <span className="text-3xl md:text-4xl font-bold text-[var(--color-text)]">
+                  {priceDisplay}
+                </span>
+                {product.price_cents > 0 && (
+                  <span className="text-sm text-[var(--color-text-muted)] ml-2">(税込)</span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                {product.stripe_price_id && (
+                  <button
+                    onClick={openCheckoutModal}
+                    className="py-3 px-8 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors font-semibold text-lg"
+                  >
+                    購入する
+                  </button>
+                )}
+
+                {product.demo_url && (
+                  <a
+                    href={`/shop/${slug}/demo`}
+                    className="inline-flex items-center justify-center gap-2 py-3 px-8 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors font-medium"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Live Demo を見る
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================== */}
+      {/* Section 2: Description         */}
+      {/* ============================== */}
+      {sanitizedDescription && (
+        <section className="py-12 md:py-16">
+          <div className="max-w-4xl mx-auto px-4">
+            <h2 className="text-2xl font-bold text-[var(--color-text)] mb-8 text-center">商品説明</h2>
+            {/* Content sanitized via DOMPurify (line 95-96) - safe for rendering */}
+            <div
+              className="prose prose-gray max-w-none"
+              dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* ============================== */}
+      {/* Section 3: Features            */}
+      {/* ============================== */}
+      {featureList.length > 0 && (
+        <section className="py-12 md:py-16 bg-[var(--color-bg-secondary)]">
+          <div className="max-w-5xl mx-auto px-4">
+            <h2 className="text-2xl font-bold text-[var(--color-text)] mb-8 text-center">特徴</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {featureList.map((feature, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-3 p-4 bg-white rounded-lg border border-[var(--color-border)]"
+                >
+                  <svg
+                    className="w-5 h-5 text-green-500 mt-0.5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span className="text-[var(--color-text)]">{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ============================== */}
+      {/* Section 4: Purchase CTA        */}
+      {/* ============================== */}
+      <section className="py-12 md:py-16">
+        <div className="max-w-2xl mx-auto px-4 text-center">
+          <div className="mb-6">
+            <span className="text-3xl md:text-4xl font-bold text-[var(--color-text)]">
+              {priceDisplay}
+            </span>
+            {product.price_cents > 0 && (
+              <span className="text-sm text-[var(--color-text-muted)] ml-2">(税込)</span>
+            )}
+          </div>
+
+          {product.stripe_price_id && (
+            <>
               <button
-                onClick={() => {
-                  setCheckoutError(null);
-                  setShowCheckoutModal(true);
-                }}
-                className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg mb-4"
+                onClick={openCheckoutModal}
+                className="py-3 px-12 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors font-semibold text-lg mb-4"
               >
                 購入する
               </button>
-            )}
+              <p className="text-sm text-[var(--color-text-muted)] mb-8">
+                クーポンコードは Checkout 画面で入力できます
+              </p>
+            </>
+          )}
 
-            {/* Demo link */}
-            {product.demo_url && (
+          {/* Course manual link */}
+          {product.course_slug && (
+            <div className="mb-6">
               <a
-                href={`/shop/${slug}/demo`}
-                className="flex items-center justify-center gap-2 w-full py-3 px-6 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium mb-4"
+                href={`/learn/${product.course_slug}`}
+                className="inline-flex items-center gap-2 text-[var(--color-accent)] hover:underline font-medium"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                  />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
-                Live Demoを見る
+                インストールマニュアルを見る
               </a>
-            )}
+            </div>
+          )}
 
-            {/* External link */}
-            {product.external_url && (
-              <a
-                href={product.external_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 px-6 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium mb-4"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-                外部サイトで見る
-              </a>
-            )}
-
-            {/* Download section */}
-            {product.download_key && (
+          {/* Download section */}
+          {product.download_key && (
+            <div className="mb-6">
               <DownloadSection
                 productId={product.id}
                 hasDownload={!!product.download_key}
               />
-            )}
+            </div>
+          )}
 
-            {/* Divider + info */}
-            <div className="border-t border-gray-100 pt-4 mt-4 space-y-2 text-sm text-gray-500">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                <span>安全な決済</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span>購入後メールでお届け</span>
-              </div>
+          {/* Security badges */}
+          <div className="flex items-center justify-center gap-6 text-sm text-[var(--color-text-muted)]">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>安全な決済</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <span>購入後メールでお届け</span>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Checkout email modal */}
+      {/* ============================== */}
+      {/* Checkout Email Modal           */}
+      {/* ============================== */}
       {showCheckoutModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -421,7 +440,7 @@ export default function ShopProductDetail() {
                 <button
                   type="submit"
                   disabled={checkoutLoading}
-                  className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-2 px-4 bg-[var(--color-accent)] text-white rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {checkoutLoading ? '処理中...' : '決済に進む'}
                 </button>
@@ -438,6 +457,6 @@ export default function ShopProductDetail() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

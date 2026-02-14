@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import type { Product, CreateProductData } from '../../utils/admin-api';
-import { uploadTemplate } from '../../utils/admin-api';
+import { useState, useEffect } from 'react';
+import type { Product, CreateProductData, Tag, Sequence } from '../../utils/admin-api';
+import { uploadTemplate, listTags, listSequences } from '../../utils/admin-api';
 import { RichTextEditor } from './RichTextEditor';
 
 interface ProductFormProps {
@@ -31,6 +31,45 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [isActive, setIsActive] = useState(product?.is_active !== 0);
+
+  // Tags & Sequences for select dropdowns
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [sequences, setSequences] = useState<Sequence[]>([]);
+
+  // Features JSON validation
+  const [featuresError, setFeaturesError] = useState('');
+  const [parsedFeatures, setParsedFeatures] = useState<string[]>([]);
+
+  useEffect(() => {
+    listTags().then((res) => {
+      if (res.success && res.data?.tags) setTags(res.data.tags);
+    });
+    listSequences().then((res) => {
+      if (res.success && res.data?.sequences) setSequences(res.data.sequences);
+    });
+  }, []);
+
+  // Validate features JSON
+  useEffect(() => {
+    if (!features.trim()) {
+      setFeaturesError('');
+      setParsedFeatures([]);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(features);
+      if (!Array.isArray(parsed)) {
+        setFeaturesError('JSON配列で入力してください（例: ["項目1", "項目2"]）');
+        setParsedFeatures([]);
+      } else {
+        setFeaturesError('');
+        setParsedFeatures(parsed.map(String));
+      }
+    } catch {
+      setFeaturesError('無効なJSONです');
+      setParsedFeatures([]);
+    }
+  }, [features]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,290 +120,327 @@ export function ProductForm({ product, onSubmit, onCancel, loading = false }: Pr
     }
   };
 
+  const inputClass = 'w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]';
+  const labelClass = 'block text-sm font-medium text-[var(--color-text)] mb-2';
+  const fieldsetClass = 'border border-[var(--color-border)] rounded-lg p-6 space-y-6';
+  const legendClass = 'text-base font-semibold text-[var(--color-text)] px-2';
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-          商品名 <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          placeholder="例: TypeScript入門ガイド"
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* === Section 1: 基本情報 === */}
+      <fieldset className={fieldsetClass}>
+        <legend className={legendClass}>基本情報</legend>
 
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-          説明
-        </label>
-        <textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          placeholder="商品の説明を入力"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="price_cents" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-            価格 (円) <span className="text-red-500">*</span>
+          <label htmlFor="name" className={labelClass}>
+            商品名 <span className="text-red-500">*</span>
           </label>
           <input
-            type="number"
-            id="price_cents"
-            value={priceCents}
-            onChange={(e) => setPriceCents(e.target.value)}
+            type="text"
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
-            min="0"
-            className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            placeholder="例: 2980"
+            className={inputClass}
+            placeholder="例: TypeScript入門ガイド"
           />
         </div>
 
         <div>
-          <label htmlFor="product_type" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-            商品タイプ <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="product_type"
-            value={productType}
-            onChange={(e) => setProductType(e.target.value as 'pdf' | 'course' | 'other')}
-            className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          >
-            <option value="pdf">PDF</option>
-            <option value="course">コース</option>
-            <option value="other">その他</option>
-          </select>
+          <label htmlFor="description" className={labelClass}>説明</label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className={inputClass}
+            placeholder="商品の説明を入力"
+          />
         </div>
-      </div>
 
-      <div>
-        <label htmlFor="stripe_price_id" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-          Stripe Price ID
-        </label>
-        <input
-          type="text"
-          id="stripe_price_id"
-          value={stripePriceId}
-          onChange={(e) => setStripePriceId(e.target.value)}
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          placeholder="例: price_1234567890"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="download_url" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-          ダウンロードURL
-        </label>
-        <input
-          type="url"
-          id="download_url"
-          value={downloadUrl}
-          onChange={(e) => setDownloadUrl(e.target.value)}
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          placeholder="例: https://example.com/downloads/file.pdf"
-        />
-        <p className="mt-1 text-xs text-[var(--color-text-muted)]">購入者がダウンロードできるファイルのURL</p>
-      </div>
-
-      <div>
-        <label htmlFor="external_url" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-          外部URL
-        </label>
-        <input
-          type="url"
-          id="external_url"
-          value={externalUrl}
-          onChange={(e) => setExternalUrl(e.target.value)}
-          className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          placeholder="例: https://course.example.com/start"
-        />
-        <p className="mt-1 text-xs text-[var(--color-text-muted)]">コースや外部サービスへのリンク</p>
-      </div>
-
-      <div className="border-t border-[var(--color-border)] pt-6 mt-6">
-        <h3 className="text-lg font-medium text-[var(--color-text)] mb-4">ショップ設定</h3>
-
-        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-              URLスラッグ
+            <label htmlFor="price_cents" className={labelClass}>
+              価格 (円) <span className="text-red-500">*</span>
             </label>
             <input
-              type="text"
-              id="slug"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              placeholder="例: typescript-guide"
+              type="number"
+              id="price_cents"
+              value={priceCents}
+              onChange={(e) => setPriceCents(e.target.value)}
+              required
+              min="0"
+              className={inputClass}
+              placeholder="例: 2980"
             />
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">ショップページのURL（英数字とハイフン）</p>
-            {product && slug && (
-              <a
-                href={`/shop/${slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-2 text-sm text-blue-600 hover:text-blue-800 transition-colors"
-              >
-                ショップページを見る
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-              </a>
-            )}
           </div>
 
           <div>
-            <label htmlFor="thumbnail_url" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-              サムネイルURL
+            <label htmlFor="product_type" className={labelClass}>
+              商品タイプ <span className="text-red-500">*</span>
             </label>
+            <select
+              id="product_type"
+              value={productType}
+              onChange={(e) => setProductType(e.target.value as 'pdf' | 'course' | 'other')}
+              className={inputClass}
+            >
+              <option value="pdf">PDF</option>
+              <option value="course">コース</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="stripe_price_id" className={labelClass}>Stripe Price ID</label>
+          <input
+            type="text"
+            id="stripe_price_id"
+            value={stripePriceId}
+            onChange={(e) => setStripePriceId(e.target.value)}
+            className={inputClass}
+            placeholder="例: price_1234567890"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="slug" className={labelClass}>URLスラッグ</label>
+          <input
+            type="text"
+            id="slug"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            className={inputClass}
+            placeholder="例: typescript-guide"
+          />
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">ショップページのURL（英数字とハイフン）</p>
+          {product && slug && (
+            <a
+              href={`/shop/${slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-sm text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              ショップページを見る
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+            </a>
+          )}
+        </div>
+
+        {product && (
+          <div className="flex items-center gap-2">
             <input
-              type="text"
-              id="thumbnail_url"
-              value={thumbnailUrl}
-              onChange={(e) => setThumbnailUrl(e.target.value)}
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              placeholder="例: https://..."
+              type="checkbox"
+              id="is_active"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-[var(--color-accent)]"
             />
-          </div>
-
-          <div>
-            <label htmlFor="demo_url" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-              デモURL
+            <label htmlFor="is_active" className="text-sm font-medium text-[var(--color-text)]">
+              有効
             </label>
-            <input
-              type="url"
-              id="demo_url"
-              value={demoUrl}
-              onChange={(e) => setDemoUrl(e.target.value)}
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              placeholder="例: https://demo.example.com/preview"
-            />
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">ライブデモのURL</p>
           </div>
+        )}
+      </fieldset>
 
-          <div>
-            <label htmlFor="features" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-              特徴・機能
-            </label>
-            <textarea
-              id="features"
-              value={features}
-              onChange={(e) => setFeatures(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              placeholder="機能や特徴をカンマ区切りで入力"
-            />
-          </div>
+      {/* === Section 2: 販売設定 === */}
+      <fieldset className={fieldsetClass}>
+        <legend className={legendClass}>販売設定</legend>
 
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
-              詳細説明
-            </label>
-            <RichTextEditor
-              value={longDescription}
-              onChange={setLongDescription}
-              placeholder="商品の詳細な説明を入力..."
-            />
-          </div>
-
-          {product && product.download_key && (
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
-                ダウンロードキー
-              </label>
-              <p className="px-4 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-muted)]">
-                {product.download_key}
-              </p>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">R2ストレージのファイルキー（読み取り専用）</p>
+        <div>
+          <label htmlFor="thumbnail_url" className={labelClass}>サムネイルURL</label>
+          <input
+            type="text"
+            id="thumbnail_url"
+            value={thumbnailUrl}
+            onChange={(e) => setThumbnailUrl(e.target.value)}
+            className={inputClass}
+            placeholder="例: https://..."
+          />
+          {thumbnailUrl && (
+            <div className="mt-2">
+              <img
+                src={thumbnailUrl}
+                alt="サムネイルプレビュー"
+                className="max-w-xs h-auto rounded-lg border border-[var(--color-border)]"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
             </div>
           )}
         </div>
-      </div>
 
-      <div className="border-t border-[var(--color-border)] pt-6 mt-6">
-        <h3 className="text-lg font-medium text-[var(--color-text)] mb-4">購入後アクション</h3>
-
-        <div className="space-y-6">
-          <div>
-            <label htmlFor="purchase_tag_id" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-              購入後タグ
-            </label>
-            <input
-              type="text"
-              id="purchase_tag_id"
-              value={purchaseTagId}
-              onChange={(e) => setPurchaseTagId(e.target.value)}
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              placeholder="タグIDを入力"
-            />
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">購入完了時に付与するタグのID</p>
-          </div>
-
-          <div>
-            <label htmlFor="purchase_sequence_id" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-              購入後シーケンス
-            </label>
-            <input
-              type="text"
-              id="purchase_sequence_id"
-              value={purchaseSequenceId}
-              onChange={(e) => setPurchaseSequenceId(e.target.value)}
-              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              placeholder="シーケンスIDを入力"
-            />
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">購入完了時に登録するシーケンスのID</p>
-          </div>
+        <div>
+          <label htmlFor="demo_url" className={labelClass}>デモURL</label>
+          <input
+            type="url"
+            id="demo_url"
+            value={demoUrl}
+            onChange={(e) => setDemoUrl(e.target.value)}
+            className={inputClass}
+            placeholder="例: https://demo.example.com/preview"
+          />
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">ライブデモのURL</p>
         </div>
-      </div>
 
-      {product && (
-        <div className="border-t border-[var(--color-border)] pt-6 mt-6">
-          <h3 className="text-lg font-medium text-[var(--color-text)] mb-4">テンプレートファイル</h3>
-          {product.download_key && (
-            <p className="text-sm text-[var(--color-text-muted)] mb-2">
-              現在のファイル: {product.download_key}
+        <div>
+          <label htmlFor="external_url" className={labelClass}>外部URL</label>
+          <input
+            type="url"
+            id="external_url"
+            value={externalUrl}
+            onChange={(e) => setExternalUrl(e.target.value)}
+            className={inputClass}
+            placeholder="例: https://course.example.com/start"
+          />
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">コースや外部サービスへのリンク</p>
+        </div>
+      </fieldset>
+
+      {/* === Section 3: DLコンテンツ === */}
+      <fieldset className={fieldsetClass}>
+        <legend className={legendClass}>DLコンテンツ</legend>
+
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+          ファイルをアップロードすると R2 に保存され、購入時にダウンロードリンク付きメールが自動送信されます。
+        </div>
+
+        {product && (
+          <div>
+            <label className={labelClass}>テンプレートファイル</label>
+            {product.download_key && (
+              <p className="text-sm text-[var(--color-text-muted)] mb-2">
+                現在のファイル: {product.download_key}
+              </p>
+            )}
+            <input
+              type="file"
+              onChange={handleFileUpload}
+              disabled={uploadingFile}
+              className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] file:mr-4 file:py-1 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-[var(--color-accent)] file:text-white hover:file:bg-[var(--color-accent-hover)] disabled:opacity-50"
+            />
+            {uploadingFile && (
+              <p className="mt-2 text-sm text-[var(--color-text-muted)]">アップロード中...</p>
+            )}
+            {uploadError && (
+              <p className="mt-2 text-sm text-red-500">{uploadError}</p>
+            )}
+            {uploadSuccess && (
+              <p className="mt-2 text-sm text-green-600">{uploadSuccess}</p>
+            )}
+          </div>
+        )}
+
+        {product && !product.download_key && !uploadSuccess && (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+            ダウンロードキーが未設定です。ファイルをアップロードしないと購入時のDLメールが送信されません。
+          </div>
+        )}
+
+        {product && product.download_key && (
+          <div>
+            <label className={labelClass}>ダウンロードキー</label>
+            <p className="px-4 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text-muted)]">
+              {product.download_key}
             </p>
-          )}
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">R2ストレージのファイルキー（読み取り専用）</p>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="download_url" className={labelClass}>ダウンロードURL（外部）</label>
           <input
-            type="file"
-            onChange={handleFileUpload}
-            disabled={uploadingFile}
-            className="w-full px-4 py-2 border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] file:mr-4 file:py-1 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-[var(--color-accent)] file:text-white hover:file:bg-[var(--color-accent-hover)] disabled:opacity-50"
+            type="url"
+            id="download_url"
+            value={downloadUrl}
+            onChange={(e) => setDownloadUrl(e.target.value)}
+            className={inputClass}
+            placeholder="例: https://example.com/downloads/file.pdf"
           />
-          {uploadingFile && (
-            <p className="mt-2 text-sm text-[var(--color-text-muted)]">アップロード中...</p>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">外部URLを直接指定する場合（R2不使用）</p>
+        </div>
+      </fieldset>
+
+      {/* === Section 4: LP設定 === */}
+      <fieldset className={fieldsetClass}>
+        <legend className={legendClass}>LP設定</legend>
+
+        <div>
+          <label htmlFor="features" className={labelClass}>特徴・機能（JSON配列）</label>
+          <textarea
+            id="features"
+            value={features}
+            onChange={(e) => setFeatures(e.target.value)}
+            rows={3}
+            className={`${inputClass} ${featuresError ? 'border-red-300 focus:ring-red-400' : ''}`}
+            placeholder='["レスポンシブ対応", "無料プラグインのみ", "日本語対応"]'
+          />
+          {featuresError && (
+            <p className="mt-1 text-sm text-red-500">{featuresError}</p>
           )}
-          {uploadError && (
-            <p className="mt-2 text-sm text-red-500">{uploadError}</p>
-          )}
-          {uploadSuccess && (
-            <p className="mt-2 text-sm text-green-600">{uploadSuccess}</p>
+          {parsedFeatures.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {parsedFeatures.map((f, i) => (
+                <span key={i} className="inline-flex items-center px-3 py-1 bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-sm rounded-full">
+                  {f}
+                </span>
+              ))}
+            </div>
           )}
         </div>
-      )}
 
-      {product && (
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="is_active"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            className="w-4 h-4 text-[var(--color-accent)] border-[var(--color-border)] rounded focus:ring-[var(--color-accent)]"
+        <div>
+          <label className={labelClass}>詳細説明</label>
+          <RichTextEditor
+            value={longDescription}
+            onChange={setLongDescription}
+            placeholder="商品の詳細な説明を入力..."
           />
-          <label htmlFor="is_active" className="text-sm font-medium text-[var(--color-text)]">
-            有効
-          </label>
         </div>
-      )}
+      </fieldset>
 
+      {/* === Section 5: 自動化設定 === */}
+      <fieldset className={fieldsetClass}>
+        <legend className={legendClass}>自動化設定</legend>
+
+        <div>
+          <label htmlFor="purchase_tag_id" className={labelClass}>購入後タグ</label>
+          <select
+            id="purchase_tag_id"
+            value={purchaseTagId}
+            onChange={(e) => setPurchaseTagId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">選択しない</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.id}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">購入完了時に付与するタグ</p>
+        </div>
+
+        <div>
+          <label htmlFor="purchase_sequence_id" className={labelClass}>購入後シーケンス</label>
+          <select
+            id="purchase_sequence_id"
+            value={purchaseSequenceId}
+            onChange={(e) => setPurchaseSequenceId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">選択しない</option>
+            {sequences.map((seq) => (
+              <option key={seq.id} value={seq.id}>
+                {seq.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">購入完了時に登録するシーケンス</p>
+        </div>
+      </fieldset>
+
+      {/* === Submit === */}
       <div className="flex gap-4 pt-4">
         <button
           type="submit"
