@@ -1249,6 +1249,8 @@ export interface StripeSettings {
   test_publishable_key: string;
   live_secret_key: string;
   live_publishable_key: string;
+  test_webhook_secret: string;
+  live_webhook_secret: string;
   using_env_fallback: boolean;
 }
 
@@ -1258,6 +1260,8 @@ export interface UpdateStripeSettingsData {
   test_publishable_key?: string;
   live_secret_key?: string;
   live_publishable_key?: string;
+  test_webhook_secret?: string;
+  live_webhook_secret?: string;
 }
 
 export async function getStripeSettings() {
