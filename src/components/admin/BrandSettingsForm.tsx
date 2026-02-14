@@ -7,6 +7,8 @@ import {
   getTemplates,
   previewTemplate,
   testSendTemplate,
+  getEmailBrandSettings,
+  updateEmailBrandSettings,
   type BrandSettings,
   type TemplateInfo,
 } from '../../utils/admin-api';
@@ -27,6 +29,11 @@ export function BrandSettingsForm() {
   const [emailSignature, setEmailSignature] = useState('');
   const [defaultTemplateId, setDefaultTemplateId] = useState('simple');
 
+  // Email brand settings state
+  const [emailPrimaryColor, setEmailPrimaryColor] = useState('#0070f3');
+  const [emailFooterHtml, setEmailFooterHtml] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+
   // Preview state
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -45,9 +52,10 @@ export function BrandSettingsForm() {
     setError(null);
 
     try {
-      const [settingsRes, templatesRes] = await Promise.all([
+      const [settingsRes, templatesRes, emailRes] = await Promise.all([
         getBrandSettings(),
         getTemplates(),
+        getEmailBrandSettings(),
       ]);
 
       if (settingsRes.success && settingsRes.data) {
@@ -63,6 +71,11 @@ export function BrandSettingsForm() {
 
       if (templatesRes.success && templatesRes.data) {
         setTemplates(templatesRes.data);
+      }
+
+      if (emailRes.success && emailRes.data) {
+        if (emailRes.data.email_primary_color) setEmailPrimaryColor(emailRes.data.email_primary_color);
+        if (emailRes.data.email_footer_html) setEmailFooterHtml(emailRes.data.email_footer_html);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load settings');
@@ -387,6 +400,132 @@ export function BrandSettingsForm() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Email Settings */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">メール共通設定</h2>
+        <p className="text-sm text-gray-500 mb-4">ログインリンク・購入確認・招待メールの共通フォーマットを設定します。</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ボタンカラー
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={emailPrimaryColor}
+                onChange={(e) => setEmailPrimaryColor(e.target.value)}
+                className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+              />
+              <input
+                type="text"
+                value={emailPrimaryColor}
+                onChange={(e) => setEmailPrimaryColor(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-800 focus:border-transparent"
+                pattern="^#[0-9A-Fa-f]{6}$"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">全メールのボタン・リンクに使用される色</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              フッター HTML
+            </label>
+            <textarea
+              value={emailFooterHtml}
+              onChange={(e) => setEmailFooterHtml(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-800 focus:border-transparent resize-y font-mono text-sm"
+              placeholder={`<p>このメールは EdgeShift から自動送信されています。</p>\n<p>ご不明な点は<a href="https://edgeshift.tech/contact">お問い合わせ</a>ください。</p>`}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              空欄でデフォルトのフッターを使用。<code className="bg-gray-100 px-1 rounded">{'%%PRIMARY_COLOR%%'}</code> でボタンカラーを参照可能。
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              setEmailSaving(true);
+              setError(null);
+              setSuccess(null);
+              try {
+                const result = await updateEmailBrandSettings({
+                  email_primary_color: emailPrimaryColor || undefined,
+                  email_footer_html: emailFooterHtml || undefined,
+                });
+                if (result.success) {
+                  setSuccess('メール設定を保存しました');
+                } else {
+                  setError(result.error || 'Failed to save email settings');
+                }
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to save');
+              } finally {
+                setEmailSaving(false);
+              }
+            }}
+            disabled={emailSaving}
+            className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            {emailSaving ? '保存中...' : 'メール設定を保存'}
+          </button>
+        </div>
+      </div>
+
+      {/* Public Page Preview */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">公開ページ確認</h2>
+        <p className="text-sm text-gray-500 mb-4">購入者に表示されるページをプレビューできます。</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <a
+            href="/shop/success?email=test%40example.com&product=%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E5%95%86%E5%93%81"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors"
+          >
+            <span className="text-gray-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+            <div>
+              <p className="font-medium text-gray-900 text-sm">購入完了ページ</p>
+              <p className="text-xs text-gray-500">/shop/success</p>
+            </div>
+          </a>
+          <a
+            href="/shop"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors"
+          >
+            <span className="text-gray-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </span>
+            <div>
+              <p className="font-medium text-gray-900 text-sm">ショップページ</p>
+              <p className="text-xs text-gray-500">/shop</p>
+            </div>
+          </a>
+          <a
+            href="/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors"
+          >
+            <span className="text-gray-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </span>
+            <div>
+              <p className="font-medium text-gray-900 text-sm">お問い合わせページ</p>
+              <p className="text-xs text-gray-500">/contact</p>
+            </div>
+          </a>
         </div>
       </div>
 
