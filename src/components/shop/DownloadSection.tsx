@@ -42,8 +42,24 @@ export default function DownloadSection({ productId, hasDownload }: DownloadSect
         return;
       }
 
-      // Auth OK — open the download in a new window
-      window.open(url, '_blank');
+      // Auth OK — fetch file as blob and trigger download with correct filename
+      const dlResponse = await fetch(url, { credentials: 'include' });
+      if (!dlResponse.ok) {
+        setError('ダウンロードに失敗しました。');
+        return;
+      }
+      const disposition = dlResponse.headers.get('Content-Disposition');
+      const filenameMatch = disposition?.match(/filename="?([^";\n]+)"?/);
+      const filename = filenameMatch?.[1] || 'download';
+      const blob = await dlResponse.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
     } catch {
       setError('ネットワークエラーが発生しました。');
     } finally {
