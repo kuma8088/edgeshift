@@ -11,3 +11,19 @@ routes = [
 RECIPIENT_EMAIL = "contact@edgeshift.tech"
 SENDER_EMAIL = "noreply@send.edgeshift.tech"
 ALLOWED_ORIGIN = "https://edgeshift.tech"
+
+# ===== Staging Environment =====
+# Deploy with: wrangler deploy --env staging
+# Set secrets: wrangler secret put RESEND_API_KEY --env staging
+
+[env.staging]
+name = "edgeshift-contact-form-staging"
+
+routes = [
+  { pattern = "staging.edgeshift.tech/api/contact", zone_name = "edgeshift.tech" }
+]
+
+[env.staging.vars]
+RECIPIENT_EMAIL = "contact@edgeshift.tech"
+SENDER_EMAIL = "noreply@send.edgeshift.tech"
+ALLOWED_ORIGIN = "https://staging.edgeshift.tech"

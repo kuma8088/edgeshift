@@ -1,7 +1,6 @@
 import type { Env, ShortUrl, CreateShortUrlParams } from '../types';
 
 // Constants
-export const SHORT_URL_BASE = 'https://edgeshift.tech/r';
 export const CODE_LENGTH = 8;
 export const MAX_RETRIES = 3;
 
@@ -134,7 +133,8 @@ export async function replaceUrlsWithShortened(
 
     // Replace this specific occurrence of the URL
     // Use per-URL occurrence number, not global position
-    const shortLink = `${SHORT_URL_BASE}/${shortUrl.short_code}`;
+    const shortUrlBase = `${env.SITE_URL}/r`;
+    const shortLink = `${shortUrlBase}/${shortUrl.short_code}`;
     modifiedHtml = replaceUrlAtPosition(modifiedHtml, url, shortLink, occurrence);
   }
 

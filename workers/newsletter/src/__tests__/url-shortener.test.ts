@@ -6,7 +6,6 @@ import {
   isExcludedUrl,
   replaceUrlsWithShortened,
   findShortUrlByCode,
-  SHORT_URL_BASE,
   CODE_LENGTH,
 } from '../lib/url-shortener';
 
@@ -155,7 +154,7 @@ describe('URL Shortener', () => {
       const result = await replaceUrlsWithShortened(env, html, {});
 
       expect(result.shortUrls).toHaveLength(1);
-      expect(result.html).toContain(SHORT_URL_BASE);
+      expect(result.html).toContain(`${env.SITE_URL}/r`);
       expect(result.html).not.toContain('https://example.com/article');
     });
 

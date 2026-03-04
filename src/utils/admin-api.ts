@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || '/api';
 const API_KEY_STORAGE_KEY = 'edgeshift_admin_api_key';
 
 export function getApiKey(): string | null {
