@@ -112,7 +112,7 @@ export async function requestMagicLink(email: string): Promise<AuthResponse<{ me
  */
 export async function verifyMagicLink(token: string): Promise<AuthResponse<MagicLinkVerifyResponse>> {
   try {
-    const url = new URL(`${PREMIUM_BASE}/auth/verify`);
+    const url = new URL(`${PREMIUM_BASE}/auth/verify`, window.location.origin);
     url.searchParams.set('token', token);
 
     const response = await fetch(url.toString(), {
@@ -234,7 +234,7 @@ export async function logout(): Promise<AuthResponse<{ message: string }>> {
  */
 export async function validateMagicLink(token: string): Promise<AuthResponse<AuthSession>> {
   try {
-    const url = new URL(`${PREMIUM_BASE}/auth/verify`);
+    const url = new URL(`${PREMIUM_BASE}/auth/verify`, window.location.origin);
     url.searchParams.set('token', token);
 
     const response = await fetch(url.toString(), {
