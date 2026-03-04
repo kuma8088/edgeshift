@@ -4,7 +4,7 @@
  * Learn endpoints: session cookie authentication
  */
 
-const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || '/api';
 
 interface ApiResponse<T> {
   success: boolean;

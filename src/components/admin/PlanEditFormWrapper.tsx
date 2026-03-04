@@ -11,7 +11,7 @@ async function getPlan(id: string): Promise<{ success: boolean; data?: Plan; err
     return { success: false, error: 'Not authenticated' };
   }
 
-  const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+  const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || '/api';
 
   try {
     const response = await fetch(`${API_BASE}/premium/plans/${id}`, {

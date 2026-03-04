@@ -3,7 +3,7 @@
  * Uses session cookie authentication (not API key)
  */
 
-const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || '/api';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -132,6 +132,6 @@ export async function getMyCourses(): Promise<ApiResponse<{ courses: MyCourse[] 
  * Get download URL for a product (uses session cookie auth)
  */
 export function getDownloadUrl(productId: string): string {
-  const base = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+  const base = import.meta.env.PUBLIC_NEWSLETTER_API_URL || '/api';
   return `${base}/premium/products/${encodeURIComponent(productId)}/download`;
 }

@@ -5,7 +5,7 @@ export const prerender = false;
 const { slug } = Astro.params;
 
 // Fetch page data at request time
-const apiUrl = import.meta.env.PUBLIC_API_URL || 'https://edgeshift.tech';
+const apiUrl = import.meta.env.PUBLIC_API_URL || Astro.url.origin;
 const pageResponse = await fetch(`${apiUrl}/api/signup-pages/by-slug/${slug}`);
 
 if (!pageResponse.ok) {

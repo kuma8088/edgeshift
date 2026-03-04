@@ -3,7 +3,7 @@
  * Handles Magic Link + TOTP authentication with HTTPOnly cookies
  */
 
-const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || 'https://edgeshift.tech/api';
+const API_BASE = import.meta.env.PUBLIC_NEWSLETTER_API_URL || '/api';
 const PREMIUM_BASE = `${API_BASE}/premium`;
 
 export interface User {
