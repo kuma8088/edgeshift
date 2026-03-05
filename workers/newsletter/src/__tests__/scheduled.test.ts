@@ -2,12 +2,24 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getTestEnv, setupTestDb, cleanupTestDb } from './setup';
 import { processScheduledCampaigns } from '../scheduled';
 
-// Mock email sending
+// Mock email sending (fallback path when Broadcast API is not configured)
 vi.mock('../lib/email', () => ({
   sendBatchEmails: vi.fn().mockResolvedValue({
     success: true,
     sent: 1,
     results: [{ email: 'test@example.com', resendId: 're_mock_123' }],
+  }),
+  sendEmail: vi.fn().mockResolvedValue({ success: true, id: 're_mock_single' }),
+}));
+
+// Mock broadcast sender (primary path when Broadcast API is configured)
+vi.mock('../lib/broadcast-sender', () => ({
+  sendCampaignViaBroadcast: vi.fn().mockResolvedValue({
+    success: true,
+    broadcastId: 'broadcast_mock_123',
+    sent: 1,
+    failed: 0,
+    results: [{ email: 'test@example.com', success: true }],
   }),
 }));
 
@@ -51,10 +63,9 @@ describe('processScheduledCampaigns', () => {
     expect(campaign?.status).toBe('sent');
     expect(campaign?.sent_at).toBeGreaterThan(0);
 
-    // Verify delivery log created
-    const logs = await env.DB.prepare('SELECT * FROM delivery_logs WHERE campaign_id = ?')
-      .bind('camp-1').all();
-    expect(logs.results).toHaveLength(1);
+    // Verify Broadcast API was called
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+    expect(sendCampaignViaBroadcast).toHaveBeenCalledTimes(1);
   });
 
   it('should not process campaigns scheduled for future', async () => {
@@ -168,11 +179,11 @@ describe('processScheduledCampaigns', () => {
         ('camp-2', 'Campaign 2', '<p>Content</p>', 'scheduled', ?, 'none')
     `).bind(pastTime, pastTime).run();
 
-    // Mock email to fail for first campaign, succeed for second
-    const { sendBatchEmails } = await import('../lib/email');
-    vi.mocked(sendBatchEmails)
-      .mockResolvedValueOnce({ success: false, sent: 0, error: 'Failed to send', results: [] })
-      .mockResolvedValueOnce({ success: true, sent: 1, results: [{ email: 'test@example.com', resendId: 're_mock_456' }] });
+    // Mock broadcast sender to fail for first campaign, succeed for second
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+    vi.mocked(sendCampaignViaBroadcast)
+      .mockResolvedValueOnce({ success: false, sent: 0, failed: 1, error: 'Failed to send broadcast', results: [] })
+      .mockResolvedValueOnce({ success: true, broadcastId: 'broadcast_mock_456', sent: 1, failed: 0, results: [{ email: 'test@example.com', success: true }] });
 
     const result = await processScheduledCampaigns(env);
 
@@ -217,6 +228,16 @@ describe('processScheduledCampaigns', () => {
 
     // Unsubscribe the only subscriber
     await env.DB.prepare("UPDATE subscribers SET status = 'unsubscribed' WHERE id = 'sub-1'").run();
+
+    // Mock broadcast sender to return no-subscribers error
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+    vi.mocked(sendCampaignViaBroadcast).mockResolvedValueOnce({
+      success: false,
+      sent: 0,
+      failed: 0,
+      error: 'No active subscribers',
+      results: [],
+    });
 
     // Create a scheduled campaign
     await env.DB.prepare(`
