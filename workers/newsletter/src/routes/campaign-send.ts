@@ -29,15 +29,14 @@ export async function sendCampaign(
       return errorResponse('Campaign already sent', 400);
     }
 
-    // Check if Broadcast API should be used
-    const useBroadcastApi = env.USE_BROADCAST_API === 'true' && !!env.RESEND_AUDIENCE_ID;
+    // Use Broadcast API when segment/audience ID is available
+    const useBroadcastApi = !!(env.RESEND_SEGMENT_ID || env.RESEND_AUDIENCE_ID);
 
     if (useBroadcastApi) {
-      // Use Broadcast API
+      // Use Broadcast API (scalable, no subrequest limit issues)
       const result = await sendCampaignViaBroadcast(campaign, env);
 
       if (!result.success) {
-        // Update campaign status to failed
         await env.DB.prepare(`
           UPDATE campaigns SET status = 'failed' WHERE id = ?
         `).bind(campaignId).run();
@@ -45,7 +44,6 @@ export async function sendCampaign(
         return errorResponse(result.error || 'Broadcast send failed', 500);
       }
 
-      // Update campaign status
       const now = Math.floor(Date.now() / 1000);
       await env.DB.prepare(`
         UPDATE campaigns
@@ -53,7 +51,6 @@ export async function sendCampaign(
         WHERE id = ?
       `).bind(now, result.sent, campaignId).run();
 
-      // Get delivery stats
       const stats = await getDeliveryStats(env, campaignId);
 
       return successResponse({
@@ -65,20 +62,18 @@ export async function sendCampaign(
       });
     }
 
-    // Original Email API flow continues below...
+    // Fallback: Transactional Batch API (when Broadcast API is not configured)
 
     // Get active subscribers (list-based or broadcast)
     let subscribersResult;
 
     if (campaign.contact_list_id) {
-      // List-based delivery: send only to members of the specified list
       subscribersResult = await env.DB.prepare(
         `SELECT s.* FROM subscribers s
          JOIN contact_list_members clm ON s.id = clm.subscriber_id
          WHERE clm.contact_list_id = ? AND s.status = 'active'`
       ).bind(campaign.contact_list_id).all<Subscriber>();
     } else {
-      // Broadcast delivery: send to all active subscribers (default behavior)
       subscribersResult = await env.DB.prepare(
         "SELECT * FROM subscribers WHERE status = 'active'"
       ).all<Subscriber>();

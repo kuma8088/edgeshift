@@ -5,6 +5,7 @@ import { processSequenceEmails } from './lib/sequence-processor';
 import { sendAbTest, sendAbTestWinner, type SendEmailFn } from './routes/ab-test-send';
 import { STYLES, COLORS, wrapInEmailLayout, applyListStyles } from './lib/templates/styles';
 import { linkifyUrls } from './lib/content-processor';
+import { sendCampaignViaBroadcast } from './lib/broadcast-sender';
 
 function buildNewsletterEmail(
   content: string,
@@ -348,23 +349,36 @@ export async function processScheduledCampaigns(env: Env): Promise<ScheduledProc
 
     console.log(`Processing ${campaigns.length} scheduled campaign(s)`);
 
-    // Get active subscribers once (reused for all campaigns)
-    const subscribersResult = await env.DB.prepare(
-      "SELECT * FROM subscribers WHERE status = 'active'"
-    ).all<Subscriber>();
-    const subscribers = subscribersResult.results || [];
+    // Check if Broadcast API is available
+    const useBroadcastApi = !!(env.RESEND_SEGMENT_ID || env.RESEND_AUDIENCE_ID);
 
     // Process each campaign
     for (const campaign of campaigns) {
       result.processed++;
 
       try {
-        // Send campaign
-        const sendResult = await sendSingleCampaign(env, campaign, subscribers);
+        let sendSuccess = false;
+        let sentCount = 0;
+        let sendError: string | undefined;
+
+        if (useBroadcastApi) {
+          // Use Broadcast API (same as manual UI send)
+          const broadcastResult = await sendCampaignViaBroadcast(campaign, env);
+          sendSuccess = broadcastResult.success;
+          sentCount = broadcastResult.sent;
+          sendError = broadcastResult.error;
+        } else {
+          // Fallback: Transactional Batch API (respects contact_list_id)
+          const subscribers = await getActiveSubscribers(env, campaign);
+          const sendResult = await sendSingleCampaign(env, campaign, subscribers);
+          sendSuccess = sendResult.success;
+          sentCount = sendResult.sent;
+          sendError = sendResult.error;
+        }
 
         const updateNow = Math.floor(Date.now() / 1000);
 
-        if (sendResult.success) {
+        if (sendSuccess) {
           result.sent++;
 
           // Update campaign based on schedule type
@@ -383,7 +397,7 @@ export async function processScheduledCampaigns(env: Env): Promise<ScheduledProc
               UPDATE campaigns
               SET last_sent_at = ?, scheduled_at = ?, recipient_count = ?
               WHERE id = ?
-            `).bind(updateNow, nextScheduledAt, sendResult.sent, campaign.id).run();
+            `).bind(updateNow, nextScheduledAt, sentCount, campaign.id).run();
 
             console.log(
               `Recurring campaign ${campaign.id} sent. Next scheduled: ${new Date(nextScheduledAt * 1000).toISOString()}`
@@ -394,7 +408,7 @@ export async function processScheduledCampaigns(env: Env): Promise<ScheduledProc
               UPDATE campaigns
               SET status = 'sent', sent_at = ?, recipient_count = ?
               WHERE id = ?
-            `).bind(updateNow, sendResult.sent, campaign.id).run();
+            `).bind(updateNow, sentCount, campaign.id).run();
 
             console.log(`One-time campaign ${campaign.id} sent successfully`);
           }
@@ -408,7 +422,7 @@ export async function processScheduledCampaigns(env: Env): Promise<ScheduledProc
             WHERE id = ?
           `).bind(campaign.id).run();
 
-          console.error(`Campaign ${campaign.id} failed: ${sendResult.error}`);
+          console.error(`Campaign ${campaign.id} failed: ${sendError}`);
         }
       } catch (error) {
         result.failed++;

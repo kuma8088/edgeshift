@@ -34,7 +34,7 @@ describe('sendCampaign', () => {
     vi.clearAllMocks();
   });
 
-  it('should send a campaign and record delivery logs', async () => {
+  it('should send a campaign via Broadcast API', async () => {
     const env = getTestEnv();
     const request = new Request('http://localhost/api/campaigns/camp-1/send', {
       method: 'POST',
@@ -47,17 +47,12 @@ describe('sendCampaign', () => {
     expect(response.status).toBe(200);
     expect(result.success).toBe(true);
     expect(result.data.sent).toBe(1);
+    expect(result.data.broadcastId).toBe('broadcast_mock_123');
 
     // Check campaign status updated
     const campaign = await env.DB.prepare('SELECT status FROM campaigns WHERE id = ?')
       .bind('camp-1').first();
     expect(campaign?.status).toBe('sent');
-
-    // Check delivery log created
-    const logs = await env.DB.prepare('SELECT * FROM delivery_logs WHERE campaign_id = ?')
-      .bind('camp-1').all();
-    expect(logs.results).toHaveLength(1);
-    expect(logs.results[0].status).toBe('sent');
   });
 
   it('should not send already sent campaign', async () => {
@@ -74,6 +69,15 @@ describe('sendCampaign', () => {
   });
 
   it('should return error if no active subscribers', async () => {
+    const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
+    vi.mocked(sendCampaignViaBroadcast).mockResolvedValueOnce({
+      success: false,
+      sent: 0,
+      failed: 0,
+      error: 'No active subscribers',
+      results: [],
+    });
+
     const env = getTestEnv();
     // Update subscriber to unsubscribed
     await env.DB.prepare("UPDATE subscribers SET status = 'unsubscribed' WHERE id = 'sub-1'").run();
@@ -84,7 +88,7 @@ describe('sendCampaign', () => {
     });
 
     const response = await sendCampaign(request, env, 'camp-1');
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(500);
     const result = await response.json();
     expect(result.error).toContain('No active subscribers');
   });
@@ -289,16 +293,9 @@ describe('Campaign Send with Broadcast API', () => {
     vi.clearAllMocks();
   });
 
-  it('should use Broadcast API when USE_BROADCAST_API=true and RESEND_AUDIENCE_ID is set', async () => {
+  it('should use Broadcast API when RESEND_SEGMENT_ID is set', async () => {
     const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
-    const baseEnv = getTestEnv();
-
-    // Override env to enable Broadcast API
-    const env = {
-      ...baseEnv,
-      USE_BROADCAST_API: 'true',
-      RESEND_AUDIENCE_ID: 'aud_test_123',
-    };
+    const env = getTestEnv(); // Has RESEND_SEGMENT_ID by default
 
     const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
       method: 'POST',
@@ -319,16 +316,16 @@ describe('Campaign Send with Broadcast API', () => {
     expect(campaign?.status).toBe('sent');
   });
 
-  it('should use Email API when USE_BROADCAST_API=false', async () => {
+  it('should fall back to Email API when no segment/audience ID is configured', async () => {
     const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
     const { sendBatchEmails } = await import('../lib/email');
     const baseEnv = getTestEnv();
 
-    // Override env to disable Broadcast API (default)
+    // Override env: no segment or audience IDs
     const env = {
       ...baseEnv,
-      USE_BROADCAST_API: 'false',
-      RESEND_AUDIENCE_ID: 'aud_test_123',
+      RESEND_SEGMENT_ID: undefined,
+      RESEND_AUDIENCE_ID: undefined,
     };
 
     const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
@@ -343,9 +340,7 @@ describe('Campaign Send with Broadcast API', () => {
     expect(result.success).toBe(true);
     // Should NOT have broadcastId since Email API was used
     expect(result.data.broadcastId).toBeUndefined();
-    // Broadcast API should NOT be called
     expect(sendCampaignViaBroadcast).not.toHaveBeenCalled();
-    // Email API should be called
     expect(sendBatchEmails).toHaveBeenCalled();
 
     // Verify campaign status updated
@@ -354,16 +349,14 @@ describe('Campaign Send with Broadcast API', () => {
     expect(campaign?.status).toBe('sent');
   });
 
-  it('should use Email API when RESEND_AUDIENCE_ID is not set even if USE_BROADCAST_API=true', async () => {
+  it('should use Broadcast API with RESEND_AUDIENCE_ID even without RESEND_SEGMENT_ID', async () => {
     const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
-    const { sendBatchEmails } = await import('../lib/email');
     const baseEnv = getTestEnv();
 
-    // Override env: flag enabled but no audience ID
     const env = {
       ...baseEnv,
-      USE_BROADCAST_API: 'true',
-      RESEND_AUDIENCE_ID: '', // Empty = not configured
+      RESEND_SEGMENT_ID: undefined,
+      RESEND_AUDIENCE_ID: 'aud_test_123',
     };
 
     const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
@@ -376,16 +369,13 @@ describe('Campaign Send with Broadcast API', () => {
 
     expect(response.status).toBe(200);
     expect(result.success).toBe(true);
-    // Should fall back to Email API
-    expect(result.data.broadcastId).toBeUndefined();
-    expect(sendCampaignViaBroadcast).not.toHaveBeenCalled();
-    expect(sendBatchEmails).toHaveBeenCalled();
+    expect(result.data.broadcastId).toBe('broadcast_mock_123');
+    expect(sendCampaignViaBroadcast).toHaveBeenCalledTimes(1);
   });
 
   it('should update campaign status to failed when Broadcast API fails', async () => {
     const { sendCampaignViaBroadcast } = await import('../lib/broadcast-sender');
 
-    // Mock broadcast-sender to return failure
     vi.mocked(sendCampaignViaBroadcast).mockResolvedValueOnce({
       success: false,
       error: 'Resend API error: rate limit exceeded',
@@ -394,12 +384,7 @@ describe('Campaign Send with Broadcast API', () => {
       results: [],
     });
 
-    const baseEnv = getTestEnv();
-    const env = {
-      ...baseEnv,
-      USE_BROADCAST_API: 'true',
-      RESEND_AUDIENCE_ID: 'aud_test_123',
-    };
+    const env = getTestEnv();
 
     const request = new Request('http://localhost/api/campaigns/camp-broadcast-1/send', {
       method: 'POST',
